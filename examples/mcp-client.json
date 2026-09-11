@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "winproladder": {
+      "command": "C:/Fatek/winproladder-mcp/.venv/Scripts/python.exe",
+      "args": ["-m", "winproladder_mcp.server", "--root", "C:/Fatek/winproladder-mcp"]
+    }
+  }
+}
