@@ -18,6 +18,7 @@ from .ir import (
     start_stop,
     validation,
 )
+from .layout import expressions, lower_ladder, memory_used, needs_lowering
 from .ldr import FOOTER, MAX_SIZE, Document, LdrError, Record, parse
 
 
@@ -229,6 +230,8 @@ class Service:
         }
 
     def create(self, name: str, ladder: Ladder, allow_unverified: bool = False) -> dict[str, Any]:
+        lowered, layout = lower_ladder(ladder)
+        ladder = lowered
         result = validation(ladder)
         if not result["valid"]:
             raise ValueError(str(result["errors"]))
@@ -241,6 +244,8 @@ class Service:
         return {
             **self.write(name, Document(default_header(), records, FOOTER)),
             "validation": result,
+            "layout_normalized_networks": layout["normalized_networks"],
+            "layout": layout,
         }
 
     def generate(
@@ -318,11 +323,16 @@ class Service:
         else:
             if network is None:
                 raise ValueError("Replacement/insertion requires a network")
-            record = Record.create(compile_network(network))
-            if operation == "insert":
-                records.insert(index, record)
-            else:
-                records[index] = record
+            context = [decode_network(r.payload) for r in records]
+            if any(n is None for n in context) and any(
+                needs_lowering(network, i, e) for i, e in enumerate(expressions(network))
+            ):
+                raise ValueError("Cannot allocate helpers safely with opaque networks")
+            known = [n for n in context if n is not None]
+            reserved = memory_used(Ladder(networks=known)) if known else set()
+            lowered, _ = lower_ladder(Ladder(networks=[network]), reserved)
+            replacement = [Record.create(compile_network(n)) for n in lowered.networks]
+            records[index : index + (operation == "replace")] = replacement
         if len(records) > 1000:
             raise ValueError("Network limit is 1000")
         decoded = [decode_network(r.payload) for r in records]
@@ -377,6 +387,23 @@ def capabilities() -> dict[str, Any]:
             "unknown instructions",
         ],
         "verified_template": "start_stop: X1=1 stops; user reported import success",
+        "layout_optimization": {
+            "automatic": True,
+            "rules": [
+                "identities",
+                "deduplication",
+                "absorption",
+                "common-factor extraction",
+                "CH01 section 1.7 compound-first ordering",
+            ],
+            "scope": "Pure Boolean conditions only; network/output order unchanged",
+            "preview_tool": "validate_ladder",
+            "user_confirmed_import_sha256": (
+                "a4694aa8db73737ada925742ebc6ba164aee52e56137bd5ae201017c203b3b94"
+            ),
+            "verification_scope": "Exact connected traffic-light baseline only; "
+            "new optimized files still need GUI import verification",
+        },
         "no_plc_connection": True,
         "writes": "new .ldr files only in configured output directory; never overwrite",
         "start_stop_example": start_stop().model_dump(),
