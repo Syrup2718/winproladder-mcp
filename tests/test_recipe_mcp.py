@@ -13,6 +13,20 @@ def test_high_level_tools_produce_files_and_disclose_defaults(tmp_path):
         )
         async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
             await session.initialize()
+            preview = await session.call_tool(
+                "validate_ladder",
+                {
+                    "ladder": {
+                        "networks": [{"condition": "X0 AND (X1 OR X2)", "coils": [{"address": 0}]}]
+                    }
+                },
+            )
+            assert not preview.isError, preview.content
+            preview_data = json.loads(preview.content[0].text)
+            assert preview_data["layout"]["helper_devices"] == []
+            assert preview_data["layout"]["metrics"]["networks_after"] == 1
+            assert preview_data["optimized_ladder"]["networks"][0]["condition"]
+            assert not (tmp_path / "artifacts").exists()
             for tool, spec in [
                 (
                     "generate_system_ldr",

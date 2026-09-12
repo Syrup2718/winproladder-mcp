@@ -11,6 +11,7 @@ from .acceptance import AcceptanceCase
 from .control import ControlSpec, control_ladder
 from .design import design_guide
 from .ir import Ladder, Network, simulate, start_stop, validation
+from .layout import lower_ladder
 from .sequence import SequenceSpec, sequence_ladder
 from .service import Service, capabilities
 from .system import SystemSpec, system_ladder
@@ -116,8 +117,9 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
 
     @mcp.tool(annotations=read)
     def validate_ladder(ladder: Ladder) -> dict[str, Any]:
-        """Check IR encoding and report import verification. Not PLC syntax validation."""
-        return validation(ladder)
+        """Preview simplified connected IR and resource costs; not PLC syntax validation."""
+        lowered, layout = lower_ladder(ladder)
+        return {**validation(lowered), "layout": layout, "optimized_ladder": lowered.model_dump()}
 
     @mcp.tool(annotations=write)
     def create_ldr(

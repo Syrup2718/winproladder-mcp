@@ -6,8 +6,9 @@ A working local stdio MCP server with lossless LDR parsing/encoding, a conservat
 semantic IR, file editing tools, and a user-import-verified start/stop template.
 Target profile: WinProLadder v3.28 / FBs-20MC. This is not full instruction coverage.
 
-目前 v0.3 以「使用者說需求，agent 交付 .ldr」為主流程：支援括號邏輯、
-參數化 Timer/Counter 推導及自動生成。詳見 [v0.3 生成流程](docs/v0.3-generation.md)。
+目前 v0.4 以「使用者說需求，agent 交付 .ldr」為主流程：支援控制配方、
+暫停續跑流程、參數化 Timer/Counter 及自動接圖簡化。
+詳見 [v0.4 控制生成](docs/v0.4-controls.md) 與 [簡化規則](docs/logic-optimization.md)。
 
 ## 從 GitHub 安裝（Windows PowerShell）
 
@@ -101,6 +102,10 @@ shift subsequent comparisons. These commands print to stdout and do not write fi
 See [format findings](docs/ldr-format.md) and [requested samples](docs/sample-requests.md).
 # Latest instruction expansion
 
+Layout correction: generation now decomposes nested branches into flat connected
+helper networks, with collision-checked M allocation. This applies to every
+generation tool and semantic edit. See [whole-file layout fix](docs/traffic-light-layout-fix.md).
+
 v0.4 adds **11 common control recipes and up to 16-step pause/resume sequences**.
 Use `generate_control_ldr` or `generate_sequence_ldr`; missing recipe parameters
 receive disclosed draft defaults. [Usage, clock dependency and limits](docs/v0.4-controls.md).
@@ -112,3 +117,8 @@ prevent file creation. See [acceptance and VMware exchange workflow](docs/accept
 generation, decoding, cross-references and loop validation. See
 [test5 evidence and usage](docs/test5-analysis.md). The complete manual instruction
 set is not yet supported; unsupported variants are rejected rather than guessed.
+# 自動簡化更新
+
+產生 `.ldr` 時會自動簡化布林條件與支路排列，減少不必要的接點、輔助 M 及網路；
+`validate_ladder` 可先預覽簡化結果與資源用量。
+詳見 [邏輯與接圖簡化](docs/logic-optimization.md)。

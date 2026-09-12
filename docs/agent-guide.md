@@ -1,7 +1,8 @@
 # Agent 使用指南
 
-這是可執行的本機 stdio MCP v0.3，支援經樣本研究的 WinProLadder v3.28 / FBs-20MC 格式。
-新主流程優先參考 [v0.3 生成指南](v0.3-generation.md)：get_design_guide → generate_ldr。
+這是可執行的本機 stdio MCP v0.4，支援經樣本研究的 WinProLadder v3.28 / FBs-20MC 格式。
+新主流程優先參考 [v0.4 控制生成](v0.4-controls.md) 與
+[自動簡化及預覽](logic-optimization.md)。自訂邏輯使用 get_design_guide → generate_ldr。
 generate_ldr 自動啟用推導編碼，不需要使用者處理 allow_unverified 或補樣本。
 以下保留安裝及 legacy tools 說明；位址和編碼能力以 v0.3 指南為準。
 「MCP 工具流程已實作」不等於「WinProLadder 全部指令已支援」。

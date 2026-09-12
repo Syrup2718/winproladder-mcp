@@ -2,6 +2,14 @@
 
 ## Latest v0.4 work (supersedes older capability notes below)
 
+Latest layout repair supersedes the earlier N007-only workaround: layout.py
+now lowers ALL nested joins into flat helper-M networks. traffic_light original
+N006/N007/N008 are transformed; output C:\VM_Share\artifacts\traffic_light_connected.ldr
+has 25 networks and 13 helpers M3..M9, M13..M18. Original device scan states match.
+184 tests pass, including all control recipes and 16-step sequence lowered form.
+All 13 examples re-generated as connected_*.ldr with design reports. GUI not
+observed; no universal visual verification claim. See docs/traffic-light-layout-fix.md.
+
 New modules: control.py (11 synthesized recipes), sequence.py (16-step process,
 pause/resume whole external-clock ticks, active timeout, reset/abort/done),
 system.py (24 independent recipes, collision-free Y/M/T/C allocation).
