@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from winproladder_mcp.ir import Network, start_stop
+from winproladder_mcp.ir import Ladder, Network, start_stop
 from winproladder_mcp.ldr import parse
 from winproladder_mcp.service import Service
 
@@ -59,3 +59,50 @@ def test_read_escape_and_output_source_rejected(service: Service, tmp_path: Path
         service.edit("samples/test.ldr", "x.ldr", "delete", 0, None, False)
     with pytest.raises(ValueError):
         service.edit("samples/test.ldr", "x.ldr", "delete", 100, None, True)
+
+
+def test_block_program_ir_roundtrip(service: Service) -> None:
+    read = service.read("samples/test3.ldr")
+    ladder = Ladder.model_validate(read["ladder"])
+    created = service.create("block-program.ldr", ladder, True)
+    assert Path(created["path"]).read_bytes() == service.source("samples/test3.ldr").read_bytes()
+    analysis = service.analyze("samples/test3.ldr")
+    assert analysis["decoded_count"] == 12
+    assert analysis["references"]["complete"] is True
+    assert analysis["references"]["devices"]["C1"] == {"reads": [10], "writes": [7]}
+    assert analysis["references"]["devices"]["M2"] == {"reads": [11], "writes": [10]}
+    assert "preset=256" in analysis["networks"][4]["description"]
+
+
+def test_incomplete_cross_references(service: Service) -> None:
+    analysis = service.analyze("samples/test4.ldr")
+    assert analysis["references"]["complete"] is False
+    assert analysis["references"]["opaque_networks"] == [5, 6]
+    assert analysis["warnings"]
+    assert service.read("samples/test4.ldr")["ladder"] is None
+
+
+def test_compare_insert_delete_replace(service: Service) -> None:
+    assert service.compare("samples/test3.ldr", "samples/test3.ldr")["changes"] == []
+    service.edit("samples/test3.ldr", "insert.ldr", "insert", 2, start_stop().networks[0], True)
+    changes = service.compare("samples/test3.ldr", "artifacts/insert.ldr")["changes"]
+    assert len(changes) == 1
+    assert changes[0]["operation"] == "insert"
+    assert changes[0]["left_range"] == [2, 2]
+    assert changes[0]["right_range"] == [2, 3]
+    reverse = service.compare("artifacts/insert.ldr", "samples/test3.ldr")["changes"]
+    assert reverse[0]["operation"] == "delete"
+    service.edit("samples/test3.ldr", "replace.ldr", "replace", 0, start_stop().networks[0], True)
+    changes = service.compare("samples/test3.ldr", "artifacts/replace.ldr")["changes"]
+    assert len(changes) == 1
+    assert changes[0]["operation"] == "replace"
+    assert changes[0]["left_range"] == [0, 1]
+
+
+def test_compare_crc_only_change(service: Service) -> None:
+    data = bytearray(service.source("samples/w1.ldr").read_bytes())
+    data[269] ^= 1
+    (service.root / "corrupt.ldr").write_bytes(data)
+    changes = service.compare("samples/w1.ldr", "corrupt.ldr")["changes"]
+    assert changes[0]["left"][0]["payload_hex"] == changes[0]["right"][0]["payload_hex"]
+    assert changes[0]["right"][0]["crc_valid"] is False

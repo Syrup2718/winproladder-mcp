@@ -1,0 +1,13 @@
+{
+  "networks": [
+    {
+      "block": {
+        "type": "counter",
+        "address": 1,
+        "preset": 10,
+        "pulse": "always_on",
+        "clear": "always_on"
+      }
+    }
+  ]
+}

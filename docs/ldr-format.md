@@ -7,6 +7,12 @@
 
 ## 證據範圍
 
+v0.3 根據使用者要求啟用推導式生成，詳見 [推導規則與限制](v0.3-generation.md)。
+本文歷史 confidence 不因新增生成能力而自動提升為官方確認。
+
+目前 v0.2 已提供 8 個完整 Timer/Counter 匯出樣本的精確辨識與重建；
+這不提升其通用位址／參數公式的信心。能力與測試見 [v0.2 狀態](v0.2-status.md)。
+
 第五份樣本見 [test4 分析](test4-analysis.md)：五份共 35/35 CRC 通過，
 新增 Y/M 接點、反相 coil、邊沿接點及混合分支的畫面對照。
 
@@ -128,7 +134,8 @@ CRC 相符只證明資料一致性，不代表梯形圖語法或控制邏輯正�
 | `5F EB` 為 empty | test 最前面兩筆對應畫面 N006/N007 空白；非零長度 payload，缺獨立 empty 匯出 | HIGH CONFIDENCE |
 
 上述語意已與 test/test2 畫面核對，目前無已知反例，但證據集中於三個同型號樣本。
-`test_all_observed_records` 固定原始 bytes，**不能自動證明畫面語意**；因此尚未提供語意 Encoder。
+`test_all_observed_records` 固定原始 bytes，**不能自動證明畫面語意**。
+目前已提供有限語意 Encoder；支援清單與未驗證組合政策見 agent 指南。
 
 ## Timer
 

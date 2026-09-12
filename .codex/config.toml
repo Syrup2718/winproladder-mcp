@@ -1,7 +1,0 @@
-# Project-scoped server for this checkout. Adjust paths if the repository moves.
-[mcp_servers.winproladder]
-command = 'C:\Fatek\winproladder-mcp\.venv\Scripts\python.exe'
-args = ['-m', 'winproladder_mcp.server', '--root', 'C:\Fatek\winproladder-mcp']
-cwd = 'C:\Fatek\winproladder-mcp'
-startup_timeout_sec = 30
-tool_timeout_sec = 60

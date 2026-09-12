@@ -1,24 +1,30 @@
 # Agent 使用指南
 
-這是可執行的本機 stdio MCP v0.1，支援經樣本研究的 WinProLadder v3.28 / FBs-20MC 格式。
+這是可執行的本機 stdio MCP v0.3，支援經樣本研究的 WinProLadder v3.28 / FBs-20MC 格式。
+新主流程優先參考 [v0.3 生成指南](v0.3-generation.md)：get_design_guide → generate_ldr。
+generate_ldr 自動啟用推導編碼，不需要使用者處理 allow_unverified 或補樣本。
+以下保留安裝及 legacy tools 說明；位址和編碼能力以 v0.3 指南為準。
 「MCP 工具流程已實作」不等於「WinProLadder 全部指令已支援」。
 不用 OpenAI API key；由 MCP client 啟動 Python 子行程。
 
 ## 連接
 
-在專案目錄執行 `uv sync --locked`。
-此 checkout 已提供 `.codex/config.toml` 的專案級設定，使用 .venv 的 Python 絕對路徑。
+在專案目錄執行 `uv sync --locked`，然後 `uv run winproladder-setup check`。
+執行 `uv run winproladder-setup config --format codex`，會輸出這台機器的絕對路徑設定。
+將輸出的 server 區段合併到 `.codex/config.toml`（此本機檔案不納入 Git）。
+若已有 `[mcp_servers.winproladder]`，更新該區段，勿重複新增。
 重新載入支援專案設定的 Codex client，並確認專案為信任狀態。
 工具在 client 下次建立 MCP 連線時載入，不保證出現在已開啟的對話工具清單。
 搬動 repo 或更換工作機器需調整 command、args 與 cwd。
 
-其他 stdio MCP client 可參考 `examples/mcp-client.json`，將 server entry 合併到 client 的設定；
+其他 stdio MCP client 執行 `uv run winproladder-setup config --format json`，
+將產生的 server entry 合併到 client 的設定；
 不要整份覆蓋已有 servers。不同 client 的設定檔位置由該 client 決定。
 
 手動啟動可用：
 
 ```powershell
-uv run --locked winproladder-mcp --root C:/Fatek/winproladder-mcp
+uv run --locked winproladder-mcp --root .
 ```
 
 這會等待 MCP JSON-RPC stdin，不是互動式 CLI，也不會開 HTTP port。
@@ -40,6 +46,7 @@ uv run --locked winproladder-mcp --root C:/Fatek/winproladder-mcp
 5. `simulate_ladder(ladder, inputs, initial)`：最多 256 次布林掃描，輸出 trace。
    每次 inputs 是 X 輸入快照，沒給的 X 重置 false；未提供的初始元件也是 false。
    Y/M 狀態逐 scan 保留，依 network 順序更新。T/C 僅可作固定初值接點，不運行 Timer/Counter。
+   含 block 的 ladder 會明確拒絕模擬；不會略過 block 後回傳看似完整的 trace。
 6. `create_ldr(output_name, ladder, allow_unverified)`：產生新檔、長度及 CRC。
 7. `export_ldr(path, output_name)`：結構 parse→encode 的逐 byte 複製，包括 opaque 與來源錯誤 CRC。
    這個工具不是修復工具；有問題會附 warning。
@@ -48,6 +55,13 @@ uv run --locked winproladder-mcp --root C:/Fatek/winproladder-mcp
    delete 時省略 network，且不可刪到完全沒有 network。
    修改寫入另一檔，其他原始 payload/trailer/CRC 保留。
 9. `create_start_stop(output_name, stop_input_active_high=true)`：直接產生已成功匯入的自保持案例。
+10. `analyze_ldr(path)`：network 說明及元件讀寫交叉引用，回報不完整的分析範圍。
+11. `compare_ldr(left_path, right_path)`：對齊原始 records 的新增/刪除/修改。
+12. `get_design_guide()`：自然語言需求到 IR 的流程、schema 和完整範例。
+13. `generate_ldr(output_name, ladder)`：優先使用的生成工具；自動編譯推導規則並回傳檔案及設計摘要。
+
+完整可解碼的 `read_ldr` 結果另帶 `ladder`，可直接傳入生成工具。
+有 opaque network 時 `ladder=null`，請用 modify_network 保留其他未知資料。
 
 範例工具呼叫：
 
@@ -61,29 +75,27 @@ uv run --locked winproladder-mcp --root C:/Fatek/winproladder-mcp
 
 ## IR 與能力範圍
 
-`examples/start-stop.json` 可直接作為 `create_ldr` 的 ladder 參數。
+`examples/start-stop.json` 可直接作為 `generate_ldr` 的 ladder 參數。
 一個 network 用 steps 左到右摺疊：第一個 `load`，後面 `and/or`，最後 coils。
 例如 load A、or B、and C 表示 `(A OR B) AND C`，沒有 AND 優先規則。
 `A AND (B OR C)` 不可寫成 load A、and B、or C；後者是 `(A AND B) OR C`。
-此版不接受巢狀拓樸。空 network 使用 `{"empty": true}`。
+v0.3 可改用 condition 字串表達巢狀拓樸；與 steps 不可並用。空 network 使用 `{"empty": true}`。
 
 | 元件 | 支援位置 | 本版位址範圍 |
 | --- | --- | --- |
-| X NO | load / and / or | 0–10 |
-| X NC | load / and | 0–10 |
-| Y NO、NC | load / and | 0–9 |
-| M NO | load / and | 0、2、6 |
-| M NC | load | 0、2、6 |
-| T、C NO 接點 | load | 1 |
-| 普通 Y coil | 最後，可多個 | 0–9 |
-| 普通 M coil | 最後，可多個 | 0、2、6 |
+| X/Y/M/T/C NO、NC | 條件式、load / and / or、子分支 | 0–255（推導） |
+| 普通／反相 Y/M coil | 最後，可多個 | 0–255（推導） |
+| Timer / Counter block | enable 或 pulse/clear 條件式 | 0–255（推導） |
 
-以上是研究工具的保守範圍，不是 PLC 元件容量。
-Timer/Counter block、邊沿接點、反相 coil、複雜 branch、其他指令整段 opaque；
+上表是推導編碼範圍，不是 PLC 元件容量。
+Timer/Counter 透過 network.block 指定 type/address/preset；preset 範圍0–65535，
+Timer time_base 固定0.01s。get_capabilities.block_templates 保留8個來源證據，並非生成白名單。
+邊沿接點與其他尚未實作的指令整段 opaque；
 可無損匯出並保留，但不能由 IR 生成。`allow_unverified` 也不會繞過 unsupported 限制。
 
 只有完整單 network payload `41 00 A0 00 90 01 C1 00` 有使用者成功匯入紀錄。
-其他可編碼組合是候選，須設定 `allow_unverified=true`，工具仍回傳未匯入驗證狀態。
+其他可編碼組合由 generate_ldr 直接生成候選並回傳未匯入驗證狀態。
+只有 legacy create_ldr/modify_network 流程仍須設定 `allow_unverified=true`。
 不要把 tool success、CRC 成功或布林模擬當成 PLC runtime 驗證。
 
 ## 錯誤與資料保留
