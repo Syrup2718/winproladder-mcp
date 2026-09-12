@@ -1,12 +1,12 @@
-# Documentation
+# 文件索引
 
-Start with `v0.3-generation.md` for the current generation workflow and `agent-guide.md`
-for installation and legacy tools. v0.1/v0.2 status files record earlier releases.
-Reverse-engineered `.ldr` findings live in `ldr-format.md`; its initial findings
-are historical, with newer sample analyses linked at the top. Each claim must
-identify its sample evidence and use one of these confidence labels:
+| 文件 | 用途 |
+| --- | --- |
+| [Agent 操作指南](agent-guide.md) | 從需求到檔案的工具流程 |
+| [功能與參數](reference.md) | 配方、IR、模擬及支援限制 |
+| [邏輯簡化](logic-optimization.md) | 簡化規則、接圖策略與資源預覽 |
+| [LDR 格式](ldr-format.md) | Record、CRC、指令編碼與未知欄位 |
+| [驗證依據](verification.md) | 樣本覆蓋、匯入基準與驗證邊界 |
+| [開發指南](development.md) | 專案結構、測試及新增功能 |
 
-- `CONFIRMED`
-- `HIGH CONFIDENCE`
-- `HYPOTHESIS`
-- `UNKNOWN`
+首次安裝請見 [專案首頁](../README.md)。工具的完整參數以 `get_capabilities`、`get_design_guide` 回傳的 schema 為準。
