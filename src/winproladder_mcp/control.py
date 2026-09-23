@@ -25,11 +25,11 @@ ControlKind = Literal[
 class ControlSpec(Model):
     requirement: str = Field(min_length=1, max_length=16000)
     kind: ControlKind
-    signal: str = "X0"
-    stop: str = "X1"
-    reset: str = "X2"
-    reverse: str = "X3"
-    output: Annotated[int, Field(strict=True, ge=0, le=253)] = 0
+    signal: str
+    stop: str = "FALSE"
+    reset: str = "FALSE"
+    reverse: str = "FALSE"
+    output: Annotated[int, Field(strict=True, ge=0, le=253)]
     memory: Annotated[int, Field(strict=True, ge=0, le=250)] = 0
     timer: Annotated[int, Field(strict=True, ge=0, le=48)] = 0
     counter: Annotated[int, Field(strict=True, ge=0, le=255)] = 0
@@ -39,6 +39,9 @@ class ControlSpec(Model):
 
 
 def control_ladder(spec: ControlSpec) -> tuple[Ladder, dict[str, Any]]:
+    required = {"start_stop": "stop", "set_reset": "reset", "forward_reverse": "reverse"}
+    if spec.kind in required and required[spec.kind] not in spec.model_fields_set:
+        raise ValueError(f"{spec.kind} requires explicit {required[spec.kind]} condition")
     for expression in (spec.signal, spec.stop, spec.reset, spec.reverse):
         if any(not c.startswith("X") for c in contacts(parse_expression(expression))):
             raise ValueError("Recipe inputs must use X contacts; internal devices are allocated")
@@ -106,14 +109,24 @@ def control_ladder(spec: ControlSpec) -> tuple[Ladder, dict[str, Any]]:
         coil(m, y)
         coil(f"{m} AND NOT {t}", f"Y{spec.output + 1}")
         coil(f"{m} AND {t} AND T{spec.timer + 1}", f"Y{spec.output + 2}")
-    return Ladder(networks=ns), {
+    roles = {
+        m: "Control active latch",
+        prev: "Previous scan signal for edge detection",
+        edge: "One-scan signal edge",
+    }
+    used_m = {f"M{c.address}" for n in ns for c in n.coils if c.device == "M"}
+    symbols = {name: role for name, role in roles.items() if name in used_m}
+    for n in ns:
+        if n.coils:
+            n.comment = "; ".join(symbols.get(f"{c.device}{c.address}", "") for c in n.coils)
+    return Ladder(networks=ns, symbols=symbols), {
         "requirement": spec.requirement,
         "kind": spec.kind,
         "resolved_spec": spec.model_dump(),
         "defaults_used": sorted(set(ControlSpec.model_fields) - spec.model_fields_set),
         "assumptions": [
             "Offline candidate, not certified or commissioned equipment control.",
-            "Absent I/O and timing values use the disclosed resolved_spec defaults.",
+            "Signal and output must be explicit. Absent optional controls are FALSE.",
             "Input expressions describe PLC bit polarity; physical NC wiring is not inferred.",
             "Timers assume default T0..T49 .01s configuration; M/Y startup states must be reset.",
             "Edges/toggle/SET-RST are synthesized Boolean networks, not native function opcodes.",

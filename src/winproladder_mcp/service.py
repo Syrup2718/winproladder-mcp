@@ -7,8 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from .acceptance import AcceptanceCase, check_acceptance
-from .analysis import describe, device_references
+from .analysis import describe, device_references, timer_settings
 from .design import design_guide
+from .io_contract import IOContract, check_io
 from .ir import (
     Ladder,
     Network,
@@ -140,6 +141,15 @@ class Service:
             )
         return {
             "networks": networks,
+            "timer_settings": timer_settings(
+                [
+                    (
+                        index,
+                        Network.model_validate(item["logic"]) if item["logic"] else None,
+                    )
+                    for index, item in enumerate(networks)
+                ]
+            ),
             "ladder": {"networks": [item["logic"] for item in networks]}
             if networks and all(item["logic"] is not None for item in networks)
             else None,
@@ -169,6 +179,7 @@ class Service:
                 for item in result["networks"]
             ],
             "references": references,
+            "timer_settings": result["timer_settings"],
             "warnings": ["Analysis is incomplete: opaque networks may contain additional devices."]
             if not references["complete"]
             else [],
@@ -229,7 +240,23 @@ class Service:
             ),
         }
 
-    def create(self, name: str, ladder: Ladder, allow_unverified: bool = False) -> dict[str, Any]:
+    def create(
+        self,
+        name: str,
+        ladder: Ladder,
+        allow_unverified: bool = False,
+        *,
+        acceptance: list[AcceptanceCase] | None = None,
+        io_contract: IOContract | None = None,
+    ) -> dict[str, Any]:
+        source_devices = set(device_references(list(enumerate(ladder.networks)))["devices"])
+        # Low-level callers explicitly provide their ladder; enforce that lowering cannot
+        # extend its physical I/O even when there is no separate customer contract.
+        contract = io_contract or IOContract(
+            inputs=sorted(d for d in source_devices if d.startswith("X")),
+            outputs=sorted(d for d in source_devices if d.startswith("Y")),
+        )
+        check_io(source_devices, contract)
         lowered, layout = lower_ladder(ladder)
         ladder = lowered
         result = validation(ladder)
@@ -241,20 +268,55 @@ class Service:
                 "and explicitly set allow_unverified=true for a candidate"
             )
         records = tuple(Record.create(compile_network(n)) for n in reversed(ladder.networks))
+        document = Document(default_header(), records, FOOTER)
+        # Validate the exact emitted bytes, including network order and decoding,
+        # before creating a deliverable. Source-only simulation misses compiler bugs.
+        parsed = parse(document.encode())
+        decoded = [decode_network(r.payload) for r in reversed(parsed.records)]
+        if any(n is None for n in decoded):
+            raise ValueError("Generated network failed semantic decode; no file written")
+        emitted = Ladder(networks=[n for n in decoded if n is not None])
+        io_report = check_io(
+            set(device_references(list(enumerate(emitted.networks)))["devices"]), contract
+        )
+        emitted_report = check_acceptance(emitted, acceptance) if acceptance is not None else None
+        if emitted_report is not None and not emitted_report["passed"]:
+            raise ValueError(f"Compiled acceptance failed; no file written: {emitted_report}")
         return {
-            **self.write(name, Document(default_header(), records, FOOTER)),
+            **self.write(name, document),
             "validation": result,
             "layout_normalized_networks": layout["normalized_networks"],
             "layout": layout,
+            "io_contract": io_report,
+            "timer_settings": timer_settings(list(enumerate(emitted.networks))),
+            "symbols": ladder.symbols,
+            "network_notes": [
+                {"index": i, "comment": n.comment, "logic": describe(n)}
+                for i, n in enumerate(ladder.networks)
+            ],
+            "annotation_scope": "Symbols/comments are metadata, not embedded LDR comments",
+            "compiled_acceptance": emitted_report,
+            "artifact_validation": {
+                "crc_valid": True,
+                "decoded_networks": len(emitted.networks),
+                "scope": "Exact emitted LDR bytes; offline model, not GUI or PLC validation",
+            },
         }
 
     def generate(
-        self, name: str, ladder: Ladder, acceptance: list[AcceptanceCase] | None = None
+        self,
+        name: str,
+        ladder: Ladder,
+        acceptance: list[AcceptanceCase] | None = None,
+        *,
+        io_contract: IOContract | None = None,
     ) -> dict[str, Any]:
         report = check_acceptance(ladder, acceptance) if acceptance is not None else None
         if report is not None and not report["passed"]:
             raise ValueError(f"Acceptance failed; no file written: {report}")
-        result = self.create(name, ladder, allow_unverified=True)
+        result = self.create(
+            name, ladder, allow_unverified=True, acceptance=acceptance, io_contract=io_contract
+        )
         return {
             **result,
             "acceptance": report,
@@ -279,8 +341,13 @@ class Service:
         ladder: Ladder,
         design: dict[str, Any],
         acceptance: list[AcceptanceCase] | None = None,
+        *,
+        io_contract: IOContract | None = None,
     ) -> dict[str, Any]:
-        result = {**self.generate(name, ladder, acceptance), "design": design}
+        result = {
+            **self.generate(name, ladder, acceptance, io_contract=io_contract),
+            "design": design,
+        }
         report = Path(result["path"] + ".design.json")
         try:
             with report.open("x", encoding="utf-8") as stream:
@@ -351,7 +418,7 @@ class Service:
 
 def capabilities() -> dict[str, Any]:
     return {
-        "version": "0.4.0",
+        "version": "0.5.0",
         "profile": "WinProLadder v3.28 / FBs-20MC sampled header",
         "transport": "stdio",
         "simulation": "Boolean or scan_ms T/C model; max 256 scans, not a PLC emulator",
@@ -365,8 +432,9 @@ def capabilities() -> dict[str, Any]:
             "C": "0..255",
         },
         "generation": "generate_control_ldr: 11 recipes; generate_sequence_ldr: up to 16 steps, "
-        "pause/resume whole ticks and timeout; generate_system_ldr: independent controls with "
-        "automatic resource allocation; generate_ldr: custom Boolean/T/C/register/loop IR.",
+        "native T timing (retentive timing unsupported), optional explicit pulse counting; "
+        "generate_system_ldr: independent controls with "
+        "internal resource allocation; generate_ldr: custom Boolean/T/C/register/loop IR.",
         "inference_notice": "Unseen combinations/ranges are inferred, not PLC-validated.",
         "design_guide": design_guide(),
         "block_templates": [

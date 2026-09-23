@@ -10,12 +10,12 @@ def design_guide() -> dict[str, Any]:
         "control_recipes": {
             "tool": "generate_control_ldr",
             "kinds": list(get_args(ControlKind)),
-            "default_policy": "Resolve missing fields using disclosed draft defaults.",
+            "default_policy": "Physical signal/output required; no automatic X/Y assignment.",
         },
         "workflow": [
-            "For multiple independent controls use generate_system_ldr to allocate addresses.",
-            "For ordered multi-step pause/resume requirements use generate_sequence_ldr. "
-            "Choose disclosed draft I/O/timing defaults; do not demand a complete control table.",
+            "For independent controls use generate_system_ldr to allocate internal M/T/C only.",
+            "Copy user-specified X/Y into mandatory io_contract; never add missing hardware. "
+            "Use native T for timed sequences. Retentive FUN87/88/89 encoding is unavailable.",
             "For common controls use generate_control_ldr and its resolved defaults. "
             "For custom logic use generate_ldr. Do not claim any draft is ready for machinery.",
             "Interpret the user's natural-language requirements into the ladder schema below.",
@@ -31,10 +31,11 @@ def design_guide() -> dict[str, Any]:
         "sequence_generation": {
             "tool": "generate_sequence_ldr",
             "policy": "Generate a candidate with assumptions, not a deployment-ready safety claim.",
-            "pause": "Whole-tick retention using explicit external X4 clock by default; "
-            "not native timing or power-loss retention. Disclose clock wiring requirements.",
+            "pause": "Native retentive timing rejected: missing FUN87/88/89 LDR encoding. "
+            "Explicit external pulse counting is supported only if requested by the user.",
             "example_spec": {
-                "requirement": "Fill, mix, drain; pause and resume",
+                "requirement": "Fill, mix, drain using native T timers",
+                "start": "X0",
                 "steps": [
                     {"name": "fill", "outputs": [0], "ticks": 10, "complete_when": "X5"},
                     {"name": "mix", "outputs": [1], "ticks": 30},
@@ -47,8 +48,20 @@ def design_guide() -> dict[str, Any]:
             "example_spec": {
                 "requirement": "Two independent motor latches",
                 "controls": [
-                    {"requirement": "Motor A", "kind": "start_stop", "signal": "X0", "stop": "X1"},
-                    {"requirement": "Motor B", "kind": "start_stop", "signal": "X2", "stop": "X3"},
+                    {
+                        "requirement": "Motor A",
+                        "kind": "start_stop",
+                        "signal": "X0",
+                        "stop": "X1",
+                        "output": 0,
+                    },
+                    {
+                        "requirement": "Motor B",
+                        "kind": "start_stop",
+                        "signal": "X2",
+                        "stop": "X3",
+                        "output": 1,
+                    },
                 ],
             },
         },
@@ -87,6 +100,7 @@ def design_guide() -> dict[str, Any]:
             "nested loops, register-valued FOR counts, pulse BREAK, 32-bit/indirect OR",
             "native SET/RST and edge opcodes (Boolean control recipes implement their behavior)",
             "other time bases",
+            "accumulative timers FUN87/88/89: manual behavior known; no export encoding evidence",
             "PLC communication",
         ],
         "examples": {
