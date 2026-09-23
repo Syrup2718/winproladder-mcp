@@ -161,3 +161,17 @@ def test_all_sample_decoding_coverage() -> None:
                 assert compile_network(decoded) == record.payload
                 count += 1
     assert count == 40  # Only test4 rising/falling edge contacts remain opaque.
+
+
+def test_flat_chains_keep_node_limit_without_consuming_branch_depth() -> None:
+    expression = " AND ".join(f"X{i}" for i in range(128))
+    network = Network(condition=expression, coils=[Coil(address=0)])
+    payload = compile_network(network)
+    assert len(payload) == 2 * 129
+    decoded = decode_network(payload)
+    assert decoded is not None
+    assert compile_network(decoded) == payload
+    with pytest.raises(ValueError, match="256 nodes"):
+        parse_expression(expression + " AND X128")
+    with pytest.raises(ValueError, match="depth 32"):
+        parse_expression("NOT " * 33 + "X0")

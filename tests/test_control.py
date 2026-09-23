@@ -9,8 +9,18 @@ from winproladder_mcp.timing import timed_simulate
 
 @pytest.mark.parametrize("kind", get_args(ControlKind))
 def test_all_controls_roundtrip(kind):
-    ladder, design = control_ladder(ControlSpec(requirement="customer draft", kind=kind))
-    assert "signal" in design["defaults_used"]
+    ladder, design = control_ladder(
+        ControlSpec(
+            signal="X0",
+            output=0,
+            stop="X1",
+            reset="X2",
+            reverse="X3",
+            requirement="customer draft",
+            kind=kind,
+        )
+    )
+    assert "signal" not in design["defaults_used"]
     for n in ladder.networks:
         raw = compile_network(n)
         decoded = decode_network(raw)
@@ -28,13 +38,33 @@ def test_all_controls_roundtrip(kind):
     ],
 )
 def test_stateful_controls(kind, expected):
-    ladder, _ = control_ladder(ControlSpec(requirement="test", kind=kind))
+    ladder, _ = control_ladder(
+        ControlSpec(
+            signal="X0",
+            output=0,
+            stop="X1",
+            reset="X2",
+            reverse="X3",
+            requirement="test",
+            kind=kind,
+        )
+    )
     scans = [{}, {"X0": True}, {"X0": True}, {}, {"X0": True}, {}]
     assert [s["Y0"] for s in timed_simulate(ladder, scans, {}, 10)] == expected
 
 
 def test_set_reset_priority():
-    ladder, _ = control_ladder(ControlSpec(requirement="test", kind="set_reset"))
+    ladder, _ = control_ladder(
+        ControlSpec(
+            signal="X0",
+            output=0,
+            stop="X1",
+            reset="X2",
+            reverse="X3",
+            requirement="test",
+            kind="set_reset",
+        )
+    )
     assert not timed_simulate(ladder, [{"X0": True, "X2": True}], {}, 10)[0]["Y0"]
 
 
@@ -47,14 +77,35 @@ def test_set_reset_priority():
     ],
 )
 def test_timer_controls(kind, expected):
-    ladder, _ = control_ladder(ControlSpec(requirement="test", kind=kind, delay_ms=30))
+    ladder, _ = control_ladder(
+        ControlSpec(
+            signal="X0",
+            output=0,
+            stop="X1",
+            reset="X2",
+            reverse="X3",
+            requirement="test",
+            kind=kind,
+            delay_ms=30,
+        )
+    )
     scans = [{}, {"X0": True}, {"X0": True}, {"X0": True}, {}, {}, {}]
     assert [s["Y0"] for s in timed_simulate(ladder, scans, {}, 10)] == expected
 
 
 def test_star_delta_no_overlap_and_stop():
     ladder, _ = control_ladder(
-        ControlSpec(requirement="test", kind="star_delta", delay_ms=30, gap_ms=20)
+        ControlSpec(
+            signal="X0",
+            output=0,
+            stop="X1",
+            reset="X2",
+            reverse="X3",
+            requirement="test",
+            kind="star_delta",
+            delay_ms=30,
+            gap_ms=20,
+        )
     )
     trace = timed_simulate(ladder, [{"X0": True}] + [{}] * 6 + [{"X1": True}], {}, 10)
     assert all(not (s["Y1"] and s["Y2"]) for s in trace)

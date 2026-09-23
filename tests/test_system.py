@@ -9,8 +9,8 @@ def test_independent_toggles_get_distinct_state_and_outputs():
     spec = SystemSpec(
         requirement="two buttons",
         controls=[
-            {"requirement": "first", "kind": "toggle", "signal": "X0"},
-            {"requirement": "second", "kind": "toggle", "signal": "X1"},
+            {"requirement": "first", "kind": "toggle", "signal": "X0", "output": 0},
+            {"requirement": "second", "kind": "toggle", "signal": "X1", "output": 1},
         ],
     )
     ladder, design = system_ladder(spec)
@@ -27,24 +27,30 @@ def test_independent_toggles_get_distinct_state_and_outputs():
         assert compile_network(decode_network(raw)) == raw
 
 
-def test_reserve_later_explicit_output_before_automatic_allocation():
+def test_reserve_later_explicit_memory_before_automatic_allocation():
     spec = SystemSpec(
         requirement="allocate",
         controls=[
-            {"requirement": "auto", "kind": "star_delta"},
-            {"requirement": "explicit", "kind": "start_stop", "output": 0},
+            {"requirement": "auto", "kind": "star_delta", "signal": "X0", "output": 1},
+            {"requirement": "explicit", "kind": "toggle", "signal": "X1", "output": 0, "memory": 0},
         ],
     )
     _, design = system_ladder(spec)
-    assert design["controls"][0]["resolved_spec"]["output"] == 1
+    assert design["controls"][0]["resolved_spec"]["memory"] == 3
 
 
 def test_explicit_overlap_rejected():
     spec = SystemSpec(
         requirement="bad",
         controls=[
-            {"requirement": "first", "kind": "star_delta", "output": 0},
-            {"requirement": "second", "kind": "start_stop", "output": 2},
+            {"requirement": "first", "kind": "star_delta", "signal": "X0", "output": 0},
+            {
+                "requirement": "second",
+                "kind": "start_stop",
+                "signal": "X1",
+                "stop": "X2",
+                "output": 2,
+            },
         ],
     )
     with pytest.raises(ValueError, match="overlap"):

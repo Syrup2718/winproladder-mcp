@@ -5,7 +5,13 @@ from winproladder_mcp.timing import timed_simulate
 
 def test_pause_preserves_ticks_without_false_resume_edge():
     spec = SequenceSpec(
-        requirement="pause resume", steps=[{"name": "mix", "ticks": 3, "outputs": [0]}]
+        start="X0",
+        pause="X1",
+        reset="X2",
+        abort="X3",
+        clock="X4",
+        requirement="pause resume",
+        steps=[{"name": "mix", "ticks": 3, "outputs": [0]}],
     )
     ladder, _ = sequence_ladder(spec)
     scans = [
@@ -35,6 +41,11 @@ def test_pause_preserves_ticks_without_false_resume_edge():
 def test_zero_time_steps_do_not_cascade_in_one_scan():
     ladder, _ = sequence_ladder(
         SequenceSpec(
+            start="X0",
+            pause="X1",
+            reset="X2",
+            abort="X3",
+            clock="X4",
             requirement="three stages",
             steps=[{"name": str(i), "ticks": 0, "outputs": [i]} for i in range(3)],
         )
@@ -45,7 +56,15 @@ def test_zero_time_steps_do_not_cascade_in_one_scan():
 
 def test_abort_latches_until_reset():
     ladder, _ = sequence_ladder(
-        SequenceSpec(requirement="abort", steps=[{"name": "mix", "outputs": [0]}])
+        SequenceSpec(
+            start="X0",
+            pause="X1",
+            reset="X2",
+            abort="X3",
+            clock="X4",
+            requirement="abort",
+            steps=[{"name": "mix", "outputs": [0]}],
+        )
     )
     trace = timed_simulate(
         ladder,
@@ -58,6 +77,11 @@ def test_abort_latches_until_reset():
 
 def test_missing_completion_feedback_times_out():
     spec = SequenceSpec(
+        start="X0",
+        pause="X1",
+        reset="X2",
+        abort="X3",
+        clock="X4",
         requirement="wait for level",
         steps=[
             {
@@ -77,6 +101,11 @@ def test_missing_completion_feedback_times_out():
 
 def test_completion_wins_same_tick_as_timeout():
     spec = SequenceSpec(
+        start="X0",
+        pause="X1",
+        reset="X2",
+        abort="X3",
+        clock="X4",
         requirement="complete at limit",
         steps=[
             {
@@ -96,6 +125,11 @@ def test_completion_wins_same_tick_as_timeout():
 def test_restart_immediately_after_completion():
     ladder, _ = sequence_ladder(
         SequenceSpec(
+            start="X0",
+            pause="X1",
+            reset="X2",
+            abort="X3",
+            clock="X4",
             requirement="restart",
             steps=[
                 {
@@ -113,6 +147,11 @@ def test_restart_immediately_after_completion():
 def test_sixteen_steps_compile_and_complete_without_cascade():
     ladder, _ = sequence_ladder(
         SequenceSpec(
+            start="X0",
+            pause="X1",
+            reset="X2",
+            abort="X3",
+            clock="X4",
             requirement="maximum",
             steps=[{"name": str(i), "ticks": 0, "outputs": [i]} for i in range(16)],
         )

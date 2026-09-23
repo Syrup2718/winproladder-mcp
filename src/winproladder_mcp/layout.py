@@ -54,6 +54,16 @@ def lower_ladder(ladder: Ladder, reserved: set[int] | None = None) -> tuple[Ladd
     output: list[Network] = []
     mapping = []
     simplifications = []
+    symbols = dict(ladder.symbols)
+    # Reuse a declared device for a contradiction; never invent a physical input.
+    source_names = {f"{c.device}{c.address}" for n in ladder.networks for c in n.coils}
+    source_names.update(
+        f"{'T' if isinstance(n.block, Timer) else 'C'}{n.block.address}"
+        for n in ladder.networks
+        if n.block is not None
+    )
+    source_names.update(d for n in ladder.networks for e in expressions(n) for d in contacts(e))
+    contradiction = sorted(source_names)[0] if source_names else "M0"
 
     def allocate() -> int:
         address = next((i for i in range(256) if i not in occupied), None)
@@ -66,7 +76,9 @@ def lower_ladder(ladder: Ladder, reserved: set[int] | None = None) -> tuple[Ladd
     def lower(expr: Expr) -> Expr:
         if expr.op == "false":
             # Wired contradiction rather than the special OPEN pseudo-contact.
-            return Expr("and", items=(Expr("contact", "X0"), Expr("contact", "X0", True)))
+            return Expr(
+                "and", items=(Expr("contact", contradiction), Expr("contact", contradiction, True))
+            )
         if expr.op in {"contact", "true"}:
             return expr
 
@@ -86,9 +98,12 @@ def lower_ladder(ladder: Ladder, reserved: set[int] | None = None) -> tuple[Ladd
             child = lower(child)
             if position > 0 and child.op in {"and", "or"}:
                 address = allocate()
+                symbols[f"M{address}"] = f"Boolean branch: {expression_text(child)}"
                 output.append(
                     Network(
-                        condition=expression_text(child), coils=[Coil(device="M", address=address)]
+                        condition=expression_text(child),
+                        coils=[Coil(device="M", address=address)],
+                        comment=symbols[f"M{address}"],
                     )
                 )
                 child = Expr("contact", f"M{address}")
@@ -132,7 +147,7 @@ def lower_ladder(ladder: Ladder, reserved: set[int] | None = None) -> tuple[Ladd
             )
         if len(output) > 1000:
             raise ValueError("Connected layout exceeds 1000 networks; no file written")
-    result = Ladder(networks=output)
+    result = Ladder(networks=output, symbols=symbols)
     if any(
         needs_lowering(n, i, expr) for n in result.networks for i, expr in enumerate(expressions(n))
     ):

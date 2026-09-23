@@ -30,6 +30,7 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
             tools = (await session.list_tools()).tools
             assert {tool.name for tool in tools} == {
                 "get_capabilities",
+                "get_ldr_artifact",
                 "inspect_ldr",
                 "read_ldr",
                 "validate_ladder",
@@ -110,6 +111,8 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
                     },
                 ),
             ]:
+                if name in {"generate_ldr", "create_ldr"}:
+                    args["io_contract"] = {"inputs": ["X0", "X1"], "outputs": ["Y0"]}
                 result = await session.call_tool(name, args)
                 assert not result.isError, (name, result.content)
                 assert result.structuredContent is not None

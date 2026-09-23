@@ -24,8 +24,10 @@ def describe(network: Network) -> str:
     if isinstance(network.block, Timer):
         block = network.block
         return (
-            f"Timer T{block.address}: base={block.time_base}, "
-            f"preset={block.preset}, EN={block.enable}"
+            f"Timer T{block.address}: assumed base={block.time_base}, "
+            f"preset={block.preset} ticks, "
+            + (f"nominal_duration={block.preset * 10} ms, " if block.address < 50 else "")
+            + f"EN={block.enable}"
             + (f"; TUP -> {outputs}" if outputs else "; TUP unconnected")
         )
     if network.block is not None:
@@ -36,6 +38,33 @@ def describe(network: Network) -> str:
             + (f"CUP -> {outputs}" if outputs else "CUP unconnected")
         )
     return f"{expression_text(network_expression(network))} -> {outputs}"
+
+
+def timer_settings(networks: list[tuple[int, Network | None]]) -> dict[str, Any]:
+    """Keep preset counts separate from milliseconds and disclose the profile assumption.
+
+    The supported LDR timer payload contains a preset, not a verified destination
+    project's timer allocation. Do not present inferred timing as measured runtime.
+    """
+    return {
+        "configuration_verified": False,
+        "scope": "Assumes destination T0..T49 use .01S (10 ms) time base; "
+        "destination project configuration is not verified from this LDR.",
+        "formula": "nominal_duration_ms = preset_ticks * time_base_ms",
+        "timers": [
+            {
+                "network_index": index,
+                "device": f"T{network.block.address}",
+                "preset_ticks": network.block.preset,
+                "assumed_time_base_ms": 10 if network.block.address < 50 else None,
+                "nominal_duration_ms": network.block.preset * 10
+                if network.block.address < 50
+                else None,
+            }
+            for index, network in networks
+            if network is not None and isinstance(network.block, Timer)
+        ],
+    }
 
 
 def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, Any]:

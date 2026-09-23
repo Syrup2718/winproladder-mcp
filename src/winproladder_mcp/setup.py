@@ -2,6 +2,8 @@
 
 import argparse
 import asyncio
+import base64
+import hashlib
 import json
 import sys
 import tempfile
@@ -9,12 +11,24 @@ from pathlib import Path
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from mcp.types import BlobResourceContents, EmbeddedResource, ResourceLink
+from pydantic import AnyUrl
+
+from .design import design_guide
+from .service import Service
 
 
-def client_config(root: Path) -> dict[str, object]:
+def client_config(root: Path, output_dir: Path | None = None) -> dict[str, object]:
+    root = root.resolve(strict=True)
+    if output_dir is not None and not output_dir.is_absolute():
+        output_dir = root / output_dir
+    service = Service(root, output_dir)
+    arguments = ["-m", "winproladder_mcp.server", "--root", str(service.root)]
+    if output_dir is not None:
+        arguments.extend(["--output-dir", str(service.output)])
     return {
         "command": sys.executable,
-        "args": ["-m", "winproladder_mcp.server", "--root", str(root.resolve(strict=True))],
+        "args": arguments,
     }
 
 
@@ -32,6 +46,7 @@ async def check(root: Path) -> None:
             "generate_ldr",
             "get_design_guide",
             "get_capabilities",
+            "get_ldr_artifact",
             "create_start_stop",
             "read_ldr",
             "analyze_ldr",
@@ -43,13 +58,49 @@ async def check(root: Path) -> None:
         if result.isError:
             raise RuntimeError(str(result.content))
         data = (root / "artifacts/self-check.ldr").read_bytes()
-        import hashlib
-
         if (
             hashlib.sha256(data).hexdigest()
             != "b917c9e8d50f38f6d6b568637e3afd3f0ef6091ea49a8aaca6b1b4f73db025b9"
         ):
             raise RuntimeError("Start-stop output does not match verified file")
+        metadata = result.structuredContent
+        if metadata is None or not any(isinstance(c, ResourceLink) for c in result.content):
+            raise RuntimeError("Generation did not return a structured artifact and resource link")
+        resource = await session.read_resource(AnyUrl(metadata["artifact"]["uri"]))
+        if (
+            len(resource.contents) != 1
+            or not isinstance(resource.contents[0], BlobResourceContents)
+            or base64.b64decode(resource.contents[0].blob, validate=True) != data
+        ):
+            raise RuntimeError("Resource download does not match the generated LDR")
+        download = await session.call_tool("get_ldr_artifact", {"output_name": "self-check.ldr"})
+        embedded = [item for item in download.content if isinstance(item, EmbeddedResource)]
+        if (
+            download.isError
+            or len(embedded) != 1
+            or not isinstance(embedded[0].resource, BlobResourceContents)
+            or base64.b64decode(embedded[0].resource.blob, validate=True) != data
+        ):
+            raise RuntimeError("Artifact tool did not return the original binary LDR")
+        generated = await session.call_tool(
+            "generate_control_ldr",
+            {
+                "output_name": "requirement-check.ldr",
+                "io_contract": {"inputs": ["X0", "X1"], "outputs": ["Y0"]},
+                "spec": {
+                    "requirement": "X0 starts Y0, X1 stops it; keep running after releasing X0",
+                    "kind": "start_stop",
+                    "signal": "X0",
+                    "stop": "X1",
+                    "output": 0,
+                },
+                "acceptance": design_guide()["acceptance_example"],
+            },
+        )
+        if generated.isError or generated.structuredContent is None:
+            raise RuntimeError("Requirement-to-LDR generation failed")
+        if not generated.structuredContent["acceptance"]["passed"]:
+            raise RuntimeError("Generated control failed its behavior acceptance cases")
         for name, arguments in [
             ("analyze_ldr", {"path": "artifacts/self-check.ldr"}),
             (
@@ -60,7 +111,8 @@ async def check(root: Path) -> None:
             if (await session.call_tool(name, arguments)).isError:
                 raise RuntimeError(f"{name} self-check failed")
         print(
-            f"PASS: MCP connection, {len(tools)} tools, start-stop generation and verified SHA-256"
+            f"PASS: MCP connection, {len(tools)} tools, requirement-to-LDR acceptance, "
+            "verified SHA-256 and binary artifact download"
         )
 
 
@@ -70,13 +122,19 @@ def main() -> None:
     config = sub.add_parser("config", help="Print client config; never overwrite existing settings")
     config.add_argument("--format", choices=["codex", "json"], default="codex")
     config.add_argument("--root", type=Path, default=Path.cwd())
+    config.add_argument(
+        "--output-dir", type=Path, help="Output subdirectory; relative paths are resolved from root"
+    )
     sub.add_parser("check", help="Test real stdio MCP in a temporary workspace; repeatable")
     args = parser.parse_args()
     if args.command == "check":
         with tempfile.TemporaryDirectory(prefix="winproladder-check-") as directory:
             asyncio.run(asyncio.wait_for(check(Path(directory)), timeout=60))
     else:
-        settings = client_config(args.root)
+        try:
+            settings = client_config(args.root, args.output_dir)
+        except (OSError, ValueError) as error:
+            parser.error(str(error))
         if args.format == "json":
             print(json.dumps({"mcpServers": {"winproladder": settings}}, indent=2))
         else:

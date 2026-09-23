@@ -1,17 +1,31 @@
 """WinProLadder MCP stdio entry point. Logs belong on stderr."""
 
 import argparse
+import base64
+import hashlib
+import json
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import quote, unquote
 
 from mcp.server.fastmcp import FastMCP
-from mcp.types import ToolAnnotations
+from mcp.types import (
+    BlobResourceContents,
+    CallToolResult,
+    EmbeddedResource,
+    ResourceLink,
+    TextContent,
+    ToolAnnotations,
+)
+from pydantic import AnyUrl
 
 from .acceptance import AcceptanceCase
 from .control import ControlSpec, control_ladder
 from .design import design_guide
+from .io_contract import IOContract
 from .ir import Ladder, Network, simulate, start_stop, validation
 from .layout import lower_ladder
+from .ldr import MAX_SIZE
 from .sequence import SequenceSpec, sequence_ladder
 from .service import Service, capabilities
 from .system import SystemSpec, system_ladder
@@ -24,18 +38,77 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
         "WinProLadder",
         instructions=(
             "For common functions prefer generate_control_ldr; for sequential pause/resume "
-            "use generate_sequence_ldr. Resolve missing I/O/timing with disclosed defaults. "
-            "Do not block a draft because its control table is incomplete. "
-            "Never hide external-clock requirements or claim safety commissioning. "
+            "use generate_sequence_ldr. Copy only user-specified X/Y into io_contract. "
+            "Never invent physical I/O or external clocks. Require signal and output addresses. "
+            "Ordinary T timers are supported; native retentive timing encoding is unsupported. "
             "Use get_design_guide to turn requirements into conditions and blocks. "
             "Call generate_ldr for an actual file; inferred encodings are enabled. "
             "Do not ask the user for JSON or samples for supported expressions/parameters. "
             "Use simulation for Boolean requirements. Return file links and validation warnings. "
+            "Generation results include an MCP resource link to the actual binary .ldr. "
+            "Use resources/read or get_ldr_artifact to deliver its bytes to clients without "
+            "access to the server filesystem. "
             "Stop polarity is the PLC input logic, not physical button wiring. No PLC operations."
         ),
     )
     read = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
     write = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False)
+
+    def artifact_path(name: str) -> Path:
+        if not name or Path(name).name != name or any(c in name for c in "/\\:"):
+            raise ValueError("Artifact name must be a plain .ldr filename")
+        target = service.source(str(service.output / name))
+        if target.parent != service.output:
+            raise ValueError("Artifact must be directly inside the configured output directory")
+        return target
+
+    def artifact_bytes(name: str) -> bytes:
+        with artifact_path(name).open("rb") as stream:
+            data = stream.read(MAX_SIZE + 1)
+        if len(data) > MAX_SIZE:
+            raise ValueError("Artifact exceeds 16 MiB limit")
+        return data
+
+    def artifact_result(result: dict[str, Any], data: bytes | None = None) -> CallToolResult:
+        name = Path(result["path"]).name
+        uri = AnyUrl(f"winproladder://artifacts/{quote(name, safe='')}")
+        metadata = {
+            **result,
+            "artifact": {
+                "uri": str(uri),
+                "name": name,
+                "mime_type": "application/octet-stream",
+                "size": result["size"],
+                "sha256": result["sha256"],
+            },
+        }
+        response = CallToolResult(
+            content=[
+                TextContent(type="text", text=json.dumps(metadata, ensure_ascii=False)),
+                ResourceLink(
+                    type="resource_link",
+                    uri=uri,
+                    name=name,
+                    title=name,
+                    description="Download the generated WinProLadder ladder resource file.",
+                    mimeType="application/octet-stream",
+                    size=result["size"],
+                ),
+            ],
+            structuredContent=metadata,
+        )
+        if data is not None:
+            response.content.append(
+                EmbeddedResource(
+                    type="resource",
+                    resource=BlobResourceContents(
+                        uri=uri,
+                        mimeType="application/octet-stream",
+                        blob=base64.b64encode(data).decode("ascii"),
+                    ),
+                )
+            )
+        return response
 
     @mcp.tool(annotations=read)
     def get_capabilities() -> dict[str, Any]:
@@ -44,6 +117,11 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
             **capabilities(),
             "workspace": str(service.root),
             "output_directory": str(service.output),
+            "artifact_delivery": {
+                "resource_template": "winproladder://artifacts/{name}",
+                "tool": "get_ldr_artifact",
+                "format": "MCP binary resource (base64 on the wire), application/octet-stream",
+            },
         }
 
     @mcp.tool(annotations=read)
@@ -53,47 +131,88 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
 
     @mcp.tool(annotations=write)
     def generate_system_ldr(
-        output_name: str, spec: SystemSpec, acceptance: list[AcceptanceCase] | None = None
-    ) -> dict[str, Any]:
-        """Generate multiple independent controls in one LDR with automatic Y/M/T/C allocation.
+        output_name: str,
+        spec: SystemSpec,
+        io_contract: IOContract,
+        acceptance: list[AcceptanceCase] | None = None,
+    ) -> CallToolResult:
+        """Generate independent controls with automatic internal M/T/C allocation.
         Explicit overlapping resources are rejected, not silently reassigned. Inputs can be shared.
         """
         ladder, design = system_ladder(spec)
-        return service.generate_design(output_name, ladder, design, acceptance)
+        return artifact_result(
+            service.generate_design(
+                output_name, ladder, design, acceptance, io_contract=io_contract
+            )
+        )
 
     @mcp.tool(annotations=write)
     def generate_control_ldr(
-        output_name: str, spec: ControlSpec, acceptance: list[AcceptanceCase] | None = None
-    ) -> dict[str, Any]:
+        output_name: str,
+        spec: ControlSpec,
+        io_contract: IOContract,
+        acceptance: list[AcceptanceCase] | None = None,
+    ) -> CallToolResult:
         """Generate common control functions from customer requirements translated by the host.
-        Missing values get explicit draft defaults. Supports latch, toggle, edges, delays,
+        Physical I/O must be explicit and within io_contract. Supports latch, toggle, edges, delays,
         pulse, counter, interlocked direction and star/delta; returns actual .ldr + assumptions.
         """
         ladder, design = control_ladder(spec)
-        return service.generate_design(output_name, ladder, design, acceptance)
+        return artifact_result(
+            service.generate_design(
+                output_name, ladder, design, acceptance, io_contract=io_contract
+            )
+        )
 
     @mcp.tool(annotations=write)
     def generate_sequence_ldr(
-        output_name: str, spec: SequenceSpec, acceptance: list[AcceptanceCase] | None = None
-    ) -> dict[str, Any]:
-        """Generate a pause/resume multi-step candidate. Host agent translates customer text
-        into steps and fills missing values with disclosed defaults, not blocking questions.
-        Requires external clock input (default X4, 100ms); retains whole ticks, not fractions.
-        Return design assumptions and actual .ldr. Not safety-certified or GUI-verified.
+        output_name: str,
+        spec: SequenceSpec,
+        io_contract: IOContract,
+        acceptance: list[AcceptanceCase] | None = None,
+    ) -> CallToolResult:
+        """Generate ordered steps using native T timers, with no automatic X/Y additions.
+        Native retentive pause/resume is not yet encoded and is rejected explicitly.
+        External pulse counting is only for requirements explicitly specifying a clock input.
+        Return symbols and actual .ldr; not GUI or PLC verified.
         """
         ladder, design = sequence_ladder(spec)
-        return service.generate_design(output_name, ladder, design, acceptance)
+        return artifact_result(
+            service.generate_design(
+                output_name, ladder, design, acceptance, io_contract=io_contract
+            )
+        )
 
     @mcp.tool(annotations=write)
     def generate_ldr(
-        output_name: str, ladder: Ladder, acceptance: list[AcceptanceCase] | None = None
-    ) -> dict[str, Any]:
+        output_name: str,
+        ladder: Ladder,
+        io_contract: IOContract,
+        acceptance: list[AcceptanceCase] | None = None,
+    ) -> CallToolResult:
         """Preferred generation tool: compile conditions/blocks to an actual .ldr file.
 
         Inferred encodings are enabled without a separate flag. Return design summary,
-        CRC-backed file hash and verification warnings. Never overwrite existing files.
+        SHA-256, binary resource link and verification warnings. Never overwrite existing files.
         """
-        return service.generate(output_name, ladder, acceptance)
+        return artifact_result(
+            service.generate(output_name, ladder, acceptance, io_contract=io_contract)
+        )
+
+    @mcp.tool(annotations=read)
+    def get_ldr_artifact(output_name: str) -> CallToolResult:
+        """Retrieve a generated .ldr as an embedded MCP binary resource and download link.
+
+        Use the original output_name, including .ldr. Returns exact file bytes as base64
+        with SHA-256; only reads the configured output directory. Useful when the client
+        cannot access local server paths or cannot invoke resources/read directly.
+        """
+        target = artifact_path(output_name)
+        data = artifact_bytes(output_name)
+        return artifact_result(
+            {"path": str(target), "size": len(data), "sha256": hashlib.sha256(data).hexdigest()},
+            data,
+        )
 
     @mcp.tool(annotations=read)
     def inspect_ldr(path: str) -> dict[str, Any]:
@@ -123,10 +242,12 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
 
     @mcp.tool(annotations=write)
     def create_ldr(
-        output_name: str, ladder: Ladder, allow_unverified: bool = False
-    ) -> dict[str, Any]:
+        output_name: str, ladder: Ladder, io_contract: IOContract, allow_unverified: bool = False
+    ) -> CallToolResult:
         """Create a new file from IR with sampled header and fresh CRC. Never overwrite files."""
-        return service.create(output_name, ladder, allow_unverified)
+        return artifact_result(
+            service.create(output_name, ladder, allow_unverified, io_contract=io_contract)
+        )
 
     @mcp.tool(annotations=read)
     def simulate_ladder(
@@ -155,14 +276,16 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
     @mcp.tool(annotations=write)
     def create_start_stop(
         output_name: str, stop_input_active_high: bool = True, allow_unverified: bool = False
-    ) -> dict[str, Any]:
+    ) -> CallToolResult:
         """Create X0/Y0 self-hold. True: X1=1 stops (verified). False: X1=0 stops (candidate)."""
-        return service.create(output_name, start_stop(stop_input_active_high), allow_unverified)
+        return artifact_result(
+            service.create(output_name, start_stop(stop_input_active_high), allow_unverified)
+        )
 
     @mcp.tool(annotations=write)
-    def export_ldr(path: str, output_name: str) -> dict[str, Any]:
+    def export_ldr(path: str, output_name: str) -> CallToolResult:
         """Re-encode to a NEW file, preserving opaque bytes and any original invalid CRC."""
-        return service.export(path, output_name)
+        return artifact_result(service.export(path, output_name))
 
     @mcp.tool(annotations=write)
     def modify_network(
@@ -172,15 +295,25 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
         index: int,
         network: Network | None = None,
         allow_unverified: bool = False,
-    ) -> dict[str, Any]:
+    ) -> CallToolResult:
         """Edit in a NEW file; index 0 is N000. Preserve untouched raw records."""
-        return service.edit(path, output_name, operation, index, network, allow_unverified)
+        return artifact_result(
+            service.edit(path, output_name, operation, index, network, allow_unverified)
+        )
+
+    @mcp.resource(
+        "winproladder://artifacts/{name}",
+        name="generated_ldr",
+        title="Generated WinProLadder file",
+        mime_type="application/octet-stream",
+    )
+    def artifact_resource(name: str) -> bytes:
+        """Read a generated .ldr file. The URI name is percent-encoded UTF-8."""
+        return artifact_bytes(unquote(name, errors="strict"))
 
     @mcp.resource("winproladder://capabilities")
     def capability_resource() -> str:
-        import json
-
-        return json.dumps(capabilities(), ensure_ascii=False)
+        return json.dumps(get_capabilities(), ensure_ascii=False)
 
     return mcp
 

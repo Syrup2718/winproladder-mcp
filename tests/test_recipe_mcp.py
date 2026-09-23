@@ -33,21 +33,42 @@ def test_high_level_tools_produce_files_and_disclose_defaults(tmp_path):
                     {
                         "requirement": "two controls",
                         "controls": [
-                            {"requirement": "first", "kind": "toggle"},
-                            {"requirement": "second", "kind": "toggle", "signal": "X1"},
+                            {"requirement": "first", "kind": "toggle", "signal": "X0", "output": 0},
+                            {
+                                "requirement": "second",
+                                "kind": "toggle",
+                                "signal": "X1",
+                                "output": 1,
+                            },
                         ],
                     },
                 ),
-                ("generate_control_ldr", {"requirement": "single button toggle", "kind": "toggle"}),
+                (
+                    "generate_control_ldr",
+                    {
+                        "requirement": "single button toggle",
+                        "kind": "toggle",
+                        "signal": "X0",
+                        "output": 0,
+                    },
+                ),
                 (
                     "generate_sequence_ldr",
                     {
-                        "requirement": "pause and resume",
+                        "requirement": "timed sequence",
+                        "start": "X0",
                         "steps": [{"name": "mix", "ticks": 3, "outputs": [0]}],
                     },
                 ),
             ]:
-                result = await session.call_tool(tool, {"output_name": f"{tool}.ldr", "spec": spec})
+                result = await session.call_tool(
+                    tool,
+                    {
+                        "output_name": f"{tool}.ldr",
+                        "spec": spec,
+                        "io_contract": {"inputs": ["X0", "X1"], "outputs": ["Y0", "Y1"]},
+                    },
+                )
                 assert not result.isError, result.content
                 data = json.loads(result.content[0].text)
                 assert data["design"]["assumptions"]

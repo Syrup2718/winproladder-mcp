@@ -43,6 +43,7 @@ def system_ladder(spec: SystemSpec) -> tuple[Ladder, dict[str, Any]]:
                 raise ValueError(f"Control {index}: explicit {name} resources overlap")
             used[name].update(addresses)
     networks = []
+    symbols = {}
     designs = []
     limits = {"output": 253, "memory": 250, "timer": 48, "counter": 255}
     for control in spec.controls:
@@ -62,20 +63,23 @@ def system_ladder(spec: SystemSpec) -> tuple[Ladder, dict[str, Any]]:
                 raise ValueError(f"Insufficient {name} resources for system")
             allocated[name] = base
             used[name].update(range(base, base + width))
-        resolved = ControlSpec.model_validate(control.model_dump() | allocated)
+        # Preserve model_fields_set: allocation must not turn omitted stop/reverse
+        # controls into seemingly explicit FALSE conditions.
+        resolved = control.model_copy(update=allocated)
         ladder, design = control_ladder(resolved)
         design["defaults_used"] = sorted(set(ControlSpec.model_fields) - control.model_fields_set)
         design["automatically_allocated"] = allocated
         networks.extend(ladder.networks)
+        symbols.update(ladder.symbols)
         designs.append(design)
-    return Ladder(networks=networks), {
+    return Ladder(networks=networks, symbols=symbols), {
         "requirement": spec.requirement,
         "controls": designs,
         "resources": {name: sorted(addresses) for name, addresses in used.items()},
         "assumptions": [
             "Independent recipes execute in listed order; no implicit process interlocks.",
-            "Missing outputs/internal addresses are allocated without collisions.",
-            "Input signals may intentionally be shared; default X assignments remain disclosed.",
+            "Outputs and input signals are explicit; only internal addresses are allocated.",
+            "Input signals may intentionally be shared.",
             "For dependent multi-step processes use the sequence tool instead.",
         ],
         "gui_import_verified": False,

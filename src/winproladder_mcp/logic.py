@@ -69,9 +69,22 @@ def parse_expression(expression: str) -> Expr:
         if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Invert):
             return negate(convert(node.operand, depth + 1))
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitAnd | ast.BitOr):
+            # Python represents a flat AND/OR chain as a deep left spine. Walk
+            # that spine without spending the nested-branch depth budget: the
+            # compiler emits the same successive AND/OR instructions for it.
+            # This also lets layout normalization reparse its flattened output.
+            operator = type(node.op)
+            tail = [node.right]
+            head = node.left
+            while isinstance(head, ast.BinOp) and type(head.op) is operator:
+                count += 1
+                if count > 256:
+                    raise ValueError("Expression limited to 256 nodes and depth 32")
+                tail.append(head.right)
+                head = head.left
             return Expr(
                 "and" if isinstance(node.op, ast.BitAnd) else "or",
-                items=(convert(node.left, depth + 1), convert(node.right, depth + 1)),
+                items=tuple(convert(item, depth + 1) for item in [head, *reversed(tail)]),
             )
         raise ValueError("Expression permits only devices, TRUE/FALSE, AND/OR/NOT and parentheses")
 

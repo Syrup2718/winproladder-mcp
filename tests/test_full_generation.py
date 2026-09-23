@@ -7,6 +7,8 @@ import sys
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from winproladder_mcp.analysis import device_references
+from winproladder_mcp.ir import Ladder
 from winproladder_mcp.ldr import parse
 
 
@@ -20,6 +22,14 @@ def test_every_design_example_over_stdio(tmp_path):
             await session.initialize()
 
             async def call(name, arguments):
+                if name == "generate_ldr":
+                    devices = device_references(
+                        list(enumerate(Ladder.model_validate(arguments["ladder"]).networks))
+                    )["devices"]
+                    arguments["io_contract"] = {
+                        "inputs": [d for d in devices if d.startswith("X")],
+                        "outputs": [d for d in devices if d.startswith("Y")],
+                    }
                 result = await session.call_tool(name, arguments)
                 assert not result.isError, result.content
                 return json.loads(result.content[0].text)
@@ -51,6 +61,7 @@ def test_every_design_example_over_stdio(tmp_path):
                 "generate_ldr",
                 {
                     "output_name": "must-not-exist.ldr",
+                    "io_contract": {"inputs": ["X0"], "outputs": ["Y0"]},
                     "ladder": guide["examples"]["on_delay_3_seconds_while_x0"],
                     "acceptance": bad_cases,
                 },

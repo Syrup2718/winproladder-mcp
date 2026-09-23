@@ -83,6 +83,7 @@ class Network(Model):
     steps: list[Step] = Field(default_factory=list, max_length=256)
     coils: list[Coil] = Field(default_factory=list, max_length=32)
     empty: bool = False
+    comment: str = Field(default="", max_length=1000)
     block: Annotated[Timer | Counter, Field(discriminator="type")] | None = None
     condition: str | None = None
     action: (
@@ -92,6 +93,7 @@ class Network(Model):
 
 class Ladder(Model):
     networks: list[Network] = Field(min_length=1, max_length=1000)
+    symbols: dict[str, str] = Field(default_factory=dict, max_length=512)
 
 
 class UnsupportedInstruction(ValueError):

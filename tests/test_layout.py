@@ -81,12 +81,27 @@ def test_all_recipe_families_are_connected_and_preserve_original_devices():
     from winproladder_mcp.sequence import SequenceSpec, sequence_ladder
 
     programs = [
-        control_ladder(ControlSpec(requirement="layout", kind=kind))[0]
+        control_ladder(
+            ControlSpec(
+                signal="X0",
+                output=0,
+                stop="X1",
+                reset="X2",
+                reverse="X3",
+                requirement="layout",
+                kind=kind,
+            )
+        )[0]
         for kind in get_args(ControlKind)
     ]
     programs.append(
         sequence_ladder(
             SequenceSpec(
+                start="X0",
+                pause="X1",
+                reset="X2",
+                abort="X3",
+                clock="X4",
                 requirement="full length",
                 steps=[{"name": str(i), "ticks": 1, "outputs": [i]} for i in range(16)],
             )
@@ -142,3 +157,26 @@ def test_edit_uses_same_layout_without_reusing_existing_helpers(tmp_path):
     assert len(networks) == 3
     assert networks[0].coils[0].address == 2
     assert compile_network(networks[-1]) == compile_network(original.networks[0])
+
+
+@pytest.mark.parametrize("operator", ["AND", "OR"])
+def test_balanced_large_expression_generates_reparseable_flat_file(tmp_path, operator):
+    def balanced(names):
+        if len(names) == 1:
+            return names[0]
+        middle = len(names) // 2
+        return f"({balanced(names[:middle])} {operator} {balanced(names[middle:])})"
+
+    names = [f"X{i}" for i in range(64)]
+    source = Ladder.model_validate(
+        {"networks": [{"condition": balanced(names), "coils": [{"address": 0}]}]}
+    )
+    result = Service(tmp_path).generate("large.ldr", source)
+    document = parse(Path(result["path"]).read_bytes())
+    assert len(document.records) == 1
+    network = decode_network(document.records[0].payload)
+    assert network is not None
+    emitted = Ladder(networks=[network])
+    assert not requires_lowering(expressions(network)[0])
+    scans = [{}, dict.fromkeys(names, True), {names[-1]: True}]
+    assert simulate(emitted, scans, {}) == simulate(source, scans, {})
