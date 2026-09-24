@@ -69,4 +69,4 @@ Timer 的 `preset` 是時基刻度數，不是直接的毫秒值。在 `.01S` �
 
 ## 未支援範圍
 
-MOV、一般算術／比較、間接定址、其他 Timer time base、原生保持型計時、通訊、定位及多數硬體專用指令尚未支援。未知原生指令保持 opaque，無損 export 不丟棄原始資料。完整支援狀態以 `get_capabilities` 為準。
+MOV、一般算術／比較、間接定址、其他 Timer time base、原生保持型計時、通訊、定位及多數硬體專用指令尚未支援。FUN33 LCNV 已新增讀取／產檔，Md/L 等變化為外推；詳見 [LCNV 支援範圍](fun33-lcnv.md)。未知原生指令保持 opaque，無損 export 不丟棄原始資料。完整支援狀態以 `get_capabilities` 為準。

@@ -160,7 +160,7 @@ def test_all_sample_decoding_coverage() -> None:
             if decoded is not None:
                 assert compile_network(decoded) == record.payload
                 count += 1
-    assert count == 40  # Only test4 rising/falling edge contacts remain opaque.
+    assert count == 53  # Only test4 rising/falling edge contacts remain opaque.
 
 
 def test_flat_chains_keep_node_limit_without_consuming_branch_depth() -> None:

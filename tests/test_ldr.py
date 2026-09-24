@@ -15,7 +15,7 @@ def test_lossless_roundtrip(path: Path) -> None:
     doc = parse(data)
     assert doc.encode() == data
     assert doc.editable
-    assert doc.header == default_header()
+    assert doc.header == default_header("FBs-24MA" if path.name == "test6.ldr" else "FBs-20MC")
 
 
 def test_unknown_payload_and_trailer_roundtrip() -> None:

@@ -2,7 +2,7 @@
 
 使用者向 Agent 提出控制需求，Agent 呼叫本 MCP，取得真正的 WinProLadder `.ldr` 二進位檔案。自然語言由連接的 Agent 解讀；MCP 提供配方、編譯、邏輯簡化、掃描驗收與檔案下載，不需要使用者手寫 JSON。
 
-目標格式：WinProLadder v3.28 / FBs-20MC。本專案不連接實體 PLC，也不涵蓋完整 FATEK 指令集。
+目標格式：既有 FBs-20MC 與 test6 的 FBs-24MA 樣本格式。本專案不連接實體 PLC，也不涵蓋完整 FATEK 指令集。
 
 ## 安裝
 
@@ -30,7 +30,7 @@ uv run winproladder-setup config --format codex
 
 在 WinProLadder 使用 Import Ladder Diagram 匯入 `.ldr`。分析現有檔案時，先放到工作目錄內，例如 `inputs/motor.ldr`。所有輸出使用新檔名，不覆蓋既有檔案。VM 共用目錄、安裝包與疑難排解見 [完整入門流程](docs/quickstart.md)。
 
-支援 11 種控制配方、多控制組合、最多 16 步原生 T 計時流程，以及自訂布林條件、Timer/Counter、暫存器 OR、單層迴圈。生成時自動簡化條件與接圖。
+支援 11 種控制配方、多控制組合、最多 16 步原生 T 計時流程，以及自訂布林條件、Timer/Counter、暫存器 OR、FUN33 LCNV 線性轉換、單層迴圈。生成時自動簡化條件與接圖。
 
 X/Y 必須由需求明確指定，生成工具強制檢查 `io_contract`，不自動新增輸入、輸出或外部時脈。一般計時使用 T；暫停保留時間所需的 FUN87～89 編碼尚未支援，這類需求會明確拒絕，詳見 [計時器核對紀錄](docs/timer-evidence.md)。每次提供 `acceptance` 時，同時驗證需求模型與從生成檔案解碼的模型，失敗即不產檔。GUI 匯入及實體 PLC 執行是另外的驗證層級；未經 GUI 匯入的輸出標為候選檔。
 

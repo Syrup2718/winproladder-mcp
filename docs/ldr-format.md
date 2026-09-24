@@ -6,7 +6,7 @@
 
 ## 容器（CONFIRMED）
 
-256-byte header，接續 records，最後為 `FF FF 00 00 00 00`。現有六份原始樣本 header 相同，包含 `Fatek Resource File Format 1`、`FB-RES`、`WinProladder`、`FBs-20MC`。其他 metadata 欄位語意 UNKNOWN，需原樣保留。
+256-byte header，接續 records，最後為 `FF FF 00 00 00 00`。前六份原始樣本 header 相同，包含 `Fatek Resource File Format 1`、`FB-RES`、`WinProladder`、`FBs-20MC`。其他 metadata 欄位語意 UNKNOWN，需原樣保留。
 
 Records 按階梯圖顯示順序反向儲存，第一筆對應最後一個網路；空網路亦有 record，payload 為 `5F EB`。
 
@@ -22,6 +22,8 @@ Records 按階梯圖顯示順序反向儲存，第一筆對應最後一個網路
 `record_length = payload_length + 5`，實際 record 大小為 `payload_length + 11`。
 
 CRC-16/MODBUS：反射多項式 `0xA001`、初值 `0xFFFF`、無 final XOR。涵蓋 payload_length 的兩個 bytes、payload、trailer，不含 marker 與 record_length。測試向量 `123456789 → 0x4B37`。
+
+test6 新增 FBs-24MA 檔頭：160..167 為 `FBs-24MA`，176..177 為 `10 45`，其餘與舊樣本相同。MCP 以 `ladder.profile` 保留原型號與精確 metadata。
 
 ## 布林編碼（INFERRED）
 
@@ -51,6 +53,7 @@ Raw compiler 保留巢狀編碼以支援樣本往返；正式生成先經 [接�
 | Counter | pulse + nested NOT(clear) + `F940` + preset BE16 + `(0x0590 + 2*n)` BE16 |
 | block 後接 coil | `6FFC` + coil bytes |
 | 16-bit register OR | enable + `F4C8` + 三個 `(0x0A00 + 2*R)` BE16 |
+| FUN33 LCNV | enable + `F57C` + Md BE16 + S word + Ts word + D word + L BE16 |
 | FOR | `F590` + count BE16 |
 | NEXT | `F491` |
 | BREAK | enable + `F476A7FE` |
@@ -62,3 +65,5 @@ Timer 樣本支持 T1/T2/T3 與 preset 100/101/256/1000；Counter 支持 C1/C2/C
 ## 證據與未知部分
 
 Framing、payload 及雜湊由原始 samples 與測試固定；GUI 基準見 [驗證依據](verification.md)。未知網路可無損 export，但不可作語意生成的依據。尚未解明的 metadata、其他時間基準、指令修飾、硬體專用指令及跨型號 header 不應猜測。
+
+FUN33 與新暫存器區域的依據、限制及範例見 [LCNV 編碼研究](fun33-lcnv.md)。

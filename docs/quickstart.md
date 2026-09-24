@@ -38,12 +38,12 @@ uv run winproladder-setup config --format codex --root C:\VM_Share
 
 ## 使用 wheel 安裝包
 
-取得本專案產出的 `winproladder_mcp-0.5.0-py3-none-any.whl` 後，可不保留原始碼。以下以將 wheel 放在 `C:\LadderWork` 為例：
+取得本專案產出的 `winproladder_mcp-0.6.0-py3-none-any.whl` 後，可不保留原始碼。以下以將 wheel 放在 `C:\LadderWork` 為例：
 
 ```powershell
 cd C:\LadderWork
 uv venv --python 3.12 .venv
-uv pip install --python .venv\Scripts\python.exe .\winproladder_mcp-0.5.0-py3-none-any.whl
+uv pip install --python .venv\Scripts\python.exe .\winproladder_mcp-0.6.0-py3-none-any.whl
 .\.venv\Scripts\winproladder-setup.exe check
 .\.venv\Scripts\winproladder-setup.exe config --format codex --root C:\LadderWork
 ```

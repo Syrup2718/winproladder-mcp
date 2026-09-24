@@ -2,7 +2,7 @@
 
 ## 原始樣本
 
-`samples/` 保留六份原始匯出，共 42 records；其中 40 筆可語意解碼並重建，2 筆原生邊沿接點維持 opaque。雜湊及精確 payload 由 `tests/test_sample_integrity.py` 與編解碼測試固定。
+`samples/` 保留七份原始匯出，共 55 records；其中 53 筆可語意解碼並重建，2 筆原生邊沿接點維持 opaque。雜湊及精確 payload 由 `tests/test_sample_integrity.py` 與編解碼測試固定。
 
 | 樣本 | bytes | records | 覆蓋 |
 | --- | ---: | ---: | --- |
@@ -12,6 +12,7 @@
 | test3.ldr | 468 | 12 | 中間空網路、較大 preset、Counter、C/M 接點 |
 | test4.ldr | 406 | 8 | Y/M 接點、反相 coil、混合支路、原生邊沿 |
 | test5.ldr | 377 | 7 | register OR、FOR/BREAK/NEXT |
+| test6.ldr | 491 | 13 | FUN33 LCNV，FBs-24MA 檔頭 |
 
 對照畫面位於 `samples/screenshots/`。測試內保留完整 bytes，不在文件重複列出所有 record。
 

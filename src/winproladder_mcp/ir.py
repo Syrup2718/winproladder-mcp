@@ -2,7 +2,7 @@
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .logic import (
     Expr,
@@ -16,6 +16,7 @@ from .logic import (
     negate,
     parse_expression,
 )
+from .registers import decode_register, encode_register, register_span
 
 
 class Model(BaseModel):
@@ -68,6 +69,29 @@ class ForLoop(Model):
     count: Annotated[int, Field(strict=True, ge=1, le=16383)]
 
 
+class LinearConversion(Model):
+    """FUN33 LCNV. Md/L variations are inferred; pulse/indirect forms unsupported."""
+
+    type: Literal["lcnv"] = "lcnv"
+    mode: Annotated[int, Field(strict=True, ge=0, le=3)] = 0
+    source: str
+    table: str
+    destination: str
+    length: Annotated[int, Field(strict=True, ge=1, le=64)] = 1
+    enable: str = "always_on"
+
+    @property
+    def table_words(self) -> int:
+        return (4 if self.mode < 2 else 3) * (self.length if self.mode % 2 else 1)
+
+    @model_validator(mode="after")
+    def check_registers(self) -> "LinearConversion":
+        register_span(self.source, self.length)
+        register_span(self.table, self.table_words, writable=True)
+        register_span(self.destination, self.length, writable=True)
+        return self
+
+
 class NextLoop(Model):
     type: Literal["next"] = "next"
 
@@ -87,11 +111,16 @@ class Network(Model):
     block: Annotated[Timer | Counter, Field(discriminator="type")] | None = None
     condition: str | None = None
     action: (
-        Annotated[RegisterOr | ForLoop | NextLoop | BreakLoop, Field(discriminator="type")] | None
+        Annotated[
+            RegisterOr | ForLoop | NextLoop | BreakLoop | LinearConversion,
+            Field(discriminator="type"),
+        ]
+        | None
     ) = None
 
 
 class Ladder(Model):
+    profile: Literal["FBs-20MC", "FBs-24MA"] = "FBs-20MC"
     networks: list[Network] = Field(min_length=1, max_length=1000)
     symbols: dict[str, str] = Field(default_factory=dict, max_length=512)
 
@@ -112,6 +141,16 @@ BLOCK_CASES = (
     ("counter", 2, 16, None, "4fe87fe8f94000100594", "test3.ldr N008"),
     ("counter", 3, 17, None, "4fe87fe8f94000110596", "test3.ldr N009"),
 )
+
+# Independent payloads from test6, in display order. N008 is outside the screenshot;
+# its operand labels are inferred from the four photographed rows' address pattern.
+LCNV_PAYLOADS = {
+    0: "4fe8f57c0000010019a247d00001",
+    2: "4fe8f57c0000010219ac47d20001",
+    4: "4fe8f57c0000010419b647d40001",
+    6: "4fe8f57c0000010619c047d60001",
+    8: "4fe8f57c0000010819ca47d80001",
+}
 
 
 def block_catalog() -> list[tuple[Network, bytes, str]]:
@@ -239,6 +278,16 @@ def compile_network(network: Network) -> bytes:
             prefix = compile_expression(parse_expression(action.enable))
             if isinstance(action, BreakLoop):
                 return prefix + bytes.fromhex("f476a7fe")
+            if isinstance(action, LinearConversion):
+                return (
+                    prefix
+                    + bytes.fromhex("f57c")
+                    + action.mode.to_bytes(2, "big")
+                    + encode_register(action.source)
+                    + encode_register(action.table)
+                    + encode_register(action.destination)
+                    + action.length.to_bytes(2, "big")
+                )
             return (
                 prefix
                 + bytes.fromhex("f4c8")
@@ -299,13 +348,22 @@ def decode_coils(data: bytes) -> list[Coil]:
 
 def decode_network(payload: bytes) -> Network | None:
     try:
-        action: RegisterOr | ForLoop | NextLoop | BreakLoop | None = None
+        action: RegisterOr | ForLoop | NextLoop | BreakLoop | LinearConversion | None = None
         if payload == bytes.fromhex("f491"):
             action = NextLoop()
         elif len(payload) == 4 and payload[:2] == bytes.fromhex("f590"):
             action = ForLoop(count=int.from_bytes(payload[2:], "big"))
         elif payload.endswith(bytes.fromhex("f476a7fe")):
             action = BreakLoop(enable=expression_text(decode_expression(payload[:-4])))
+        elif len(payload) >= 14 and payload[-12:-10] == bytes.fromhex("f57c"):
+            action = LinearConversion(
+                mode=int.from_bytes(payload[-10:-8], "big"),
+                source=decode_register(payload[-8:-6]),
+                table=decode_register(payload[-6:-4]),
+                destination=decode_register(payload[-4:-2]),
+                length=int.from_bytes(payload[-2:], "big"),
+                enable=expression_text(decode_expression(payload[:-12])),
+            )
         elif len(payload) >= 10 and payload[-8:-6] == bytes.fromhex("f4c8"):
             values = [
                 int.from_bytes(payload[i : i + 2], "big") - 0xA00
@@ -417,6 +475,7 @@ def validation(ladder: Ladder) -> dict[str, object]:
     errors = []
     payloads = []
     loops: list[int] = []
+    instruction_evidence = []
     for index, network in enumerate(ladder.networks):
         if isinstance(network.action, ForLoop):
             loops.append(index)
@@ -430,18 +489,44 @@ def validation(ladder: Ladder) -> dict[str, object]:
         elif isinstance(network.action, BreakLoop) and not loops:
             errors.append(f"N{index:03}: BREAK requires a FOR/NEXT loop")
         try:
-            payloads.append(compile_network(network).hex(" "))
+            payload = compile_network(network)
+            payloads.append(payload.hex(" "))
+            if isinstance(network.action, LinearConversion):
+                observed = next(
+                    (i for i, raw in LCNV_PAYLOADS.items() if payload == bytes.fromhex(raw)), None
+                )
+                instruction_evidence.append(
+                    {
+                        "network_index": index,
+                        "instruction": "FUN33 LCNV",
+                        "status": "observed_export" if observed is not None else "inferred_variant",
+                        "source": f"test6.ldr N{observed:03}"
+                        if observed is not None
+                        else "test6 + manual",
+                        "operand_labels": "screenshot" if observed in {0, 2, 4, 6} else "inferred",
+                        "gui_import_verified": False,
+                    }
+                )
         except ValueError as error:
             errors.append(f"N{index:03}: {error}")
     errors.extend(f"N{i:03}: FOR missing NEXT" for i in loops)
     verified = payloads == ["41 00 a0 00 90 01 c1 00"] and not errors
     coils = [f"{c.device}{c.address}" for n in ladder.networks for c in n.coils]
     warnings = [] if verified else ["Composition has not been verified by WinProLadder import."]
-    if any(n.action is not None for n in ladder.networks):
+    if any(
+        isinstance(n.action, (RegisterOr, ForLoop, NextLoop, BreakLoop)) for n in ladder.networks
+    ):
         warnings.append(
             "test5-based inference: register OR supports 16-bit direct R0..R255 only; "
             "BREAK A7FE meaning is not independently established. "
             "No loop runtime verification; loops may trigger watchdog."
+        )
+    if any(isinstance(n.action, LinearConversion) for n in ladder.networks):
+        warnings.append(
+            "LCNV: test6 observes Md=0, L=1, R3840..3844 to D1000..1004. "
+            "Other modes/lengths/registers/EN conditions are inferred, not GUI/PLC verified. "
+            "Conversion table contents must already exist in the destination project; "
+            "this LDR does not initialize those register values. No LCNV runtime simulation."
         )
     if len(coils) != len(set(coils)):
         warnings.append("Repeated coils: later networks may overwrite earlier network results.")
@@ -450,6 +535,7 @@ def validation(ladder: Ladder) -> dict[str, object]:
         "errors": errors,
         "warnings": warnings,
         "payloads": payloads,
+        "instruction_evidence": instruction_evidence,
         "block_evidence": [
             {"network_index": index, "source": source, "status": "observed_export"}
             for index, network in enumerate(ladder.networks)
