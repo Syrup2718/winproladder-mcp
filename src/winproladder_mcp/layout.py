@@ -147,7 +147,7 @@ def lower_ladder(ladder: Ladder, reserved: set[int] | None = None) -> tuple[Ladd
             )
         if len(output) > 1000:
             raise ValueError("Connected layout exceeds 1000 networks; no file written")
-    result = Ladder(networks=output, symbols=symbols)
+    result = Ladder(profile=ladder.profile, networks=output, symbols=symbols)
     if any(
         needs_lowering(n, i, expr) for n in result.networks for i, expr in enumerate(expressions(n))
     ):

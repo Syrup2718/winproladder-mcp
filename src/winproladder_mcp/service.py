@@ -4,7 +4,7 @@ import hashlib
 import json
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from .acceptance import AcceptanceCase, check_acceptance
 from .analysis import describe, device_references, timer_settings
@@ -23,17 +23,28 @@ from .layout import expressions, lower_ladder, memory_used, needs_lowering
 from .ldr import FOOTER, MAX_SIZE, Document, LdrError, Record, parse
 
 
-def default_header() -> bytes:
+def default_header(profile: Literal["FBs-20MC", "FBs-24MA"] = "FBs-20MC") -> bytes:
     # Exact shared header from all five v3.28 FBs-20MC exports; no unknown
     # metadata is inferred. See test_lossless_roundtrip.
     header = bytearray(256)
     header[:29] = b"Fatek Resource File Format 1\x16"
     header[128:134] = b"FB-RES"
     header[144:156] = b"WinProladder"
-    header[160:168] = b"FBs-20MC"
-    header[176:178] = b"@@"
+    if profile not in {"FBs-20MC", "FBs-24MA"}:
+        raise ValueError("Unsupported header profile")
+    header[160:168] = profile.encode("ascii")
+    # Preserve exact sampled metadata, including unknown profile-specific fields.
+    header[176:178] = b"@@" if profile == "FBs-20MC" else bytes.fromhex("1045")
     header[192:194] = b"H\x01"
     return bytes(header)
+
+
+def header_profile(header: bytes) -> Literal["FBs-20MC", "FBs-24MA"] | None:
+    if header == default_header():
+        return "FBs-20MC"
+    if header == default_header("FBs-24MA"):
+        return "FBs-24MA"
+    return None
 
 
 class Service:
@@ -94,7 +105,7 @@ class Service:
             "sha256": hashlib.sha256(document.encode()).hexdigest(),
             "header_hex": document.header.hex(" "),
             "record_count": len(document.records),
-            "editable": document.editable and document.header == default_header(),
+            "editable": document.editable and header_profile(document.header) is not None,
             "network_order": "reverse" if known_order else "unknown",
             "tail_hex": document.tail.hex(" "),
             "opaque_tail": not known_order,
@@ -124,7 +135,7 @@ class Service:
         for index, record in enumerate(reversed(document.records)):
             decoded = (
                 decode_network(record.payload)
-                if record.trailer == b"\x01\x00\x00" and document.header == default_header()
+                if record.trailer == b"\x01\x00\x00" and header_profile(document.header) is not None
                 else None
             )
             networks.append(
@@ -150,11 +161,14 @@ class Service:
                     for index, item in enumerate(networks)
                 ]
             ),
-            "ladder": {"networks": [item["logic"] for item in networks]}
+            "ladder": {
+                "profile": header_profile(document.header),
+                "networks": [item["logic"] for item in networks],
+            }
             if networks and all(item["logic"] is not None for item in networks)
             else None,
             "sha256": hashlib.sha256(document.encode()).hexdigest(),
-            "editable": document.editable and document.header == default_header(),
+            "editable": document.editable and header_profile(document.header) is not None,
             "note": "Decoded semantics use the documented subset; opaque networks are preserved.",
         }
 
@@ -189,7 +203,7 @@ class Service:
         left = self.load(left_path, strict_crc=False)
         right = self.load(right_path, strict_crc=False)
         for doc in (left, right):
-            if doc.tail != FOOTER or doc.header != default_header():
+            if doc.tail != FOOTER or header_profile(doc.header) is None:
                 raise LdrError("Network comparison requires sampled header and known footer")
             if len(doc.records) > 2000:
                 raise LdrError("Comparison is limited to 2000 networks per file")
@@ -268,14 +282,14 @@ class Service:
                 "and explicitly set allow_unverified=true for a candidate"
             )
         records = tuple(Record.create(compile_network(n)) for n in reversed(ladder.networks))
-        document = Document(default_header(), records, FOOTER)
+        document = Document(default_header(ladder.profile), records, FOOTER)
         # Validate the exact emitted bytes, including network order and decoding,
         # before creating a deliverable. Source-only simulation misses compiler bugs.
         parsed = parse(document.encode())
         decoded = [decode_network(r.payload) for r in reversed(parsed.records)]
         if any(n is None for n in decoded):
             raise ValueError("Generated network failed semantic decode; no file written")
-        emitted = Ladder(networks=[n for n in decoded if n is not None])
+        emitted = Ladder(profile=ladder.profile, networks=[n for n in decoded if n is not None])
         io_report = check_io(
             set(device_references(list(enumerate(emitted.networks)))["devices"]), contract
         )
@@ -285,6 +299,7 @@ class Service:
         return {
             **self.write(name, document),
             "validation": result,
+            "profile": ladder.profile,
             "layout_normalized_networks": layout["normalized_networks"],
             "layout": layout,
             "io_contract": io_report,
@@ -371,8 +386,8 @@ class Service:
         document = self.load(path)
         if not document.editable:
             raise LdrError("Cannot edit unknown framing/trailers or invalid CRC")
-        if document.header != default_header():
-            raise LdrError("Editing is limited to the sampled v3.28 FBs-20MC header")
+        if header_profile(document.header) is None:
+            raise LdrError("Editing requires an exact sampled FBs-20MC or FBs-24MA header")
         if not allow_unverified:
             raise ValueError(
                 "Edited program requires import verification; explicitly set allow_unverified=true"
@@ -418,8 +433,8 @@ class Service:
 
 def capabilities() -> dict[str, Any]:
     return {
-        "version": "0.5.0",
-        "profile": "WinProLadder v3.28 / FBs-20MC sampled header",
+        "version": "0.6.0",
+        "profile": "Sampled FBs-20MC and test6 FBs-24MA headers; select ladder.profile",
         "transport": "stdio",
         "simulation": "Boolean or scan_ms T/C model; max 256 scans, not a PLC emulator",
         "file_operations": ["inspect", "read", "create", "export", "replace", "insert", "delete"],
@@ -429,12 +444,13 @@ def capabilities() -> dict[str, Any]:
             "Y": "0..255",
             "M": "0..255",
             "T": "0..255",
+            "LCNV_registers": "R0..3839, input R3840..3903, D0..3999 (inferred banks)",
             "C": "0..255",
         },
         "generation": "generate_control_ldr: 11 recipes; generate_sequence_ldr: up to 16 steps, "
         "native T timing (retentive timing unsupported), optional explicit pulse counting; "
         "generate_system_ldr: independent controls with "
-        "internal resource allocation; generate_ldr: custom Boolean/T/C/register/loop IR.",
+        "internal allocation; generate_ldr: custom Boolean/T/C/register/FUN33 LCNV/loop IR.",
         "inference_notice": "Unseen combinations/ranges are inferred, not PLC-validated.",
         "design_guide": design_guide(),
         "block_templates": [
@@ -450,6 +466,24 @@ def capabilities() -> dict[str, Any]:
             "analyze_ldr: descriptions and device cross-references",
             "compare_ldr: aligned record changes",
         ],
+        "native_functions": {
+            "LCNV": {
+                "fun": 33,
+                "action_type": "lcnv",
+                "source": "test6.ldr",
+                "observed": "Md=0, L=1, sources R3840..3844, tables R2001+5*n, D1000..1004",
+                "inferred": "Md=0..3, L=1..64, direct R/D banks, Boolean EN",
+                "unsupported": [
+                    "33P",
+                    "indirect addressing",
+                    "register-valued L",
+                    "table initialization",
+                    "runtime simulation",
+                ],
+                "import_verified": False,
+            },
+            "other_FUN_numbers": "Cannot derive opcodes by incrementing FUN numbers",
+        },
         "opaque_only": [
             "edge contacts",
             "unknown instructions",

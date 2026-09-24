@@ -96,14 +96,40 @@ def design_guide() -> dict[str, Any]:
         ],
         "inferred_profile": "Addresses 0..255; .01s presets 0..65535. Not PLC capacity claims.",
         "unsupported": [
-            "register functions except 16-bit direct-register OR (R0..R255)",
+            "register functions except 16-bit direct-register OR and FUN33 LCNV",
             "nested loops, register-valued FOR counts, pulse BREAK, 32-bit/indirect OR",
+            "LCNV pulse/indirect forms and register-valued L; LCNV runtime simulation",
             "native SET/RST and edge opcodes (Boolean control recipes implement their behavior)",
             "other time bases",
             "accumulative timers FUN87/88/89: manual behavior known; no export encoding evidence",
             "PLC communication",
         ],
+        "lcnv_generation": {
+            "action_type": "lcnv",
+            "fun": 33,
+            "mode": "0/1: two-point calibration; 2/3: ratio plus offset",
+            "table": "0/2 share one parameter group; 1/3 use one group per source word",
+            "table_words": "4 for modes 0/1, 3 for 2/3; multiplied by L for modes 1/3",
+            "evidence": "test6 observes Md=0 and L=1. Other modes, lengths and addresses inferred.",
+            "required_context": "Pre-initialized conversion table; LDR does not supply its values",
+            "profile": "Use ladder.profile=FBs-24MA to reproduce test6 header exactly",
+        },
         "examples": {
+            "lcnv_observed": {
+                "profile": "FBs-24MA",
+                "networks": [
+                    {
+                        "action": {
+                            "type": "lcnv",
+                            "mode": 0,
+                            "source": "R3840",
+                            "table": "R2001",
+                            "destination": "D1000",
+                            "length": 1,
+                        }
+                    }
+                ],
+            },
             "register_or_loop": {
                 "networks": [
                     {"action": {"type": "register_or", "sa": 0, "sb": 1, "destination": 2}},

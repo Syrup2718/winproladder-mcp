@@ -2,11 +2,28 @@
 
 from typing import Any
 
-from .ir import BreakLoop, ForLoop, Network, NextLoop, RegisterOr, Timer, network_expression
+from .ir import (
+    BreakLoop,
+    ForLoop,
+    LinearConversion,
+    Network,
+    NextLoop,
+    RegisterOr,
+    Timer,
+    network_expression,
+)
 from .logic import contacts, expression_text, parse_expression
+from .registers import register_span
 
 
 def describe(network: Network) -> str:
+    if isinstance(network.action, LinearConversion):
+        conversion = network.action
+        return (
+            f"FUN33 LCNV: Md={conversion.mode}, S={conversion.source}, Ts={conversion.table}, "
+            f"D={conversion.destination}, L={conversion.length}; "
+            f"table_words={conversion.table_words}; EN={conversion.enable}"
+        )
     if isinstance(network.action, RegisterOr):
         a = network.action
         return f"16-bit OR R{a.sa}, R{a.sb} -> R{a.destination}; EN={a.enable}"
@@ -74,10 +91,13 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
         if network is None:
             unknown.append(index)
             continue
-        if isinstance(network.action, (RegisterOr, BreakLoop)):
+        if isinstance(network.action, (RegisterOr, BreakLoop, LinearConversion)):
             reads = contacts(parse_expression(network.action.enable))
             if isinstance(network.action, RegisterOr):
                 reads |= {f"R{network.action.sa}", f"R{network.action.sb}"}
+            elif isinstance(network.action, LinearConversion):
+                reads |= register_span(network.action.source, network.action.length)
+                reads |= register_span(network.action.table, network.action.table_words)
         elif network.action is not None:
             reads = set()
         elif isinstance(network.block, Timer):
@@ -91,6 +111,10 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
         writes = {f"{c.device}{c.address}" for c in network.coils}
         if isinstance(network.action, RegisterOr):
             writes.add(f"R{network.action.destination}")
+        elif isinstance(network.action, LinearConversion):
+            writes |= register_span(
+                network.action.destination, network.action.length, writable=True
+            )
         if network.block is not None:
             family = "T" if isinstance(network.block, Timer) else "C"
             writes.add(f"{family}{network.block.address}")
