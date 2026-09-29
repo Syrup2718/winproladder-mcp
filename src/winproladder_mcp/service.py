@@ -8,6 +8,7 @@ from typing import Any
 
 from .acceptance import AcceptanceCase, check_acceptance
 from .analysis import describe, device_references, timer_settings
+from .architecture import architecture_report, enforce_architecture, load_policy
 from .design import design_guide
 from .io_contract import IOContract, check_io
 from .ir import (
@@ -78,6 +79,15 @@ class Service:
         with self.source(path).open("rb") as stream:
             return parse(stream.read(MAX_SIZE + 1), strict_crc=strict_crc)
 
+    def architecture_policy(self) -> dict[str, Any]:
+        return load_policy(self.root).model_dump()
+
+    def architecture(self, ladder: Ladder, *, enforce: bool = True) -> dict[str, Any]:
+        policy = load_policy(self.root)
+        return (
+            enforce_architecture(ladder, policy) if enforce else architecture_report(ladder, policy)
+        )
+
     def write(self, name: str, document: Document) -> dict[str, Any]:
         # Basename only: no caller-controlled directory traversal or overwrites.
         if (
@@ -90,6 +100,19 @@ class Service:
             or name.startswith(".")
         ):
             raise ValueError("Output must be a plain .ldr filename")
+        # Final gate covers create/generate/edit/export and direct service writes.
+        # Read/inspect remain available for old or opaque files.
+        policy = load_policy(self.root)
+        if policy.forbid_m_to_m:
+            if document.tail != FOOTER or header_profile(document.header) is None:
+                raise ValueError("Cannot enforce architecture on unknown framing; no file written")
+            decoded = [
+                decode_network(r.payload) if r.trailer == b"\x01\x00\x00" else None
+                for r in reversed(document.records)
+            ]
+            if not decoded or any(n is None for n in decoded):
+                raise ValueError("Cannot enforce architecture on opaque networks; no file written")
+            enforce_architecture(Ladder(networks=[n for n in decoded if n is not None]), policy)
         self.output.mkdir(parents=True, exist_ok=True)
         if self.output.resolve() != self.output:
             raise ValueError("Output directory changed through a symlink")
@@ -268,6 +291,7 @@ class Service:
         acceptance: list[AcceptanceCase] | None = None,
         io_contract: IOContract | None = None,
     ) -> dict[str, Any]:
+        self.architecture(ladder)
         source_devices = set(device_references(list(enumerate(ladder.networks)))["devices"])
         # Low-level callers explicitly provide their ladder; enforce that lowering cannot
         # extend its physical I/O even when there is no separate customer contract.
@@ -277,6 +301,7 @@ class Service:
         )
         check_io(source_devices, contract)
         lowered, layout = lower_ladder(ladder)
+        self.architecture(lowered)
         ladder = lowered
         result = validation(ladder)
         if not result["valid"]:
@@ -295,6 +320,7 @@ class Service:
         if any(n is None for n in decoded):
             raise ValueError("Generated network failed semantic decode; no file written")
         emitted = Ladder(profile=ladder.profile, networks=[n for n in decoded if n is not None])
+        architecture = self.architecture(emitted)
         io_report = check_io(
             set(device_references(list(enumerate(emitted.networks)))["devices"]), contract
         )
@@ -304,6 +330,7 @@ class Service:
         return {
             **self.write(name, document),
             "validation": result,
+            "architecture": architecture,
             "profile": ladder.profile,
             "layout_normalized_networks": layout["normalized_networks"],
             "layout": layout,
