@@ -38,6 +38,13 @@ class Coil(Model):
     device: Literal["Y", "M"] = "Y"
     address: Annotated[int, Field(strict=True, ge=0, le=65535)]
     inverted: bool = False
+    mode: Literal["normal", "set", "reset"] = "normal"
+
+    @model_validator(mode="after")
+    def check_mode(self) -> "Coil":
+        if self.mode != "normal" and self.inverted:
+            raise ValueError("SET/RESET cannot also be an inverted coil")
+        return self
 
 
 class Timer(Model):
@@ -98,6 +105,52 @@ class EdgeContact(Model):
         return self
 
 
+class RegisterStep(Model):
+    type: Literal["increment", "decrement"]
+    destination: str
+    enable: str = "always_on"
+
+    @model_validator(mode="after")
+    def check_destination(self) -> "RegisterStep":
+        register_span(self.destination, 1, writable=True)
+        return self
+
+
+class Bitwise(Model):
+    type: Literal["bitwise"] = "bitwise"
+    operation: Literal["and", "or"]
+    sa: str
+    sb: str
+    destination: str
+    enable: str = "always_on"
+
+    @model_validator(mode="after")
+    def check_registers(self) -> "Bitwise":
+        register_span(self.sa, 1)
+        register_span(self.sb, 1)
+        register_span(self.destination, 1, writable=True)
+        return self
+
+
+class Compare(Model):
+    type: Literal["compare"] = "compare"
+    sa: str
+    sb: str
+    enable: str = "always_on"
+    unsigned_when: str = "FALSE"
+    equal: list[Coil] = Field(default_factory=list, max_length=32)
+    greater: list[Coil] = Field(default_factory=list, max_length=32)
+    less: list[Coil] = Field(default_factory=list, max_length=32)
+
+    @model_validator(mode="after")
+    def check_operands(self) -> "Compare":
+        register_span(self.sa, 1)
+        register_span(self.sb, 1)
+        if any(c.mode != "normal" or c.inverted for c in self.equal + self.greater + self.less):
+            raise ValueError("CMP status outputs currently support normal coils only")
+        return self
+
+
 class ForLoop(Model):
     type: Literal["for"] = "for"
     count: Annotated[int, Field(strict=True, ge=1, le=16383)]
@@ -145,9 +198,18 @@ class Network(Model):
     block: Annotated[Timer | Counter, Field(discriminator="type")] | None = None
     condition: str | None = None
     edge: EdgeContact | None = None
+    direct_rail: bool = False
     action: (
         Annotated[
-            RegisterOr | ForLoop | NextLoop | BreakLoop | LinearConversion | Arithmetic,
+            RegisterOr
+            | ForLoop
+            | NextLoop
+            | BreakLoop
+            | LinearConversion
+            | Arithmetic
+            | RegisterStep
+            | Bitwise
+            | Compare,
             Field(discriminator="type"),
         ]
         | None
@@ -206,6 +268,50 @@ EDGE_PAYLOADS = {
     "e0004000c101": "test4.ldr N005 / test7.ldr N000",
     "e0005001c103": "test4.ldr N006",
 }
+
+TEST8_PAYLOADS = {
+    0: "4fe8f4960ac8",
+    1: "4fe8f4984190",
+    2: "e00050000100",
+    3: "4febd102",
+    4: "4feb1103",
+    5: "4fe87fe8f46a0100010200006ffcc8746ffdc8756ffec876",
+    6: "4fe8f4c6010840f0412c",
+}
+
+
+def network_coils(network: Network) -> list[Coil]:
+    if isinstance(network.action, Compare):
+        return network.coils + network.action.equal + network.action.greater + network.action.less
+    return network.coils
+
+
+def apply_coils(coils: list[Coil], power: bool, state: dict[str, bool]) -> None:
+    """SET/RESET retain the previous bit when rung power is false."""
+    for coil in coils:
+        name = f"{coil.device}{coil.address}"
+        if coil.mode == "normal":
+            state[name] = not power if coil.inverted else power
+        elif power:
+            state[name] = coil.mode == "set"
+        else:
+            state.setdefault(name, False)
+
+
+def decode_two_inputs(prefix: bytes) -> tuple[Expr, Expr]:
+    candidates = []
+    for split in range(2, len(prefix), 2):
+        if prefix[split] & 0xE0 != 0x60:
+            continue
+        try:
+            first = decode_expression(prefix[:split])
+            second = decode_expression(bytes([prefix[split] - 0x20]) + prefix[split + 1 :])
+            candidates.append((first, second))
+        except ValueError:
+            continue
+    if len(candidates) != 1:
+        raise ValueError("Ambiguous or unsupported function inputs")
+    return candidates[0]
 
 
 def block_catalog() -> list[tuple[Network, bytes, str]]:
@@ -308,12 +414,22 @@ def compile_coils(coils: list[Coil]) -> bytes:
     result = bytearray()
     for coil in coils:
         value = bit_address(f"{coil.device}{coil.address}")
-        result.extend(((0xD0 if coil.inverted else 0xC0) + (value >> 8), value & 255))
+        base = {"set": 0x10, "reset": 0x00}.get(coil.mode, 0xD0 if coil.inverted else 0xC0)
+        result.extend((base + (value >> 8), value & 255))
     return bytes(result)
 
 
 def compile_network(network: Network) -> bytes:
     try:
+        if network.direct_rail and (
+            network.empty
+            or network.action
+            or network.block
+            or network.edge
+            or network.steps
+            or network_expression(network).op != "true"
+        ):
+            raise UnsupportedInstruction("direct_rail requires a TRUE coil-only network")
         if network.edge is not None:
             if (
                 network.empty
@@ -346,6 +462,37 @@ def compile_network(network: Network) -> bytes:
             prefix = compile_expression(parse_expression(action.enable))
             if isinstance(action, BreakLoop):
                 return prefix + bytes.fromhex("f476a7fe")
+            if isinstance(action, RegisterStep):
+                return (
+                    prefix
+                    + bytes.fromhex("f496" if action.type == "increment" else "f498")
+                    + encode_register(action.destination)
+                )
+            if isinstance(action, Bitwise):
+                return (
+                    prefix
+                    + bytes.fromhex("f4c6" if action.operation == "and" else "f4c8")
+                    + encode_register(action.sa)
+                    + encode_register(action.sb)
+                    + encode_register(action.destination)
+                )
+            if isinstance(action, Compare):
+                result = (
+                    prefix
+                    + compile_expression(parse_expression(action.unsigned_when), nested=True)
+                    + bytes.fromhex("f46a")
+                    + encode_register(action.sa)
+                    + encode_register(action.sb)
+                    + b"\x00\x00"
+                )
+                for marker, coils in [
+                    ("6ffc", action.equal),
+                    ("6ffd", action.greater),
+                    ("6ffe", action.less),
+                ]:
+                    if coils:
+                        result += bytes.fromhex(marker) + compile_coils(coils)
+                return result
             if isinstance(action, Arithmetic):
                 return (
                     prefix
@@ -399,7 +546,12 @@ def compile_network(network: Network) -> bytes:
             )
         if not network.coils:
             raise UnsupportedInstruction("Logic network requires at least one coil")
-        return compile_expression(network_expression(network)) + compile_coils(network.coils)
+        prefix = (
+            bytes.fromhex("4feb")
+            if network.direct_rail
+            else compile_expression(network_expression(network))
+        )
+        return prefix + compile_coils(network.coils)
     except ValueError as error:
         raise UnsupportedInstruction(str(error)) from error
 
@@ -410,14 +562,19 @@ def decode_coils(data: bytes) -> list[Coil]:
     coils = []
     for i in range(0, len(data), 2):
         code, low = data[i : i + 2]
-        if code & 0xE0 != 0xC0:
+        if code & 0xE0 not in {0xC0, 0x00}:
             raise ValueError("Unknown output instruction")
         name = device_name(((code & 15) << 8) + low)
         if name[0] not in {"Y", "M"}:
             raise ValueError("Unsupported coil family")
         coils.append(
             Coil.model_validate(
-                {"device": name[0], "address": int(name[1:]), "inverted": bool(code & 0x10)}
+                {
+                    "device": name[0],
+                    "address": int(name[1:]),
+                    "inverted": bool(code & 0x10) if code & 0xE0 == 0xC0 else False,
+                    "mode": "normal" if code & 0xE0 == 0xC0 else "set" if code & 0x10 else "reset",
+                }
             )
         )
     return coils
@@ -436,9 +593,68 @@ def decode_network(payload: bytes) -> Network | None:
             )
             return edge_network if compile_network(edge_network) == payload else None
         action: (
-            RegisterOr | ForLoop | NextLoop | BreakLoop | LinearConversion | Arithmetic | None
+            RegisterOr
+            | ForLoop
+            | NextLoop
+            | BreakLoop
+            | LinearConversion
+            | Arithmetic
+            | RegisterStep
+            | Bitwise
+            | Compare
+            | None
         ) = None
-        if payload == bytes.fromhex("f491"):
+        cmp_candidates = []
+        for position in range(4, len(payload) - 1, 2):
+            if payload[position : position + 2] != bytes.fromhex("f46a"):
+                continue
+            try:
+                first, second = decode_two_inputs(payload[:position])
+                cmp_candidates.append((position, first, second))
+            except ValueError:
+                continue  # The word may be a timer/counter literal, not a CMP opcode.
+        if cmp_candidates:
+            if len(cmp_candidates) != 1:
+                return None
+            i, en, unsigned = cmp_candidates[0]
+            if i + 8 > len(payload) or payload[i + 6 : i + 8] != b"\x00\x00":
+                return None
+            outputs: dict[str, list[Coil]] = {"equal": [], "greater": [], "less": []}
+            tail = payload[i + 8 :]
+            flag_markers = {
+                bytes.fromhex("6ffc"): "equal",
+                bytes.fromhex("6ffd"): "greater",
+                bytes.fromhex("6ffe"): "less",
+            }
+            while tail:
+                name = flag_markers.get(tail[:2])
+                if name is None or outputs[name]:
+                    return None
+                end = next(
+                    (j for j in range(2, len(tail), 2) if tail[j : j + 2] in flag_markers),
+                    len(tail),
+                )
+                coils = decode_coils(tail[2:end])
+                if not coils:
+                    return None
+                outputs[name] = coils
+                tail = tail[end:]
+            action = Compare(
+                sa=decode_register(payload[i + 2 : i + 4]),
+                sb=decode_register(payload[i + 4 : i + 6]),
+                enable=expression_text(en),
+                unsigned_when=expression_text(unsigned),
+                equal=outputs["equal"],
+                greater=outputs["greater"],
+                less=outputs["less"],
+            )
+        elif len(payload) >= 6 and payload[-4:-2] in {b"\xf4\x96", b"\xf4\x98"}:
+            action = RegisterStep(
+                type="increment" if payload[-3] == 0x96 else "decrement",
+                destination=decode_register(payload[-2:]),
+                enable=expression_text(decode_expression(payload[:-4])),
+            )
+        elif payload == bytes.fromhex("f491"):
             action = NextLoop()
         elif len(payload) == 4 and payload[:2] == bytes.fromhex("f590"):
             action = ForLoop(count=int.from_bytes(payload[2:], "big"))
@@ -454,22 +670,7 @@ def decode_network(payload: bytes) -> Network | None:
                 enable=expression_text(decode_expression(payload[:-12])),
             )
         elif len(payload) >= 12 and payload[-8:-6] in ARITHMETIC_OPCODES.values():
-            candidates = []
-            prefix = payload[:-8]
-            for split in range(2, len(prefix), 2):
-                if prefix[split] & 0xE0 != 0x60:
-                    continue
-                try:
-                    en = decode_expression(prefix[:split])
-                    unsigned = decode_expression(
-                        bytes([prefix[split] - 0x20]) + prefix[split + 1 :]
-                    )
-                    candidates.append((en, unsigned))
-                except ValueError:
-                    continue
-            if len(candidates) != 1:
-                return None
-            en, unsigned = candidates[0]
+            en, unsigned = decode_two_inputs(payload[:-8])
             action = Arithmetic.model_validate(
                 {
                     "operation": next(
@@ -482,24 +683,34 @@ def decode_network(payload: bytes) -> Network | None:
                     "unsigned_when": expression_text(unsigned),
                 }
             )
-        elif len(payload) >= 10 and payload[-8:-6] == bytes.fromhex("f4c8"):
-            values = [
-                int.from_bytes(payload[i : i + 2], "big") - 0xA00
+        elif len(payload) >= 10 and payload[-8:-6] in {b"\xf4\xc6", b"\xf4\xc8"}:
+            registers = [
+                decode_register(payload[i : i + 2])
                 for i in range(len(payload) - 6, len(payload), 2)
             ]
-            if any(v < 0 or v % 2 or v > 510 for v in values):
-                return None
-            action = RegisterOr(
-                sa=values[0] // 2,
-                sb=values[1] // 2,
-                destination=values[2] // 2,
-                enable=expression_text(decode_expression(payload[:-8])),
-            )
+            enable = expression_text(decode_expression(payload[:-8]))
+            if payload[-7] == 0xC8 and all(
+                r.startswith("R") and int(r[1:]) <= 255 for r in registers
+            ):
+                action = RegisterOr(
+                    sa=int(registers[0][1:]),
+                    sb=int(registers[1][1:]),
+                    destination=int(registers[2][1:]),
+                    enable=enable,
+                )
+            else:
+                action = Bitwise(
+                    operation="and" if payload[-7] == 0xC6 else "or",
+                    sa=registers[0],
+                    sb=registers[1],
+                    destination=registers[2],
+                    enable=enable,
+                )
         if action is not None:
             network = Network(action=action)
             return network if compile_network(network) == payload else None
     except ValueError:
-        return None
+        pass  # An opcode-looking word may be an operand in another known family.
     legacy = _decode_legacy(payload)
     if legacy is not None:
         return legacy
@@ -557,12 +768,15 @@ def decode_network(payload: bytes) -> Network | None:
             network = Network(block=block, coils=coils)
         else:
             split = next(
-                (i for i in range(0, len(payload) - 1, 2) if payload[i] & 0xE0 == 0xC0),
+                (i for i in range(0, len(payload) - 1, 2) if payload[i] & 0xE0 in {0xC0, 0x00}),
                 len(payload),
             )
             network = Network(
-                condition=expression_text(decode_expression(payload[:split])),
+                condition="TRUE"
+                if payload[:split] == bytes.fromhex("4feb")
+                else expression_text(decode_expression(payload[:split])),
                 coils=decode_coils(payload[split:]),
+                direct_rail=payload[:split] == bytes.fromhex("4feb"),
             )
         return network if compile_network(network) == payload else None
     except (ValueError, RecursionError):
@@ -609,7 +823,31 @@ def validation(ladder: Ladder) -> dict[str, object]:
         try:
             payload = compile_network(network)
             payloads.append(payload.hex(" "))
-            if isinstance(network.action, Arithmetic) or network.edge is not None:
+            observed8 = next((i for i, raw in TEST8_PAYLOADS.items() if payload.hex() == raw), None)
+            if (
+                observed8 is not None
+                or isinstance(network.action, (RegisterStep, Bitwise, Compare))
+                or network.direct_rail
+                or any(c.mode != "normal" for c in network.coils)
+            ):
+                instruction_evidence.append(
+                    {
+                        "network_index": index,
+                        "instruction": network.action.type
+                        if network.action
+                        else "native coil/rail",
+                        "status": "observed_export"
+                        if observed8 is not None
+                        else "inferred_variant",
+                        "source": f"test8.ldr N{observed8:03}"
+                        if observed8 is not None
+                        else "test8 + prior samples",
+                        "gui_import_verified": False,
+                    }
+                )
+            if observed8 is None and (
+                isinstance(network.action, Arithmetic) or network.edge is not None
+            ):
                 if isinstance(network.action, Arithmetic):
                     instruction = f"16-bit {network.action.operation}"
                 else:
@@ -656,7 +894,7 @@ def validation(ladder: Ladder) -> dict[str, object]:
             errors.append(f"N{index:03}: {error}")
     errors.extend(f"N{i:03}: FOR missing NEXT" for i in loops)
     verified = payloads == ["41 00 a0 00 90 01 c1 00"] and not errors
-    coils = [f"{c.device}{c.address}" for n in ladder.networks for c in n.coils]
+    coils = [f"{c.device}{c.address}" for n in ladder.networks for c in network_coils(n)]
     warnings = [] if verified else ["Composition has not been verified by WinProLadder import."]
     if any(
         isinstance(n.action, (RegisterOr, ForLoop, NextLoop, BreakLoop)) for n in ladder.networks
@@ -678,6 +916,13 @@ def validation(ladder: Ladder) -> dict[str, object]:
             "Arithmetic: test7 observes register Sa, positive constant Sb, EN=TRUE, U/S=FALSE. "
             "Changed operands/EN/U/S are inferred. MUL/DIV write two consecutive words. "
             "No arithmetic runtime simulation or connected status outputs; no GUI/PLC verification."
+        )
+    if any(isinstance(n.action, (RegisterStep, Bitwise, Compare)) for n in ladder.networks):
+        warnings.append(
+            "test8 establishes INC F496, DEC F498, CMP F46A and AND F4C6. "
+            "CMP reserved 0000 is preserved; its meaning is unknown. "
+            "Other operands/conditions/status connections are inferred. "
+            "No register-action runtime simulation or generated-file GUI/PLC verification."
         )
     if len(coils) != len(set(coils)):
         warnings.append("Repeated coils: later networks may overwrite earlier network results.")
@@ -762,7 +1007,6 @@ def simulate(
                 previous[index] = current
             else:
                 power = evaluate(network_expression(network), state)
-            for coil in network.coils:
-                state[f"{coil.device}{coil.address}"] = not power if coil.inverted else power
+            apply_coils(network.coils, power, state)
         trace.append(dict(state))
     return trace

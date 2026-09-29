@@ -160,7 +160,7 @@ def test_all_sample_decoding_coverage() -> None:
             if decoded is not None:
                 assert compile_network(decoded) == record.payload
                 count += 1
-    assert count == 60  # All eight supplied samples, including native edges and arithmetic.
+    assert count == 67  # All nine supplied samples, including CMP status outputs and native S/R.
 
 
 def test_flat_chains_keep_node_limit_without_consuming_branch_depth() -> None:
