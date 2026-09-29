@@ -5,11 +5,13 @@ from typing import Any
 from .ir import (
     Arithmetic,
     Coil,
+    Compare,
     Counter,
     Ladder,
     Network,
     Timer,
     compile_network,
+    network_coils,
     network_expression,
 )
 from .logic import Expr, compile_expression, contacts, expression_text, negate, parse_expression
@@ -19,7 +21,7 @@ from .optimize import contact_count, simplify
 def expressions(network: Network) -> list[Expr]:
     if network.empty or network.edge is not None:
         return []
-    if isinstance(network.action, Arithmetic):
+    if isinstance(network.action, (Arithmetic, Compare)):
         return [
             parse_expression(network.action.enable),
             parse_expression(network.action.unsigned_when),
@@ -38,7 +40,7 @@ def expressions(network: Network) -> list[Expr]:
 
 
 def memory_used(ladder: Ladder) -> set[int]:
-    names = {f"{c.device}{c.address}" for n in ladder.networks for c in n.coils}
+    names = {f"{c.device}{c.address}" for n in ladder.networks for c in network_coils(n)}
     for network in ladder.networks:
         for expr in expressions(network):
             names.update(contacts(expr))
@@ -58,7 +60,7 @@ def needs_lowering(network: Network, index: int, expr: Expr) -> bool:
     # Counter CLR uses inverted polarity. Its sampled 7FE8 encodes the direct
     # CLR rail, not an OPEN contact drawn inside a Boolean rung.
     if (
-        (isinstance(network.block, Counter) or isinstance(network.action, Arithmetic))
+        (isinstance(network.block, Counter) or isinstance(network.action, (Arithmetic, Compare)))
         and index == 1
         and expr.op == "false"
     ):
@@ -74,7 +76,7 @@ def lower_ladder(ladder: Ladder, reserved: set[int] | None = None) -> tuple[Ladd
     simplifications = []
     symbols = dict(ladder.symbols)
     # Reuse a declared device for a contradiction; never invent a physical input.
-    source_names = {f"{c.device}{c.address}" for n in ladder.networks for c in n.coils}
+    source_names = {f"{c.device}{c.address}" for n in ladder.networks for c in network_coils(n)}
     source_names.update(
         f"{'T' if isinstance(n.block, Timer) else 'C'}{n.block.address}"
         for n in ladder.networks
@@ -155,7 +157,7 @@ def lower_ladder(ladder: Ladder, reserved: set[int] | None = None) -> tuple[Ladd
                 network.block.clear = expression_text(negate(fixed[1]))
             elif network.action is not None:
                 network.action.enable = expression_text(fixed[0])  # type: ignore[union-attr]
-                if isinstance(network.action, Arithmetic):
+                if isinstance(network.action, (Arithmetic, Compare)):
                     network.action.unsigned_when = expression_text(fixed[1])
             else:
                 network.steps = []

@@ -1,6 +1,6 @@
 """Deterministic scan-boundary T/C model, explicitly not a hardware emulator."""
 
-from .ir import Counter, Ladder, Timer, network_expression, validation
+from .ir import Counter, Ladder, Timer, apply_coils, network_expression, validation
 from .logic import bit_address, evaluate, parse_expression
 
 
@@ -85,7 +85,6 @@ def timed_simulate(
                 previous[index] = current
             else:
                 power = evaluate(network_expression(network), state)
-            for coil in network.coils:
-                state[f"{coil.device}{coil.address}"] = not power if coil.inverted else power
+            apply_coils(network.coils, power, state)
         trace.append(dict(state))
     return trace

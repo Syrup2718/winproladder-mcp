@@ -4,13 +4,17 @@ from typing import Any
 
 from .ir import (
     Arithmetic,
+    Bitwise,
     BreakLoop,
+    Compare,
     ForLoop,
     LinearConversion,
     Network,
     NextLoop,
     RegisterOr,
+    RegisterStep,
     Timer,
+    network_coils,
     network_expression,
 )
 from .logic import contacts, expression_text, parse_expression
@@ -18,6 +22,32 @@ from .registers import register_span
 
 
 def describe(network: Network) -> str:
+    if isinstance(network.action, RegisterStep):
+        step = network.action
+        return (
+            f"FUN{15 if step.type == 'increment' else 16} {step.type}: "
+            f"D={step.destination}; EN={step.enable}"
+        )
+    if isinstance(network.action, Bitwise):
+        bitwise = network.action
+        return (
+            f"16-bit {bitwise.operation.upper()}: Sa={bitwise.sa}, Sb={bitwise.sb}, "
+            f"D={bitwise.destination}; EN={bitwise.enable}"
+        )
+    if isinstance(network.action, Compare):
+        compare = network.action
+        outputs = "; ".join(
+            f"{label} -> {','.join(f'{c.device}{c.address}' for c in coils) or 'unconnected'}"
+            for label, coils in [
+                ("a=b", compare.equal),
+                ("a>b", compare.greater),
+                ("a<b", compare.less),
+            ]
+        )
+        return (
+            f"FUN17 CMP: Sa={compare.sa}, Sb={compare.sb}; EN={compare.enable}; "
+            f"U/S={compare.unsigned_when}; {outputs}"
+        )
     if isinstance(network.action, Arithmetic):
         arithmetic = network.action
         writes = sorted(register_span(arithmetic.destination, arithmetic.destination_words))
@@ -45,7 +75,9 @@ def describe(network: Network) -> str:
     if network.empty:
         return "Empty network"
     outputs = ", ".join(
-        ("inverted " if c.inverted else "") + f"{c.device}{c.address}" for c in network.coils
+        (c.mode + " " if c.mode != "normal" else "inverted " if c.inverted else "")
+        + f"{c.device}{c.address}"
+        for c in network.coils
     )
     if network.edge is not None:
         return f"Native {network.edge.kind} edge {network.edge.input} -> {outputs}"
@@ -102,7 +134,10 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
         if network is None:
             unknown.append(index)
             continue
-        if isinstance(network.action, (RegisterOr, BreakLoop, LinearConversion, Arithmetic)):
+        if isinstance(
+            network.action,
+            (RegisterOr, BreakLoop, LinearConversion, Arithmetic, RegisterStep, Bitwise, Compare),
+        ):
             reads = contacts(parse_expression(network.action.enable))
             if isinstance(network.action, RegisterOr):
                 reads |= {f"R{network.action.sa}", f"R{network.action.sb}"}
@@ -112,6 +147,12 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
             elif isinstance(network.action, Arithmetic):
                 reads |= {network.action.sa}
                 reads |= contacts(parse_expression(network.action.unsigned_when))
+            elif isinstance(network.action, RegisterStep):
+                reads.add(network.action.destination)
+            elif isinstance(network.action, (Bitwise, Compare)):
+                reads |= {network.action.sa, network.action.sb}
+                if isinstance(network.action, Compare):
+                    reads |= contacts(parse_expression(network.action.unsigned_when))
         elif network.action is not None:
             reads = set()
         elif isinstance(network.block, Timer):
@@ -124,7 +165,7 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
             reads = {network.edge.input}
         else:
             reads = contacts(network_expression(network)) if not network.empty else set()
-        writes = {f"{c.device}{c.address}" for c in network.coils}
+        writes = {f"{c.device}{c.address}" for c in network_coils(network)}
         if isinstance(network.action, RegisterOr):
             writes.add(f"R{network.action.destination}")
         elif isinstance(network.action, LinearConversion):
@@ -135,6 +176,8 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
             writes |= register_span(
                 network.action.destination, network.action.destination_words, writable=True
             )
+        elif isinstance(network.action, (RegisterStep, Bitwise)):
+            writes.add(network.action.destination)
         if network.block is not None:
             family = "T" if isinstance(network.block, Timer) else "C"
             writes.add(f"{family}{network.block.address}")
