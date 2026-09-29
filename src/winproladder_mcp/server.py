@@ -42,6 +42,8 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
             "Never invent physical I/O or external clocks. Require signal and output addresses. "
             "Ordinary T timers are supported; native retentive timing encoding is unsupported. "
             "Use get_design_guide to turn requirements into conditions and blocks. "
+            "Honor its workspace architecture policy; forbidden M-to-M chains must be "
+            "redesigned using native instructions, not renamed or hidden in helpers. "
             "Call generate_ldr for an actual file; inferred encodings are enabled. "
             "Do not ask the user for JSON or samples for supported expressions/parameters. "
             "Use simulation for Boolean requirements. Return file links and validation warnings. "
@@ -116,6 +118,7 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
         return {
             **capabilities(),
             "workspace": str(service.root),
+            "architecture_policy": service.architecture_policy(),
             "output_directory": str(service.output),
             "artifact_delivery": {
                 "resource_template": "winproladder://artifacts/{name}",
@@ -127,7 +130,11 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
     @mcp.tool(annotations=read)
     def get_design_guide() -> dict[str, Any]:
         """Get the natural-language-to-LDR workflow and complete runnable design examples."""
-        return {**design_guide(), "ladder_schema": Ladder.model_json_schema()}
+        return {
+            **design_guide(),
+            "architecture_policy": service.architecture_policy(),
+            "ladder_schema": Ladder.model_json_schema(),
+        }
 
     @mcp.tool(annotations=write)
     def generate_system_ldr(
@@ -238,7 +245,19 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
     def validate_ladder(ladder: Ladder) -> dict[str, Any]:
         """Preview simplified connected IR and resource costs; not PLC syntax validation."""
         lowered, layout = lower_ladder(ladder)
-        return {**validation(lowered), "layout": layout, "optimized_ladder": lowered.model_dump()}
+        source_architecture = service.architecture(ladder, enforce=False)
+        architecture = service.architecture(lowered, enforce=False)
+        result: dict[str, Any] = dict(validation(lowered))
+        if not source_architecture["valid"] or not architecture["valid"]:
+            result["valid"] = False
+            result["errors"].append("Workspace architecture forbids M-to-M networks")
+        return {
+            **result,
+            "architecture": architecture,
+            "source_architecture": source_architecture,
+            "layout": layout,
+            "optimized_ladder": lowered.model_dump(),
+        }
 
     @mcp.tool(annotations=write)
     def create_ldr(
