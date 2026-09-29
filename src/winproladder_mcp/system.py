@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import Field
 
-from .control import ControlSpec, control_ladder
+from .control import ControlSpec, control_ladder, native_edge
 from .ir import Ladder, Model
 
 
@@ -17,7 +17,9 @@ def resources(spec: ControlSpec) -> dict[str, int]:
     return {
         "output": 3 if spec.kind == "star_delta" else 2 if spec.kind == "forward_reverse" else 1,
         "memory": (
-            3
+            0
+            if native_edge(spec) is not None
+            else 3
             if spec.kind in {"toggle", "rising_edge", "falling_edge", "pulse"}
             else 1
             if spec.kind in {"off_delay", "star_delta"}

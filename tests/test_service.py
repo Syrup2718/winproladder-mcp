@@ -74,12 +74,12 @@ def test_block_program_ir_roundtrip(service: Service) -> None:
     assert "preset=256" in analysis["networks"][4]["description"]
 
 
-def test_incomplete_cross_references(service: Service) -> None:
+def test_native_edge_cross_references(service: Service) -> None:
     analysis = service.analyze("samples/test4.ldr")
-    assert analysis["references"]["complete"] is False
-    assert analysis["references"]["opaque_networks"] == [5, 6]
-    assert analysis["warnings"]
-    assert service.read("samples/test4.ldr")["ladder"] is None
+    assert analysis["references"]["complete"] is True
+    assert analysis["references"]["opaque_networks"] == []
+    assert analysis["references"]["devices"]["X0"]["reads"] == [0, 5]
+    assert service.read("samples/test4.ldr")["ladder"] is not None
 
 
 def test_compare_insert_delete_replace(service: Service) -> None:

@@ -64,6 +64,40 @@ class RegisterOr(Model):
     enable: str = "always_on"
 
 
+class Arithmetic(Model):
+    """test7: 16-bit register Sa, nonnegative immediate Sb, direct destination."""
+
+    type: Literal["arithmetic"] = "arithmetic"
+    operation: Literal["add", "sub", "mul", "div"]
+    sa: str
+    sb: Annotated[int, Field(strict=True, ge=0, le=32767)]
+    destination: str
+    enable: str = "always_on"
+    unsigned_when: str = "FALSE"
+
+    @property
+    def destination_words(self) -> int:
+        return 2 if self.operation in {"mul", "div"} else 1
+
+    @model_validator(mode="after")
+    def check_operands(self) -> "Arithmetic":
+        register_span(self.sa, 1)
+        register_span(self.destination, self.destination_words, writable=True)
+        if self.operation == "div" and self.sb == 0:
+            raise ValueError("Constant division by zero is not supported")
+        return self
+
+
+class EdgeContact(Model):
+    kind: Literal["rising", "falling"]
+    input: str = Field(pattern=r"^X(0|[1-9][0-9]{0,2})$")
+
+    @model_validator(mode="after")
+    def check_input(self) -> "EdgeContact":
+        bit_address(self.input)
+        return self
+
+
 class ForLoop(Model):
     type: Literal["for"] = "for"
     count: Annotated[int, Field(strict=True, ge=1, le=16383)]
@@ -110,17 +144,21 @@ class Network(Model):
     comment: str = Field(default="", max_length=1000)
     block: Annotated[Timer | Counter, Field(discriminator="type")] | None = None
     condition: str | None = None
+    edge: EdgeContact | None = None
     action: (
         Annotated[
-            RegisterOr | ForLoop | NextLoop | BreakLoop | LinearConversion,
+            RegisterOr | ForLoop | NextLoop | BreakLoop | LinearConversion | Arithmetic,
             Field(discriminator="type"),
         ]
         | None
     ) = None
 
 
+HeaderProfile = Literal["FBs-20MC", "FBs-24MA", "FBs-24MA-test7"]
+
+
 class Ladder(Model):
-    profile: Literal["FBs-20MC", "FBs-24MA"] = "FBs-20MC"
+    profile: HeaderProfile = "FBs-20MC"
     networks: list[Network] = Field(min_length=1, max_length=1000)
     symbols: dict[str, str] = Field(default_factory=dict, max_length=512)
 
@@ -150,6 +188,23 @@ LCNV_PAYLOADS = {
     4: "4fe8f57c0000010419b647d40001",
     6: "4fe8f57c0000010619c047d60001",
     8: "4fe8f57c0000010819ca47d80001",
+}
+
+ARITHMETIC_OPCODES = {
+    "add": b"\xf6\x62",
+    "sub": b"\xf6\x64",
+    "mul": b"\xf6\x66",
+    "div": b"\xf6\x68",
+}
+ARITHMETIC_PAYLOADS = {
+    1: "4fe87fe8f6620100000540c8",
+    2: "4fe87fe8f66440c8000140ca",
+    3: "4fe87fe8f66640cc000240ce",
+    4: "4fe87fe8f6680102001440d2",
+}
+EDGE_PAYLOADS = {
+    "e0004000c101": "test4.ldr N005 / test7.ldr N000",
+    "e0005001c103": "test4.ldr N006",
 }
 
 
@@ -259,6 +314,19 @@ def compile_coils(coils: list[Coil]) -> bytes:
 
 def compile_network(network: Network) -> bytes:
     try:
+        if network.edge is not None:
+            if (
+                network.empty
+                or network.action
+                or network.block
+                or network.steps
+                or network.condition is not None
+                or not network.coils
+            ):
+                raise UnsupportedInstruction("Native edge requires its own network and coils")
+            edge = network.edge
+            load = Expr("contact", edge.input, edge.kind == "falling")
+            return bytes.fromhex("e000") + compile_expression(load) + compile_coils(network.coils)
         if network.action is not None:
             if (
                 network.empty
@@ -278,6 +346,15 @@ def compile_network(network: Network) -> bytes:
             prefix = compile_expression(parse_expression(action.enable))
             if isinstance(action, BreakLoop):
                 return prefix + bytes.fromhex("f476a7fe")
+            if isinstance(action, Arithmetic):
+                return (
+                    prefix
+                    + compile_expression(parse_expression(action.unsigned_when), nested=True)
+                    + ARITHMETIC_OPCODES[action.operation]
+                    + encode_register(action.sa)
+                    + action.sb.to_bytes(2, "big")
+                    + encode_register(action.destination)
+                )
             if isinstance(action, LinearConversion):
                 return (
                     prefix
@@ -348,7 +425,19 @@ def decode_coils(data: bytes) -> list[Coil]:
 
 def decode_network(payload: bytes) -> Network | None:
     try:
-        action: RegisterOr | ForLoop | NextLoop | BreakLoop | LinearConversion | None = None
+        if len(payload) >= 6 and payload[:2] == bytes.fromhex("e000"):
+            if payload[2] not in {0x40, 0x50}:
+                return None
+            edge_network = Network(
+                edge=EdgeContact(
+                    kind="rising" if payload[2] == 0x40 else "falling", input=f"X{payload[3]}"
+                ),
+                coils=decode_coils(payload[4:]),
+            )
+            return edge_network if compile_network(edge_network) == payload else None
+        action: (
+            RegisterOr | ForLoop | NextLoop | BreakLoop | LinearConversion | Arithmetic | None
+        ) = None
         if payload == bytes.fromhex("f491"):
             action = NextLoop()
         elif len(payload) == 4 and payload[:2] == bytes.fromhex("f590"):
@@ -363,6 +452,35 @@ def decode_network(payload: bytes) -> Network | None:
                 destination=decode_register(payload[-4:-2]),
                 length=int.from_bytes(payload[-2:], "big"),
                 enable=expression_text(decode_expression(payload[:-12])),
+            )
+        elif len(payload) >= 12 and payload[-8:-6] in ARITHMETIC_OPCODES.values():
+            candidates = []
+            prefix = payload[:-8]
+            for split in range(2, len(prefix), 2):
+                if prefix[split] & 0xE0 != 0x60:
+                    continue
+                try:
+                    en = decode_expression(prefix[:split])
+                    unsigned = decode_expression(
+                        bytes([prefix[split] - 0x20]) + prefix[split + 1 :]
+                    )
+                    candidates.append((en, unsigned))
+                except ValueError:
+                    continue
+            if len(candidates) != 1:
+                return None
+            en, unsigned = candidates[0]
+            action = Arithmetic.model_validate(
+                {
+                    "operation": next(
+                        k for k, v in ARITHMETIC_OPCODES.items() if v == payload[-8:-6]
+                    ),
+                    "sa": decode_register(payload[-6:-4]),
+                    "sb": int.from_bytes(payload[-4:-2], "big"),
+                    "destination": decode_register(payload[-2:]),
+                    "enable": expression_text(en),
+                    "unsigned_when": expression_text(unsigned),
+                }
             )
         elif len(payload) >= 10 and payload[-8:-6] == bytes.fromhex("f4c8"):
             values = [
@@ -491,6 +609,33 @@ def validation(ladder: Ladder) -> dict[str, object]:
         try:
             payload = compile_network(network)
             payloads.append(payload.hex(" "))
+            if isinstance(network.action, Arithmetic) or network.edge is not None:
+                if isinstance(network.action, Arithmetic):
+                    instruction = f"16-bit {network.action.operation}"
+                else:
+                    assert network.edge is not None
+                    instruction = f"native {network.edge.kind} edge"
+                source = (
+                    EDGE_PAYLOADS.get(payload.hex())
+                    if network.edge
+                    else next(
+                        (
+                            f"test7.ldr N{i:03}"
+                            for i, raw in ARITHMETIC_PAYLOADS.items()
+                            if payload.hex() == raw
+                        ),
+                        None,
+                    )
+                )
+                instruction_evidence.append(
+                    {
+                        "network_index": index,
+                        "instruction": instruction,
+                        "status": "observed_export" if source else "inferred_variant",
+                        "source": source or "test4/test7 + FBs manual",
+                        "gui_import_verified": False,
+                    }
+                )
             if isinstance(network.action, LinearConversion):
                 observed = next(
                     (i for i, raw in LCNV_PAYLOADS.items() if payload == bytes.fromhex(raw)), None
@@ -527,6 +672,12 @@ def validation(ladder: Ladder) -> dict[str, object]:
             "Other modes/lengths/registers/EN conditions are inferred, not GUI/PLC verified. "
             "Conversion table contents must already exist in the destination project; "
             "this LDR does not initialize those register values. No LCNV runtime simulation."
+        )
+    if any(isinstance(n.action, Arithmetic) for n in ladder.networks):
+        warnings.append(
+            "Arithmetic: test7 observes register Sa, positive constant Sb, EN=TRUE, U/S=FALSE. "
+            "Changed operands/EN/U/S are inferred. MUL/DIV write two consecutive words. "
+            "No arithmetic runtime simulation or connected status outputs; no GUI/PLC verification."
         )
     if len(coils) != len(set(coils)):
         warnings.append("Repeated coils: later networks may overwrite earlier network results.")
@@ -573,12 +724,18 @@ def simulate(
     x_devices = {
         name
         for network in ladder.networks
-        if not network.empty
+        if not network.empty and network.edge is None
         for name in contacts(network_expression(network))
         if name.startswith("X")
     }
     x_devices.update(key for scan in inputs for key in scan)
     x_devices.update(key for key in initial if key.startswith("X"))
+    x_devices.update(n.edge.input for n in ladder.networks if n.edge is not None)
+    previous = {
+        i: initial.get(n.edge.input, False)
+        for i, n in enumerate(ladder.networks)
+        if n.edge is not None
+    }
     trace = []
     for scan in inputs:
         if len(scan) > 256:
@@ -592,10 +749,19 @@ def simulate(
         # Each scan is a fresh input snapshot; unspecified X inputs are false.
         for name in x_devices:
             state[name] = scan.get(name, False)
-        for network in ladder.networks:
+        for index, network in enumerate(ladder.networks):
             if network.empty:
                 continue
-            power = evaluate(network_expression(network), state)
+            if network.edge is not None:
+                current = state.get(network.edge.input, False)
+                power = (
+                    (current and not previous[index])
+                    if network.edge.kind == "rising"
+                    else (previous[index] and not current)
+                )
+                previous[index] = current
+            else:
+                power = evaluate(network_expression(network), state)
             for coil in network.coils:
                 state[f"{coil.device}{coil.address}"] = not power if coil.inverted else power
         trace.append(dict(state))

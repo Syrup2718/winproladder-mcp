@@ -62,7 +62,7 @@ def test_decoded_subset_reencodes_exactly() -> None:
 
 
 @pytest.mark.parametrize(
-    "payload", ["e0004000c101", "4fe8fd8101010392", "50028003f102", "40006001e200c100", "41"]
+    "payload", ["e0014000c101", "4fe8fd8101010392", "50028003f102", "40006001e200c100", "41"]
 )
 def test_unsupported_stays_whole_opaque(payload: str) -> None:
     assert decode_network(bytes.fromhex(payload)) is None

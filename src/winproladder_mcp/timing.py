@@ -41,6 +41,11 @@ def timed_simulate(
     elapsed: dict[int, int] = {}
     counts: dict[int, int] = {}
     pulses: dict[int, bool] = {}
+    previous = {
+        i: initial.get(n.edge.input, False)
+        for i, n in enumerate(ladder.networks)
+        if n.edge is not None
+    }
     trace = []
     for scan in inputs:
         for name, value in scan.items():
@@ -70,6 +75,14 @@ def timed_simulate(
                 pulses[index] = pulse
                 power = not clear and counts[index] >= block.preset
                 state[f"C{block.address}"] = power
+            elif network.edge is not None:
+                current = state.get(network.edge.input, False)
+                power = (
+                    (current and not previous[index])
+                    if network.edge.kind == "rising"
+                    else (previous[index] and not current)
+                )
+                previous[index] = current
             else:
                 power = evaluate(network_expression(network), state)
             for coil in network.coils:

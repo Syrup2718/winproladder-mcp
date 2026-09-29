@@ -2,14 +2,28 @@
 
 from typing import Any
 
-from .ir import Coil, Counter, Ladder, Network, Timer, compile_network, network_expression
+from .ir import (
+    Arithmetic,
+    Coil,
+    Counter,
+    Ladder,
+    Network,
+    Timer,
+    compile_network,
+    network_expression,
+)
 from .logic import Expr, compile_expression, contacts, expression_text, negate, parse_expression
 from .optimize import contact_count, simplify
 
 
 def expressions(network: Network) -> list[Expr]:
-    if network.empty:
+    if network.empty or network.edge is not None:
         return []
+    if isinstance(network.action, Arithmetic):
+        return [
+            parse_expression(network.action.enable),
+            parse_expression(network.action.unsigned_when),
+        ]
     if isinstance(network.block, Timer):
         return [parse_expression(network.block.enable)]
     if isinstance(network.block, Counter):
@@ -43,7 +57,11 @@ def requires_lowering(expr: Expr) -> bool:
 def needs_lowering(network: Network, index: int, expr: Expr) -> bool:
     # Counter CLR uses inverted polarity. Its sampled 7FE8 encodes the direct
     # CLR rail, not an OPEN contact drawn inside a Boolean rung.
-    if isinstance(network.block, Counter) and index == 1 and expr.op == "false":
+    if (
+        (isinstance(network.block, Counter) or isinstance(network.action, Arithmetic))
+        and index == 1
+        and expr.op == "false"
+    ):
         return False
     return requires_lowering(expr)
 
@@ -137,6 +155,8 @@ def lower_ladder(ladder: Ladder, reserved: set[int] | None = None) -> tuple[Ladd
                 network.block.clear = expression_text(negate(fixed[1]))
             elif network.action is not None:
                 network.action.enable = expression_text(fixed[0])  # type: ignore[union-attr]
+                if isinstance(network.action, Arithmetic):
+                    network.action.unsigned_when = expression_text(fixed[1])
             else:
                 network.steps = []
                 network.condition = expression_text(fixed[0])

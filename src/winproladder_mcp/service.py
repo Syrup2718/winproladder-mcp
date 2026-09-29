@@ -4,13 +4,14 @@ import hashlib
 import json
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from .acceptance import AcceptanceCase, check_acceptance
 from .analysis import describe, device_references, timer_settings
 from .design import design_guide
 from .io_contract import IOContract, check_io
 from .ir import (
+    HeaderProfile,
     Ladder,
     Network,
     block_catalog,
@@ -23,27 +24,31 @@ from .layout import expressions, lower_ladder, memory_used, needs_lowering
 from .ldr import FOOTER, MAX_SIZE, Document, LdrError, Record, parse
 
 
-def default_header(profile: Literal["FBs-20MC", "FBs-24MA"] = "FBs-20MC") -> bytes:
+def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
     # Exact shared header from all five v3.28 FBs-20MC exports; no unknown
     # metadata is inferred. See test_lossless_roundtrip.
     header = bytearray(256)
     header[:29] = b"Fatek Resource File Format 1\x16"
     header[128:134] = b"FB-RES"
     header[144:156] = b"WinProladder"
-    if profile not in {"FBs-20MC", "FBs-24MA"}:
+    if profile not in {"FBs-20MC", "FBs-24MA", "FBs-24MA-test7"}:
         raise ValueError("Unsupported header profile")
-    header[160:168] = profile.encode("ascii")
+    header[160:168] = ("FBs-24MA" if profile == "FBs-24MA-test7" else profile).encode("ascii")
     # Preserve exact sampled metadata, including unknown profile-specific fields.
     header[176:178] = b"@@" if profile == "FBs-20MC" else bytes.fromhex("1045")
+    if profile == "FBs-24MA-test7":
+        header[176:178] = bytes.fromhex("1040")
     header[192:194] = b"H\x01"
     return bytes(header)
 
 
-def header_profile(header: bytes) -> Literal["FBs-20MC", "FBs-24MA"] | None:
+def header_profile(header: bytes) -> HeaderProfile | None:
     if header == default_header():
         return "FBs-20MC"
     if header == default_header("FBs-24MA"):
         return "FBs-24MA"
+    if header == default_header("FBs-24MA-test7"):
+        return "FBs-24MA-test7"
     return None
 
 
@@ -433,8 +438,9 @@ class Service:
 
 def capabilities() -> dict[str, Any]:
     return {
-        "version": "0.6.0",
-        "profile": "Sampled FBs-20MC and test6 FBs-24MA headers; select ladder.profile",
+        "version": "0.7.0",
+        "profile": "Exact sampled headers: FBs-20MC, FBs-24MA (test6), FBs-24MA-test7; "
+        "the two 24MA variants retain differing unknown metadata",
         "transport": "stdio",
         "simulation": "Boolean or scan_ms T/C model; max 256 scans, not a PLC emulator",
         "file_operations": ["inspect", "read", "create", "export", "replace", "insert", "delete"],
@@ -450,7 +456,8 @@ def capabilities() -> dict[str, Any]:
         "generation": "generate_control_ldr: 11 recipes; generate_sequence_ldr: up to 16 steps, "
         "native T timing (retentive timing unsupported), optional explicit pulse counting; "
         "generate_system_ldr: independent controls with "
-        "internal allocation; generate_ldr: custom Boolean/T/C/register/FUN33 LCNV/loop IR.",
+        "internal allocation; generate_ldr: Boolean, native X edges, T/C, register, "
+        "arithmetic, LCNV and loop IR.",
         "inference_notice": "Unseen combinations/ranges are inferred, not PLC-validated.",
         "design_guide": design_guide(),
         "block_templates": [
@@ -467,6 +474,27 @@ def capabilities() -> dict[str, Any]:
             "compare_ldr: aligned record changes",
         ],
         "native_functions": {
+            "arithmetic": {
+                "fun": [11, 12, 13, 14],
+                "action_type": "arithmetic",
+                "operations": ["add", "sub", "mul", "div"],
+                "source": "test7.ldr + screenshot",
+                "observed": "16-bit, register Sa, positive immediate Sb, EN=TRUE, U/S=FALSE",
+                "inferred": "Direct R/D operands; Sb=0..32767; Boolean EN/unsigned_when",
+                "unsigned_when": "FALSE=signed (sampled); TRUE=unsigned (inferred wiring)",
+                "destination_words": {"add": 1, "sub": 1, "mul": 2, "div": 2},
+                "unsupported": [
+                    "register Sb",
+                    "constant Sa",
+                    "negative Sb",
+                    "32-bit D form",
+                    "P form",
+                    "indirect operands",
+                    "connected status flags",
+                    "runtime simulation",
+                ],
+                "import_verified": False,
+            },
             "LCNV": {
                 "fun": 33,
                 "action_type": "lcnv",
@@ -484,8 +512,27 @@ def capabilities() -> dict[str, Any]:
             },
             "other_FUN_numbers": "Cannot derive opcodes by incrementing FUN numbers",
         },
+        "native_edge_contacts": {
+            "schema": "edge: {kind: rising|falling, input: X0..X255}, plus coils",
+            "observed": "test4 N005 rising X0 -> Y1; N006 falling X1 -> Y3; test7 N000 rising",
+            "inferred": "Other X addresses and Y/M coils; isolated edge network only",
+            "simulation": "One-scan pulse; previous input starts from initial or FALSE; "
+            "software model only, PLC startup behavior not verified",
+            "helper_memory": "None",
+        },
+        "further_inference": {
+            "usable_compositions": "Increment/decrement via ADD/SUB with Sb=1; "
+            "constant offset, integer scaling, quotient and remainder via FUN11..14. "
+            "Arithmetic status/overflow semantics remain those of FUN11..14, not FUN15/16.",
+            "candidates_not_enabled": [
+                "FUN15/16: next low opcode bytes might be 6A/6C, but arity/type bytes unknown",
+                "Register Sb might change F6 to F4; needs same-operation exported comparison",
+                "MOV/CMP/AND/XOR cannot be established from current arithmetic samples",
+            ],
+            "policy": "Unconfirmed native opcodes remain opaque; never emitted as supported",
+        },
         "opaque_only": [
-            "edge contacts",
+            "compound edge rungs and non-X edge operands",
             "unknown instructions",
         ],
         "verified_template": "start_stop: X1=1 stops; user reported import success",
