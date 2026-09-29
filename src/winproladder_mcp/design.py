@@ -13,6 +13,10 @@ def design_guide() -> dict[str, Any]:
             "default_policy": "Physical signal/output required; no automatic X/Y assignment.",
         },
         "workflow": [
+            "FUN11..14 use arithmetic actions: register Sa and nonnegative immediate Sb only. "
+            "MUL/DIV write D and D+1; reserve both. No arithmetic runtime acceptance available.",
+            "Native edge networks can pulse Y/M directly without helper M contacts. "
+            "Only isolated X rising/falling contacts; model starts from initial/FALSE.",
             "For independent controls use generate_system_ldr to allocate internal M/T/C only.",
             "Copy user-specified X/Y into mandatory io_contract; never add missing hardware. "
             "Use native T for timed sequences. Retentive FUN87/88/89 encoding is unavailable.",
@@ -128,6 +132,71 @@ def design_guide() -> dict[str, Any]:
                             "length": 1,
                         }
                     }
+                ],
+            },
+            "native_rising_x0_y1": {
+                "networks": [
+                    {"edge": {"kind": "rising", "input": "X0"}, "coils": [{"address": 1}]}
+                ],
+            },
+            "arithmetic_offset_scale_quotient": {
+                "profile": "FBs-24MA-test7",
+                "networks": [
+                    {
+                        "action": {
+                            "type": "arithmetic",
+                            "operation": "add",
+                            "sa": "R3840",
+                            "sb": 5,
+                            "destination": "D100",
+                        }
+                    },
+                    {
+                        "action": {
+                            "type": "arithmetic",
+                            "operation": "mul",
+                            "sa": "R3841",
+                            "sb": 2,
+                            "destination": "D102",
+                        },
+                        "comment": "Product occupies D102 (low) and D103 (high).",
+                    },
+                    {
+                        "action": {
+                            "type": "arithmetic",
+                            "operation": "div",
+                            "sa": "R3842",
+                            "sb": 20,
+                            "destination": "D104",
+                        },
+                        "comment": "Quotient D104; remainder D105.",
+                    },
+                ],
+            },
+            "derived_increment_decrement": {
+                "profile": "FBs-24MA-test7",
+                "networks": [
+                    {
+                        "action": {
+                            "type": "arithmetic",
+                            "operation": "add",
+                            "sa": "D200",
+                            "sb": 1,
+                            "destination": "D200",
+                        },
+                        "comment": "Increment every enabled scan via FUN11, not native FUN15. "
+                        "Uses FUN11 status semantics; no saturation or wrapping guarantee.",
+                    },
+                    {
+                        "action": {
+                            "type": "arithmetic",
+                            "operation": "sub",
+                            "sa": "D201",
+                            "sb": 1,
+                            "destination": "D201",
+                        },
+                        "comment": "Decrement every enabled scan via FUN12, not native FUN16.",
+                    },
                 ],
             },
             "register_or_loop": {

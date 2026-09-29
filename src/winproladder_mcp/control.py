@@ -4,7 +4,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field
 
-from .ir import Coil, Counter, Ladder, Model, Network, Timer
+from .ir import Coil, Counter, EdgeContact, Ladder, Model, Network, Timer
 from .logic import contacts, parse_expression
 
 ControlKind = Literal[
@@ -36,6 +36,22 @@ class ControlSpec(Model):
     delay_ms: Annotated[int, Field(strict=True, ge=10, le=327670)] = 1000
     gap_ms: Annotated[int, Field(strict=True, ge=10, le=327670)] = 100
     count: Annotated[int, Field(strict=True, ge=1, le=32767)] = 10
+
+
+def native_edge(spec: ControlSpec) -> EdgeContact | None:
+    """Use the observed native form only for a single X contact with no reset gate."""
+    signal = parse_expression(spec.signal)
+    if (
+        spec.kind in {"rising_edge", "falling_edge"}
+        and signal.op == "contact"
+        and signal.name.startswith("X")
+        and not signal.nc
+        and parse_expression(spec.reset).op == "false"
+    ):
+        return EdgeContact(
+            kind="rising" if spec.kind == "rising_edge" else "falling", input=signal.name
+        )
+    return None
 
 
 def control_ladder(spec: ControlSpec) -> tuple[Ladder, dict[str, Any]]:
@@ -71,7 +87,10 @@ def control_ladder(spec: ControlSpec) -> tuple[Ladder, dict[str, Any]]:
             )
         )
 
-    if spec.kind in {"start_stop", "set_reset"}:
+    native = native_edge(spec)
+    if native is not None:
+        ns.append(Network(edge=native, coils=[Coil(address=spec.output)]))
+    elif spec.kind in {"start_stop", "set_reset"}:
         clear = stop if spec.kind == "start_stop" else reset
         coil(f"({y} OR {s}) AND NOT {clear}", y)
     elif spec.kind in {"rising_edge", "falling_edge", "toggle", "pulse"}:
@@ -129,7 +148,8 @@ def control_ladder(spec: ControlSpec) -> tuple[Ladder, dict[str, Any]]:
             "Signal and output must be explicit. Absent optional controls are FALSE.",
             "Input expressions describe PLC bit polarity; physical NC wiring is not inferred.",
             "Timers assume default T0..T49 .01s configuration; M/Y startup states must be reset.",
-            "Edges/toggle/SET-RST are synthesized Boolean networks, not native function opcodes.",
+            "Single-X edges without reset use native contacts, with no helper M. "
+            "Compound/reset-gated edges, toggle and SET-RST use Boolean networks.",
             "Forward/reverse favors forward on simultaneous starts when stopped.",
             "Star/delta: Y(base)=main, Y(base+1)=star, Y(base+2)=delta; "
             "hardware interlocks required.",
