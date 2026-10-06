@@ -7,21 +7,73 @@ from .ir import (
     Bitwise,
     BreakLoop,
     Compare,
+    Differential,
+    ExclusiveLogic,
+    FloatOperation,
     ForLoop,
     LinearConversion,
+    MasterControl,
+    MasterEnd,
     Network,
     NextLoop,
     RegisterOr,
     RegisterStep,
     Timer,
+    UpDownCounter,
+    WordConversion,
+    ZoneCompare,
+    comparison_reads,
     network_coils,
     network_expression,
 )
 from .logic import contacts, expression_text, parse_expression
-from .registers import register_span
+from .registers import register_span, word_references
 
 
 def describe(network: Network) -> str:
+    if network.comparison_chain:
+        conditions = " AND ".join(f"{c.sa} {c.operation} {c.sb}" for c in network.comparison_chain)
+        outputs = ", ".join(f"{c.mode} {c.device}{c.address}" for c in network.coils)
+        return f"Signed 16-bit comparison contacts: {conditions} -> {outputs}"
+    if isinstance(network.action, FloatOperation):
+        fp = network.action
+        return (
+            f"Float {fp.operation}: Sa={fp.sa}, Sb={fp.sb}, D={fp.destination}; "
+            f"source_words={fp.source_words}, destination_words={fp.destination_words}; "
+            f"EN={fp.enable}"
+        )
+    if isinstance(network.action, ExclusiveLogic):
+        word_action = network.action
+        return (
+            f"FUN{35 if word_action.operation == 'xor' else 36} {word_action.operation.upper()}: "
+            + (
+                f"Sa={word_action.sa}, Sb={word_action.sb}, D={word_action.destination}; "
+                f"EN={word_action.enable}"
+            )
+        )
+    if isinstance(network.action, WordConversion):
+        conversion_action = network.action
+        return (
+            f"{conversion_action.operation}: S={conversion_action.source}, "
+            f"D={conversion_action.destination}; EN={conversion_action.enable}"
+        )
+    if isinstance(network.action, ZoneCompare):
+        z = network.action
+        return f"FUN37 ZNCMP: S={z.source}, Su={z.upper}, Sl={z.lower}; EN={z.enable}; " + (
+            f"INZ={[f'{c.device}{c.address}' for c in z.within]}, "
+            f"S>U={[f'{c.device}{c.address}' for c in z.above]}, "
+            f"S<L={[f'{c.device}{c.address}' for c in z.below]}"
+        )
+    if isinstance(network.action, MasterControl):
+        return f"FUN00 MC {network.action.number}; EN/={network.action.enable}; 1 permits execution"
+    if isinstance(network.action, MasterEnd):
+        return f"FUN01 MCE {network.action.number}"
+    if isinstance(network.action, Differential):
+        pulse = network.action
+        return f"{pulse.type.upper()}: TG={pulse.trigger} -> {pulse.destination}"
+    if isinstance(network.action, UpDownCounter):
+        u = network.action
+        return f"07P.UDCTR: CV={u.cv}, PV={u.preset}; PLS={u.pulse}, U/D={u.up}, CLR={u.clear}"
     if isinstance(network.action, RegisterStep):
         step = network.action
         return (
@@ -136,10 +188,34 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
             continue
         if isinstance(
             network.action,
-            (RegisterOr, BreakLoop, LinearConversion, Arithmetic, RegisterStep, Bitwise, Compare),
+            (
+                RegisterOr,
+                BreakLoop,
+                LinearConversion,
+                Arithmetic,
+                RegisterStep,
+                Bitwise,
+                Compare,
+                MasterControl,
+                FloatOperation,
+                ExclusiveLogic,
+                WordConversion,
+                ZoneCompare,
+            ),
         ):
             reads = contacts(parse_expression(network.action.enable))
-            if isinstance(network.action, RegisterOr):
+            if isinstance(network.action, FloatOperation):
+                reads |= register_span(network.action.sa, network.action.source_words)
+                if network.action.sb is not None:
+                    reads |= register_span(network.action.sb, 2)
+            elif isinstance(network.action, ExclusiveLogic):
+                reads |= word_references(network.action.sa) | word_references(network.action.sb)
+            elif isinstance(network.action, WordConversion):
+                if isinstance(network.action.source, str):
+                    reads |= word_references(network.action.source)
+            elif isinstance(network.action, ZoneCompare):
+                reads.add(network.action.source)
+            elif isinstance(network.action, RegisterOr):
                 reads |= {f"R{network.action.sa}", f"R{network.action.sb}"}
             elif isinstance(network.action, LinearConversion):
                 reads |= register_span(network.action.source, network.action.length)
@@ -153,8 +229,18 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
                 reads |= {network.action.sa, network.action.sb}
                 if isinstance(network.action, Compare):
                     reads |= contacts(parse_expression(network.action.unsigned_when))
+        elif network.comparison_chain:
+            reads = comparison_reads(network)
         elif network.action is not None:
-            reads = set()
+            if isinstance(network.action, Differential):
+                reads = contacts(parse_expression(network.action.trigger))
+            elif isinstance(network.action, UpDownCounter):
+                u = network.action
+                reads = {u.cv} | set().union(
+                    *(contacts(parse_expression(e)) for e in (u.pulse, u.up, u.clear))
+                )
+            else:
+                reads = set()
         elif isinstance(network.block, Timer):
             reads = contacts(parse_expression(network.block.enable))
         elif network.block is not None:
@@ -166,7 +252,13 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
         else:
             reads = contacts(network_expression(network)) if not network.empty else set()
         writes = {f"{c.device}{c.address}" for c in network_coils(network)}
-        if isinstance(network.action, RegisterOr):
+        if isinstance(network.action, FloatOperation):
+            writes |= register_span(
+                network.action.destination, network.action.destination_words, writable=True
+            )
+        elif isinstance(network.action, (ExclusiveLogic, WordConversion)):
+            writes |= word_references(network.action.destination)
+        elif isinstance(network.action, RegisterOr):
             writes.add(f"R{network.action.destination}")
         elif isinstance(network.action, LinearConversion):
             writes |= register_span(
@@ -178,6 +270,8 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
             )
         elif isinstance(network.action, (RegisterStep, Bitwise)):
             writes.add(network.action.destination)
+        elif isinstance(network.action, UpDownCounter):
+            writes.add(network.action.cv)
         if network.block is not None:
             family = "T" if isinstance(network.block, Timer) else "C"
             writes.add(f"{family}{network.block.address}")

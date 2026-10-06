@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "winproladder-mcp"
-version = "0.7.0"
+version = "0.10.0"
 description = "Tools for inspecting, parsing, and encoding FATEK WinProLadder LDR files."
 readme = "README.md"
 requires-python = ">=3.12"

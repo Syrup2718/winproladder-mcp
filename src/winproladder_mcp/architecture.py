@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, StrictBool
 
-from .ir import Ladder, network_coils
+from .ir import Ladder, MasterControl, MasterEnd, comparison_reads, network_coils
 from .layout import expressions
 from .logic import contacts
 
@@ -30,18 +30,26 @@ def load_policy(root: Path) -> ArchitecturePolicy:
 
 def architecture_report(ladder: Ladder, policy: ArchitecturePolicy) -> dict[str, Any]:
     violations = []
+    master_reads: dict[int, set[str]] = {}
     for index, network in enumerate(ladder.networks):
+        if isinstance(network.action, MasterEnd):
+            master_reads.pop(network.action.number, None)
         reads = {
             name for expr in expressions(network) for name in contacts(expr) if name.startswith("M")
         }
+        reads |= {name for name in comparison_reads(network) if name.startswith("M")}
         writes = {f"M{c.address}" for c in network_coils(network) if c.device == "M"}
+        if isinstance(network.action, MasterControl):
+            master_reads[network.action.number] = reads.copy()
+        reads |= set().union(*master_reads.values()) if master_reads else set()
         if reads and writes:
             violations.append({"network": index, "reads": sorted(reads), "writes": sorted(writes)})
     return {
         "policy": policy.model_dump(),
         "valid": not policy.forbid_m_to_m or not violations,
         "m_to_m_networks": violations,
-        "scope": "M contacts feeding M coils, including block/status outputs and compiler helpers",
+        "scope": "M contacts feeding M coils, including block/status outputs, "
+        "implicit MC control dependencies and compiler helpers",
     }
 
 
