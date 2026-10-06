@@ -19,7 +19,7 @@ def timed_simulate(
         raise ValueError(str(check["errors"]))
     if len(inputs) > 256 or len(initial) > 128:
         raise ValueError("Simulation limited to 256 scans and 128 initial devices")
-    if any(n.action is not None for n in ladder.networks):
+    if any(n.action is not None or n.comparison_chain for n in ladder.networks):
         raise ValueError("Timed model cannot execute register/loop actions")
     for name, value in initial.items():
         bit_address(name)

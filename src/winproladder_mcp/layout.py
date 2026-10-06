@@ -7,9 +7,12 @@ from .ir import (
     Coil,
     Compare,
     Counter,
+    Differential,
     Ladder,
     Network,
     Timer,
+    UpDownCounter,
+    comparison_reads,
     compile_network,
     network_coils,
     network_expression,
@@ -19,8 +22,15 @@ from .optimize import contact_count, simplify
 
 
 def expressions(network: Network) -> list[Expr]:
-    if network.empty or network.edge is not None:
+    if network.empty or network.edge is not None or network.comparison_chain:
         return []
+    if isinstance(network.action, Differential):
+        return [parse_expression(network.action.trigger)]
+    if isinstance(network.action, UpDownCounter):
+        return [
+            parse_expression(x)
+            for x in (network.action.pulse, network.action.up, network.action.clear)
+        ]
     if isinstance(network.action, (Arithmetic, Compare)):
         return [
             parse_expression(network.action.enable),
@@ -42,6 +52,7 @@ def expressions(network: Network) -> list[Expr]:
 def memory_used(ladder: Ladder) -> set[int]:
     names = {f"{c.device}{c.address}" for n in ladder.networks for c in network_coils(n)}
     for network in ladder.networks:
+        names.update(comparison_reads(network))
         for expr in expressions(network):
             names.update(contacts(expr))
     return {int(name[1:]) for name in names if name.startswith("M")}
@@ -57,6 +68,10 @@ def requires_lowering(expr: Expr) -> bool:
 
 
 def needs_lowering(network: Network, index: int, expr: Expr) -> bool:
+    if network.branch_encoding == "test9_or":
+        return False
+    if isinstance(network.action, UpDownCounter) and index in {1, 2} and expr.op == "false":
+        return False
     # Counter CLR uses inverted polarity. Its sampled 7FE8 encodes the direct
     # CLR rail, not an OPEN contact drawn inside a Boolean rung.
     if (
@@ -134,6 +149,9 @@ def lower_ladder(ladder: Ladder, reserved: set[int] | None = None) -> tuple[Ladd
         compile_network(original)
         first = len(output)
         network = original.model_copy(deep=True)
+        if network.branch_encoding == "test9_or":
+            output.append(network)
+            continue
         exprs = expressions(original)
         simplified = [simplify(expr) for expr in exprs]
         if any(
@@ -156,7 +174,14 @@ def lower_ladder(ladder: Ladder, reserved: set[int] | None = None) -> tuple[Ladd
                 network.block.pulse = expression_text(fixed[0])
                 network.block.clear = expression_text(negate(fixed[1]))
             elif network.action is not None:
-                network.action.enable = expression_text(fixed[0])  # type: ignore[union-attr]
+                if isinstance(network.action, Differential):
+                    network.action.trigger = expression_text(fixed[0])
+                elif isinstance(network.action, UpDownCounter):
+                    network.action.pulse, network.action.up, network.action.clear = map(
+                        expression_text, fixed
+                    )
+                else:
+                    network.action.enable = expression_text(fixed[0])  # type: ignore[union-attr]
                 if isinstance(network.action, (Arithmetic, Compare)):
                     network.action.unsigned_when = expression_text(fixed[1])
             else:

@@ -2,7 +2,7 @@
 
 ## 原始樣本
 
-`samples/` 保留八份原始匯出，共 60 records；60 筆皆可語意解碼並重建，包括原生邊沿與 FUN11～14。雜湊及精確 payload 由 `tests/test_sample_integrity.py` 與編解碼測試固定。這是現有樣本覆蓋率，並不代表完整指令集。
+`samples/` 保留十二份原始匯出，共 87 records；87 筆皆可語意解碼並重建，包括原生邊沿與 FUN11～14。雜湊及精確 payload 由 `tests/test_sample_integrity.py` 與編解碼測試固定。這是現有樣本覆蓋率，並不代表完整指令集。
 
 | 樣本 | bytes | records | 覆蓋 |
 | --- | ---: | ---: | --- |
@@ -14,6 +14,12 @@
 | test5.ldr | 377 | 7 | register OR、FOR/BREAK/NEXT |
 | test6.ldr | 491 | 13 | FUN33 LCNV，FBs-24MA 檔頭 |
 | test7.ldr | 371 | 5 | 原生上升沿、FUN11～14、另一 FBs-24MA metadata |
+| test8.ldr | 399 | 7 | INC／DEC、CMP、AND、SET／RESET、直接電源軌 |
+| test9.ldr | 410 | 8 | MC／MCE、DIFU／DIFD、07P.UDCTR、原生並聯 |
+| test10.ldr | 375 | 5 | XOR、XNR、ZNCMP、→BCD、→BIN、T 數值與 WX/WY |
+| test11.ldr | 461 | 7 | 比較接點170～175、浮點200～204、FBs-32MA 檔頭 |
+
+test9 是格式樣本片段，能解碼不代表符合完整程式的 MC 配對與架構政策。新增 function 的驗證邊界見 [原生 function 編碼](test8-test9-functions.md)。
 
 對照畫面位於 `samples/screenshots/`。測試內保留完整 bytes，不在文件重複列出所有 record。
 

@@ -69,4 +69,8 @@ Timer 的 `preset` 是時基刻度數，不是直接的毫秒值。在 `.01S` �
 
 ## 未支援範圍
 
-FUN11～14 已支援 16-bit、Sa 暫存器／Sb 非負常數的加減乘除。原生單一 X 邊沿亦可產檔，詳見 [算術及邊沿支援範圍](fun11-14-arithmetic.md)。MOV、比較、間接定址、其他 Timer time base、原生保持型計時、通訊、定位及多數硬體專用指令尚未支援。FUN33 LCNV 的 Md/L 等變化為外推；詳見 [LCNV 支援範圍](fun33-lcnv.md)。未知原生指令保持 opaque，無損 export 不丟棄原始資料。完整支援狀態以 `get_capabilities` 為準。
+FUN11～14 已支援 16-bit、Sa 暫存器／Sb 非負常數的加減乘除。原生單一 X 邊沿亦可產檔，詳見 [算術及邊沿支援範圍](fun11-14-arithmetic.md)。FUN15／16、CMP、AND、DIFU／DIFD、MC／MCE 及 07P.UDCTR 的格式支援見 [原生 function 編碼](test8-test9-functions.md)，這些 action 尚無執行模擬。FUN35 XOR／36 XNR／37 ZNCMP／20 →BCD／21 →BIN 已加入，具體 operand 限制見 [test10](test10-functions.md)。MOV、間接定址、其他 Timer time base、原生保持型計時、通訊、定位及多數硬體專用指令尚未支援。FUN33 LCNV 的 Md/L 等變化為外推；詳見 [LCNV 支援範圍](fun33-lcnv.md)。未知原生指令保持 opaque，無損 export 不丟棄原始資料。完整支援狀態以 `get_capabilities` 為準。
+
+## test11 新增
+
+比較接點170～175的已取樣串聯位置、浮點200～204及FBs-32MA檔頭已加入，詳見 [test11](test11-functions.md)。浮點按1／2字組寬度檢查，WM0比較展開M0..15檢查政策；兩者尚無執行模擬。

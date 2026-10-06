@@ -13,6 +13,20 @@ def design_guide() -> dict[str, Any]:
             "default_policy": "Physical signal/output required; no automatic X/Y assignment.",
         },
         "workflow": [
+            "test11 adds comparison_chain networks (first eq/ne, then gt/lt/ge/le, series only) "
+            "and float_operation actions. Float values use two consecutive registers; "
+            "I->F reads one integer word and writes two, F->I reads two and writes one. "
+            "Reserve the full spans. WM0 comparisons read M0..15 and cannot drive M outputs "
+            "under forbid_m_to_m. No built-in execution simulation for either new family.",
+            "test10 adds exclusive_logic (xor/xnr), zone_compare and word_conversion. "
+            "T operands are numeric values, not contacts. WX0/WY0 are 16-bit I/O groups; "
+            "include every X0..15/Y0..15 in the contract only when that word was requested. "
+            "No runtime simulation for these functions. to_bcd currently accepts constants only.",
+            "Use native difu/difd actions with trigger and Y/M destination. "
+            "Do not replace the function block with synthesized M helpers.",
+            "Native increment/decrement, compare and bitwise actions are supported from test8. "
+            "MC/MCE and 07P.UDCTR are supported from test9, with no built-in runtime simulation. "
+            "Respect the workspace policy even for implicit M dependencies through MC regions.",
             "FUN11..14 use arithmetic actions: register Sa and nonnegative immediate Sb only. "
             "MUL/DIV write D and D+1; reserve both. No arithmetic runtime acceptance available.",
             "Native edge networks can pulse Y/M directly without helper M contacts. "
@@ -137,6 +151,116 @@ def design_guide() -> dict[str, Any]:
             "native_rising_x0_y1": {
                 "networks": [
                     {"edge": {"kind": "rising", "input": "X0"}, "coils": [{"address": 1}]}
+                ],
+            },
+            "native_float_conversions": {
+                "profile": "FBs-32MA-test11",
+                "networks": [
+                    {
+                        "action": {
+                            "type": "float_operation",
+                            "operation": "i_to_f",
+                            "sa": "R101",
+                            "destination": "R101",
+                        }
+                    },
+                    {
+                        "action": {
+                            "type": "float_operation",
+                            "operation": "f_to_i",
+                            "sa": "R102",
+                            "destination": "D103",
+                        }
+                    },
+                ],
+            },
+            "native_xor_xnr": {
+                "profile": "FBs-24MA-test7",
+                "networks": [
+                    {
+                        "action": {
+                            "type": "exclusive_logic",
+                            "operation": "xor",
+                            "sa": "R1234",
+                            "sb": "D300",
+                            "destination": "R110",
+                        }
+                    },
+                    {
+                        "action": {
+                            "type": "exclusive_logic",
+                            "operation": "xnr",
+                            "sa": "R205",
+                            "sb": "T1",
+                            "destination": "R233",
+                        }
+                    },
+                ],
+            },
+            "native_bcd_constant": {
+                "profile": "FBs-24MA-test7",
+                "networks": [
+                    {
+                        "action": {
+                            "type": "word_conversion",
+                            "operation": "to_bcd",
+                            "source": 333,
+                            "destination": "R222",
+                        }
+                    }
+                ],
+            },
+            "native_difu_difd_sample": {
+                "profile": "FBs-24MA-test7",
+                "networks": [
+                    {"action": {"type": "difu", "trigger": "TRUE", "destination": "M100"}},
+                    {"action": {"type": "difd", "trigger": "TRUE", "destination": "M101"}},
+                ],
+            },
+            "native_increment_decrement": {
+                "profile": "FBs-24MA-test7",
+                "networks": [
+                    {"action": {"type": "increment", "destination": "R100"}},
+                    {"action": {"type": "decrement", "destination": "D200"}},
+                ],
+            },
+            "native_compare_and": {
+                "profile": "FBs-24MA-test7",
+                "networks": [
+                    {
+                        "action": {
+                            "type": "compare",
+                            "sa": "R3840",
+                            "sb": "R3841",
+                            "equal": [{"device": "M", "address": 100}],
+                            "greater": [{"device": "M", "address": 101}],
+                            "less": [{"device": "M", "address": 102}],
+                        }
+                    },
+                    {
+                        "action": {
+                            "type": "bitwise",
+                            "operation": "and",
+                            "sa": "R3844",
+                            "sb": "D120",
+                            "destination": "D150",
+                        }
+                    },
+                ],
+            },
+            "native_udctr_sample": {
+                "profile": "FBs-24MA-test7",
+                "networks": [
+                    {
+                        "action": {
+                            "type": "udctr",
+                            "cv": "R200",
+                            "preset": 100,
+                            "pulse": "X1",
+                            "up": "X2",
+                            "clear": "X3",
+                        }
+                    }
                 ],
             },
             "arithmetic_offset_scale_quotient": {

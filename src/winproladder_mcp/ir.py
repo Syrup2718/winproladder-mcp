@@ -16,7 +16,16 @@ from .logic import (
     negate,
     parse_expression,
 )
-from .registers import decode_register, encode_register, register_span
+from .registers import (
+    comparison_word_references,
+    decode_comparison_word,
+    decode_register,
+    decode_word,
+    encode_comparison_word,
+    encode_register,
+    encode_word,
+    register_span,
+)
 
 
 class Model(BaseModel):
@@ -132,6 +141,64 @@ class Bitwise(Model):
         return self
 
 
+class ExclusiveLogic(Model):
+    """FUN35/36 word logic; sampled T1 is a numeric value, not a T contact."""
+
+    type: Literal["exclusive_logic"] = "exclusive_logic"
+    operation: Literal["xor", "xnr"]
+    sa: str
+    sb: str
+    destination: str
+    enable: str = "TRUE"
+
+    @model_validator(mode="after")
+    def check_words(self) -> "ExclusiveLogic":
+        encode_word(self.sa)
+        encode_word(self.sb)
+        encode_word(self.destination, writable=True)
+        return self
+
+
+class WordConversion(Model):
+    type: Literal["word_conversion"] = "word_conversion"
+    operation: Literal["to_bcd", "to_bin"]
+    source: str | Annotated[int, Field(strict=True, ge=0, le=9999)]
+    destination: str
+    enable: str = "TRUE"
+
+    @model_validator(mode="after")
+    def check_words(self) -> "WordConversion":
+        if self.operation == "to_bcd":
+            if not isinstance(self.source, int):
+                raise ValueError("FUN20 currently supports constant source 0..9999 only")
+        else:
+            if not isinstance(self.source, str):
+                raise ValueError("FUN21 requires a word source; constants are not supported")
+            encode_word(self.source)
+        encode_word(self.destination, writable=True)
+        return self
+
+
+class ZoneCompare(Model):
+    type: Literal["zone_compare"] = "zone_compare"
+    source: str
+    upper: Annotated[int, Field(strict=True, ge=-32768, le=32767)]
+    lower: Annotated[int, Field(strict=True, ge=-32768, le=32767)]
+    enable: str = "TRUE"
+    within: list[Coil] = Field(default_factory=list, max_length=32)
+    above: list[Coil] = Field(default_factory=list, max_length=32)
+    below: list[Coil] = Field(default_factory=list, max_length=32)
+
+    @model_validator(mode="after")
+    def check_operands(self) -> "ZoneCompare":
+        register_span(self.source, 1)
+        if self.lower > self.upper:
+            raise ValueError("ZNCMP lower must not exceed upper")
+        if any(c.mode != "normal" or c.inverted for c in self.within + self.above + self.below):
+            raise ValueError("ZNCMP status outputs support normal coils only")
+        return self
+
+
 class Compare(Model):
     type: Literal["compare"] = "compare"
     sa: str
@@ -154,6 +221,42 @@ class Compare(Model):
 class ForLoop(Model):
     type: Literal["for"] = "for"
     count: Annotated[int, Field(strict=True, ge=1, le=16383)]
+
+
+class MasterControl(Model):
+    type: Literal["mc"] = "mc"
+    number: Annotated[int, Field(strict=True, ge=0, le=127)]
+    enable: str = "TRUE"
+
+
+class MasterEnd(Model):
+    type: Literal["mce"] = "mce"
+    number: Annotated[int, Field(strict=True, ge=0, le=127)]
+
+
+class Differential(Model):
+    type: Literal["difu", "difd"]
+    destination: str = Field(pattern=r"^[YM](0|[1-9][0-9]{0,2})$")
+    trigger: str = "TRUE"
+
+    @model_validator(mode="after")
+    def check_destination(self) -> "Differential":
+        bit_address(self.destination)
+        return self
+
+
+class UpDownCounter(Model):
+    type: Literal["udctr"] = "udctr"
+    cv: str
+    preset: Annotated[int, Field(strict=True, ge=0, le=32767)]
+    pulse: str
+    up: str
+    clear: str
+
+    @model_validator(mode="after")
+    def check_cv(self) -> "UpDownCounter":
+        register_span(self.cv, 1, writable=True)
+        return self
 
 
 class LinearConversion(Model):
@@ -188,6 +291,52 @@ class BreakLoop(Model):
     enable: str = "always_on"
 
 
+class ComparisonContact(Model):
+    operation: Literal["eq", "gt", "lt", "ne", "ge", "le"]
+    sa: str
+    sb: str | Annotated[int, Field(strict=True, ge=0, le=32767)]
+
+    @model_validator(mode="after")
+    def check_operands(self) -> "ComparisonContact":
+        encode_comparison_word(self.sa)
+        if isinstance(self.sb, str):
+            encode_comparison_word(self.sb)
+        elif self.operation != "le":
+            raise ValueError("Only chained FUN175 constant Sb is sampled")
+        return self
+
+
+class FloatOperation(Model):
+    type: Literal["float_operation"] = "float_operation"
+    operation: Literal["i_to_f", "f_to_i", "add", "sub", "mul"]
+    sa: str
+    sb: str | None = None
+    destination: str
+    enable: str = "TRUE"
+
+    @property
+    def source_words(self) -> int:
+        return 1 if self.operation == "i_to_f" else 2
+
+    @property
+    def destination_words(self) -> int:
+        return 1 if self.operation == "f_to_i" else 2
+
+    @model_validator(mode="after")
+    def check_operands(self) -> "FloatOperation":
+        binary = self.operation in {"add", "sub", "mul"}
+        if binary != (self.sb is not None):
+            raise ValueError("Float arithmetic requires Sb; conversions forbid Sb")
+        for name in [self.sa, self.sb, self.destination]:
+            if name and name.startswith("R") and int(name[1:]) >= 3840:
+                raise ValueError("Float operands currently support R0..3839 and D0..3999 only")
+        register_span(self.sa, self.source_words)
+        if self.sb is not None:
+            register_span(self.sb, 2)
+        register_span(self.destination, self.destination_words, writable=True)
+        return self
+
+
 class Network(Model):
     """Left-associative logic steps, then coils. No implicit operator precedence."""
 
@@ -199,6 +348,8 @@ class Network(Model):
     condition: str | None = None
     edge: EdgeContact | None = None
     direct_rail: bool = False
+    branch_encoding: Literal["default", "test9_or"] = "default"
+    comparison_chain: list[ComparisonContact] = Field(default_factory=list, max_length=32)
     action: (
         Annotated[
             RegisterOr
@@ -209,14 +360,23 @@ class Network(Model):
             | Arithmetic
             | RegisterStep
             | Bitwise
-            | Compare,
+            | ExclusiveLogic
+            | FloatOperation
+            | WordConversion
+            | ZoneCompare
+            | Compare
+            | MasterControl
+            | MasterEnd
+            | Differential
+            | UpDownCounter,
+            # test9 introduces native master control, pulse relays and register counting.
             Field(discriminator="type"),
         ]
         | None
     ) = None
 
 
-HeaderProfile = Literal["FBs-20MC", "FBs-24MA", "FBs-24MA-test7"]
+HeaderProfile = Literal["FBs-20MC", "FBs-24MA", "FBs-24MA-test7", "FBs-32MA-test11"]
 
 
 class Ladder(Model):
@@ -279,8 +439,57 @@ TEST8_PAYLOADS = {
     6: "4fe8f4c6010840f0412c",
 }
 
+TEST9_PAYLOADS = {
+    0: "4810fc880000",
+    1: "4201910061009201e422c100",
+    2: "5201fd8000640392",
+    3: "fc890000",
+    4: "4811fc880002",
+    5: "4fe8f8f60874",
+    6: "4fe8fcf70875",
+    7: "400160026003f10000640b90",
+}
+
+
+TEST10_PAYLOADS = {
+    0: "4fe8f4ca13a442580adc",
+    1: "4fe8f4cc0b9a03920bd2",
+    2: "4fe8f7da0064fff601006ffcc1006ffdc1016ffec102",
+    3: "4fe8f5a6014d0bbc",
+    4: "4fe8f4a408000820",
+}
+
+
+TEST11_PAYLOADS = {
+    0: "f47f00150a0428def47f002208850902f47f002341bc03940101",
+    1: "f47f00180eb00f78f47f002503f40c58f67f0026059400641103",
+    2: "4fe8f47f000000000aca0aca",
+    3: "4fe8f47f00010acc40ce",
+    4: "4fe8f47f000200000ad0000044560ac6",
+    5: "4fe8f47f000300000a1200000a140acc",
+    6: "4fe8f47f000400000a0000000a020a04",
+}
+COMPARISON_CHAIN_CODES = {"gt": 0x22, "lt": 0x23, "ge": 0x25, "le": 0x26}
+COMPARISON_FIRST_CODES = {"eq": 0x15, "ne": 0x18}
+FLOAT_CODES = {"i_to_f": 0, "f_to_i": 1, "add": 2, "sub": 3, "mul": 4}
+
+
+def comparison_reads(network: Network) -> set[str]:
+    reads: set[str] = set()
+    for c in network.comparison_chain:
+        reads |= comparison_word_references(c.sa)
+        if isinstance(c.sb, str):
+            reads |= comparison_word_references(c.sb)
+    return reads
+
 
 def network_coils(network: Network) -> list[Coil]:
+    if isinstance(network.action, ZoneCompare):
+        z = network.action
+        return network.coils + z.within + z.above + z.below
+    if isinstance(network.action, Differential):
+        d = network.action.destination
+        return [*network.coils, Coil.model_validate({"device": d[0], "address": int(d[1:])})]
     if isinstance(network.action, Compare):
         return network.coils + network.action.equal + network.action.greater + network.action.less
     return network.coils
@@ -391,6 +600,10 @@ def _decode_legacy(payload: bytes) -> Network | None:
 
 
 def network_expression(network: Network) -> Expr:
+    if network.comparison_chain:
+        raise UnsupportedInstruction(
+            "Numeric comparison contacts require a register execution model"
+        )
     if network.condition is not None:
         if network.steps:
             raise UnsupportedInstruction("Use condition or steps, not both")
@@ -421,6 +634,55 @@ def compile_coils(coils: list[Coil]) -> bytes:
 
 def compile_network(network: Network) -> bytes:
     try:
+        if network.comparison_chain:
+            if (
+                network.empty
+                or network.steps
+                or network.condition is not None
+                or network.edge
+                or network.action
+                or network.block
+                or network.direct_rail
+                or network.branch_encoding != "default"
+                or not network.coils
+            ):
+                raise UnsupportedInstruction("Comparison chain requires its own coil network")
+            result = b""
+            for index, c in enumerate(network.comparison_chain):
+                codes = COMPARISON_FIRST_CODES if index == 0 else COMPARISON_CHAIN_CODES
+                if c.operation not in codes or (index == 0 and isinstance(c.sb, int)):
+                    raise UnsupportedInstruction(
+                        "Sampled comparison placement: first eq/ne, subsequent gt/lt/ge/le only"
+                    )
+                result += bytes.fromhex("f67f" if isinstance(c.sb, int) else "f47f")
+                result += codes[c.operation].to_bytes(2, "big") + encode_comparison_word(c.sa)
+                result += (
+                    c.sb.to_bytes(2, "big")
+                    if isinstance(c.sb, int)
+                    else encode_comparison_word(c.sb)
+                )
+            return result + compile_coils(network.coils)
+        if network.branch_encoding == "test9_or":
+            if (
+                network.empty
+                or network.action
+                or network.block
+                or network.edge
+                or network.direct_rail
+            ):
+                raise UnsupportedInstruction("test9_or is only a two-branch Boolean coil network")
+            expr = network_expression(network)
+            if not (
+                expr.op == "or"
+                and len(expr.items) == 2
+                and all(
+                    item.op == "and"
+                    and len(item.items) == 2
+                    and all(t.op == "contact" for t in item.items)
+                    for item in expr.items
+                )
+            ):
+                raise UnsupportedInstruction("test9_or requires two branches of two contacts each")
         if network.direct_rail and (
             network.empty
             or network.action
@@ -459,7 +721,75 @@ def compile_network(network: Network) -> bytes:
                 return bytes.fromhex("f590") + action.count.to_bytes(2, "big")
             if isinstance(action, NextLoop):
                 return bytes.fromhex("f491")
+            if isinstance(action, MasterEnd):
+                return bytes.fromhex("fc89") + action.number.to_bytes(2, "big")
+            if isinstance(action, Differential):
+                return (
+                    compile_expression(parse_expression(action.trigger))
+                    + bytes.fromhex("f8f6" if action.type == "difu" else "fcf7")
+                    + bit_address(action.destination).to_bytes(2, "big")
+                )
+            if isinstance(action, UpDownCounter):
+                return (
+                    compile_expression(parse_expression(action.pulse))
+                    + compile_expression(parse_expression(action.up), nested=True)
+                    + compile_expression(parse_expression(action.clear), nested=True)
+                    + bytes.fromhex("f100")
+                    + action.preset.to_bytes(2, "big")
+                    + encode_register(action.cv)
+                )
             prefix = compile_expression(parse_expression(action.enable))
+            if isinstance(action, ExclusiveLogic):
+                return (
+                    prefix
+                    + bytes.fromhex("f4ca" if action.operation == "xor" else "f4cc")
+                    + encode_word(action.sa)
+                    + encode_word(action.sb)
+                    + encode_word(action.destination, writable=True)
+                )
+            if isinstance(action, WordConversion):
+                source = (
+                    action.source.to_bytes(2, "big")
+                    if isinstance(action.source, int)
+                    else encode_word(action.source)
+                )
+                return (
+                    prefix
+                    + bytes.fromhex("f5a6" if action.operation == "to_bcd" else "f4a4")
+                    + source
+                    + encode_word(action.destination, writable=True)
+                )
+            if isinstance(action, ZoneCompare):
+                result = (
+                    prefix
+                    + bytes.fromhex("f7da")
+                    + action.upper.to_bytes(2, "big", signed=True)
+                    + action.lower.to_bytes(2, "big", signed=True)
+                    + encode_register(action.source)
+                )
+                for marker, coils in [
+                    ("6ffc", action.within),
+                    ("6ffd", action.above),
+                    ("6ffe", action.below),
+                ]:
+                    if coils:
+                        result += bytes.fromhex(marker) + compile_coils(coils)
+                return result
+            if isinstance(action, FloatOperation):
+                result = (
+                    prefix
+                    + bytes.fromhex("f47f")
+                    + FLOAT_CODES[action.operation].to_bytes(2, "big")
+                )
+                if action.operation == "f_to_i":
+                    result += encode_register(action.sa)
+                else:
+                    result += b"\x00\x00" + encode_register(action.sa)
+                    if action.sb is not None:
+                        result += b"\x00\x00" + encode_register(action.sb)
+                return result + encode_register(action.destination)
+            if isinstance(action, MasterControl):
+                return prefix + bytes.fromhex("fc88") + action.number.to_bytes(2, "big")
             if isinstance(action, BreakLoop):
                 return prefix + bytes.fromhex("f476a7fe")
             if isinstance(action, RegisterStep):
@@ -551,6 +881,8 @@ def compile_network(network: Network) -> bytes:
             if network.direct_rail
             else compile_expression(network_expression(network))
         )
+        if network.branch_encoding == "test9_or":
+            prefix = prefix.replace(bytes.fromhex("e443"), bytes.fromhex("e422"))
         return prefix + compile_coils(network.coils)
     except ValueError as error:
         raise UnsupportedInstruction(str(error)) from error
@@ -580,8 +912,85 @@ def decode_coils(data: bytes) -> list[Coil]:
     return coils
 
 
+def decode_status_coils(tail: bytes) -> list[list[Coil]]:
+    outputs: list[list[Coil]] = [[], [], []]
+    markers = {bytes.fromhex("6ffc"): 0, bytes.fromhex("6ffd"): 1, bytes.fromhex("6ffe"): 2}
+    while tail:
+        index = markers.get(tail[:2])
+        if index is None or outputs[index]:
+            raise ValueError("Unknown or repeated function status output")
+        end = next((j for j in range(2, len(tail), 2) if tail[j : j + 2] in markers), len(tail))
+        coils = decode_coils(tail[2:end])
+        if not coils:
+            raise ValueError("Status output marker requires coils")
+        outputs[index] = coils
+        tail = tail[end:]
+    return outputs
+
+
 def decode_network(payload: bytes) -> Network | None:
     try:
+        if payload[:2] == bytes.fromhex("f47f"):
+            comparison_items = []
+            offset11 = 0
+            while payload[offset11 : offset11 + 2] in {b"\xf4\x7f", b"\xf6\x7f"}:
+                chunk = payload[offset11 : offset11 + 8]
+                if len(chunk) != 8:
+                    return None
+                code11 = int.from_bytes(chunk[2:4], "big")
+                codes11 = COMPARISON_FIRST_CODES if offset11 == 0 else COMPARISON_CHAIN_CODES
+                op11 = next((k for k, v in codes11.items() if v == code11), None)
+                if op11 is None:
+                    return None
+                comparison_items.append(
+                    ComparisonContact.model_validate(
+                        {
+                            "operation": op11,
+                            "sa": decode_comparison_word(chunk[4:6]),
+                            "sb": int.from_bytes(chunk[6:8], "big")
+                            if chunk[0] == 0xF6
+                            else decode_comparison_word(chunk[6:8]),
+                        }
+                    )
+                )
+                offset11 += 8
+            n11 = Network(comparison_chain=comparison_items, coils=decode_coils(payload[offset11:]))
+            return n11 if compile_network(n11) == payload else None
+        for offset11 in range(2, len(payload) - 3, 2):
+            if payload[offset11 : offset11 + 2] != b"\xf4\x7f":
+                continue
+            try:
+                enable11 = expression_text(decode_expression(payload[:offset11]))
+                code11 = int.from_bytes(payload[offset11 + 2 : offset11 + 4], "big")
+                op_float = next((k for k, v in FLOAT_CODES.items() if v == code11), None)
+                tail11 = payload[offset11 + 4 :]
+                sb11 = None
+                if op_float == "f_to_i" and len(tail11) == 4:
+                    sa11 = decode_register(tail11[:2])
+                elif op_float == "i_to_f" and len(tail11) == 6 and tail11[:2] == b"\x00\x00":
+                    sa11 = decode_register(tail11[2:4])
+                elif (
+                    op_float in {"add", "sub", "mul"}
+                    and len(tail11) == 10
+                    and tail11[:2] == tail11[4:6] == b"\x00\x00"
+                ):
+                    sa11, sb11 = decode_register(tail11[2:4]), decode_register(tail11[6:8])
+                else:
+                    continue
+                float_action = FloatOperation.model_validate(
+                    {
+                        "operation": op_float,
+                        "sa": sa11,
+                        "sb": sb11,
+                        "destination": decode_register(tail11[-2:]),
+                        "enable": enable11,
+                    }
+                )
+                n11 = Network(action=float_action)
+                if compile_network(n11) == payload:
+                    return n11
+            except ValueError:
+                continue
         if len(payload) >= 6 and payload[:2] == bytes.fromhex("e000"):
             if payload[2] not in {0x40, 0x50}:
                 return None
@@ -601,9 +1010,105 @@ def decode_network(payload: bytes) -> Network | None:
             | Arithmetic
             | RegisterStep
             | Bitwise
+            | ExclusiveLogic
+            | FloatOperation
+            | WordConversion
+            | ZoneCompare
             | Compare
+            | MasterControl
+            | MasterEnd
+            | Differential
+            | UpDownCounter
             | None
         ) = None
+        candidates10 = []
+        for i in range(2, len(payload), 2):
+            opcode = payload[i : i + 2]
+            if opcode not in {b"\xf4\xca", b"\xf4\xcc", b"\xf7\xda", b"\xf5\xa6", b"\xf4\xa4"}:
+                continue
+            try:
+                enable10 = expression_text(decode_expression(payload[:i]))
+                tail10 = payload[i + 2 :]
+                candidate: ExclusiveLogic | WordConversion | ZoneCompare
+                if opcode in {b"\xf4\xca", b"\xf4\xcc"}:
+                    if len(tail10) != 6:
+                        continue
+                    candidate = ExclusiveLogic(
+                        operation="xor" if opcode[-1] == 0xCA else "xnr",
+                        sa=decode_word(tail10[:2]),
+                        sb=decode_word(tail10[2:4]),
+                        destination=decode_word(tail10[4:]),
+                        enable=enable10,
+                    )
+                elif opcode in {b"\xf5\xa6", b"\xf4\xa4"}:
+                    if len(tail10) != 4:
+                        continue
+                    candidate = WordConversion(
+                        operation="to_bcd" if opcode[-1] == 0xA6 else "to_bin",
+                        source=int.from_bytes(tail10[:2], "big")
+                        if opcode[-1] == 0xA6
+                        else decode_word(tail10[:2]),
+                        destination=decode_word(tail10[2:]),
+                        enable=enable10,
+                    )
+                else:
+                    if len(tail10) < 6:
+                        continue
+                    flags = decode_status_coils(tail10[6:])
+                    candidate = ZoneCompare(
+                        source=decode_register(tail10[4:6]),
+                        upper=int.from_bytes(tail10[:2], "big", signed=True),
+                        lower=int.from_bytes(tail10[2:4], "big", signed=True),
+                        enable=enable10,
+                        within=flags[0],
+                        above=flags[1],
+                        below=flags[2],
+                    )
+                n10 = Network(action=candidate)
+                if compile_network(n10) == payload:
+                    candidates10.append(n10)
+            except ValueError:
+                continue
+        if candidates10:
+            return candidates10[0] if len(candidates10) == 1 else None
+        if len(payload) == 4 and payload[:2] == bytes.fromhex("fc89"):
+            action = MasterEnd(number=int.from_bytes(payload[2:], "big"))
+        elif len(payload) >= 6 and payload[-4:-2] == bytes.fromhex("fc88"):
+            action = MasterControl(
+                number=int.from_bytes(payload[-2:], "big"),
+                enable=expression_text(decode_expression(payload[:-4])),
+            )
+        elif len(payload) >= 6 and payload[-4:-2] in {b"\xf8\xf6", b"\xfc\xf7"}:
+            action = Differential(
+                type="difu" if payload[-4] == 0xF8 else "difd",
+                destination=device_name(int.from_bytes(payload[-2:], "big")),
+                trigger=expression_text(decode_expression(payload[:-4])),
+            )
+        elif len(payload) >= 12 and payload[-6:-4] == bytes.fromhex("f100"):
+            prefix = payload[:-6]
+            triples = []
+            for split in range(4, len(prefix), 2):
+                if prefix[split] & 0xE0 != 0x60:
+                    continue
+                try:
+                    pulse, up = decode_two_inputs(prefix[:split])
+                    clear = decode_expression(bytes([prefix[split] - 0x20]) + prefix[split + 1 :])
+                    triples.append((pulse, up, clear))
+                except ValueError:
+                    continue
+            if len(triples) != 1:
+                return None
+            pulse, up, clear = triples[0]
+            action = UpDownCounter(
+                cv=decode_register(payload[-2:]),
+                preset=int.from_bytes(payload[-4:-2], "big"),
+                pulse=expression_text(pulse),
+                up=expression_text(up),
+                clear=expression_text(clear),
+            )
+        if action is not None:
+            network = Network(action=action)
+            return network if compile_network(network) == payload else None
         cmp_candidates = []
         for position in range(4, len(payload) - 1, 2):
             if payload[position : position + 2] != bytes.fromhex("f46a"):
@@ -774,9 +1279,12 @@ def decode_network(payload: bytes) -> Network | None:
             network = Network(
                 condition="TRUE"
                 if payload[:split] == bytes.fromhex("4feb")
-                else expression_text(decode_expression(payload[:split])),
+                else expression_text(
+                    decode_expression(payload[:split].replace(b"\xe4\x22", b"\xe4\x43"))
+                ),
                 coils=decode_coils(payload[split:]),
                 direct_rail=payload[:split] == bytes.fromhex("4feb"),
+                branch_encoding="test9_or" if b"\xe4\x22" in payload[:split] else "default",
             )
         return network if compile_network(network) == payload else None
     except (ValueError, RecursionError):
@@ -808,7 +1316,23 @@ def validation(ladder: Ladder) -> dict[str, object]:
     payloads = []
     loops: list[int] = []
     instruction_evidence = []
+    masters: dict[int, int] = {}
+    used_masters: set[int] = set()
     for index, network in enumerate(ladder.networks):
+        if isinstance(network.action, MasterControl):
+            number = network.action.number
+            if number in used_masters:
+                errors.append(f"N{index:03}: duplicate MC {number}")
+            if masters:
+                errors.append(
+                    f"N{index:03}: nested/crossed MC regions are not supported for generation"
+                )
+            masters[number] = index
+            used_masters.add(number)
+        elif isinstance(network.action, MasterEnd):
+            if network.action.number not in masters:
+                errors.append(f"N{index:03}: MCE {network.action.number} without matching MC")
+            masters.pop(network.action.number, None)
         if isinstance(network.action, ForLoop):
             loops.append(index)
             if len(loops) > 1:
@@ -823,12 +1347,67 @@ def validation(ladder: Ladder) -> dict[str, object]:
         try:
             payload = compile_network(network)
             payloads.append(payload.hex(" "))
+            if isinstance(network.action, (ExclusiveLogic, WordConversion, ZoneCompare)):
+                observed10 = next(
+                    (i for i, raw in TEST10_PAYLOADS.items() if payload.hex() == raw), None
+                )
+                instruction_evidence.append(
+                    {
+                        "network_index": index,
+                        "instruction": network.action.type,
+                        "status": "observed_export"
+                        if observed10 is not None
+                        else "inferred_variant",
+                        "source": f"test10.ldr N{observed10:03}"
+                        if observed10 is not None
+                        else "test10",
+                        "gui_import_verified": False,
+                    }
+                )
+            if network.comparison_chain or isinstance(network.action, FloatOperation):
+                observed11 = next(
+                    (i for i, raw in TEST11_PAYLOADS.items() if payload.hex() == raw), None
+                )
+                instruction_evidence.append(
+                    {
+                        "network_index": index,
+                        "instruction": "comparison_chain"
+                        if network.comparison_chain
+                        else "float_operation",
+                        "status": "observed_export"
+                        if observed11 is not None
+                        else "inferred_variant",
+                        "source": f"test11.ldr N{observed11:03}"
+                        if observed11 is not None
+                        else "test11",
+                        "gui_import_verified": False,
+                    }
+                )
+            observed9 = next((i for i, raw in TEST9_PAYLOADS.items() if payload.hex() == raw), None)
+            if observed9 is not None or isinstance(
+                network.action, (MasterControl, MasterEnd, Differential, UpDownCounter)
+            ):
+                instruction_evidence.append(
+                    {
+                        "network_index": index,
+                        "instruction": network.action.type
+                        if network.action
+                        else "test9 Boolean/Timer",
+                        "status": "observed_export"
+                        if observed9 is not None
+                        else "inferred_variant",
+                        "source": f"test9.ldr N{observed9:03}"
+                        if observed9 is not None
+                        else "test9",
+                        "gui_import_verified": False,
+                    }
+                )
             observed8 = next((i for i, raw in TEST8_PAYLOADS.items() if payload.hex() == raw), None)
             if (
                 observed8 is not None
                 or isinstance(network.action, (RegisterStep, Bitwise, Compare))
                 or network.direct_rail
-                or any(c.mode != "normal" for c in network.coils)
+                or (not network.comparison_chain and any(c.mode != "normal" for c in network.coils))
             ):
                 instruction_evidence.append(
                     {
@@ -893,9 +1472,19 @@ def validation(ladder: Ladder) -> dict[str, object]:
         except ValueError as error:
             errors.append(f"N{index:03}: {error}")
     errors.extend(f"N{i:03}: FOR missing NEXT" for i in loops)
+    errors.extend(f"N{i:03}: MC {number} missing MCE {number}" for number, i in masters.items())
     verified = payloads == ["41 00 a0 00 90 01 c1 00"] and not errors
     coils = [f"{c.device}{c.address}" for n in ladder.networks for c in network_coils(n)]
     warnings = [] if verified else ["Composition has not been verified by WinProLadder import."]
+    if any(
+        isinstance(n.action, (MasterControl, MasterEnd, Differential, UpDownCounter))
+        for n in ladder.networks
+    ):
+        warnings.append(
+            "test9: MC/MCE, DIFU/DIFD and 16-bit 07P.UDCTR encodings observed. "
+            "Changed operands/conditions are inferred; no built-in runtime simulation. "
+            "UDCTR clear uses direct polarity; never substitute ordinary Counter CLR encoding."
+        )
     if any(
         isinstance(n.action, (RegisterOr, ForLoop, NextLoop, BreakLoop)) for n in ladder.networks
     ):
@@ -916,6 +1505,20 @@ def validation(ladder: Ladder) -> dict[str, object]:
             "Arithmetic: test7 observes register Sa, positive constant Sb, EN=TRUE, U/S=FALSE. "
             "Changed operands/EN/U/S are inferred. MUL/DIV write two consecutive words. "
             "No arithmetic runtime simulation or connected status outputs; no GUI/PLC verification."
+        )
+    if any(
+        isinstance(n.action, (ExclusiveLogic, WordConversion, ZoneCompare)) for n in ladder.networks
+    ):
+        warnings.append(
+            "test10 functions: sampled 16-bit forms only; other operands/conditions "
+            "are inferred. No D/P forms, additional flag wiring or runtime simulation. "
+            "WX0/WY0 cover X0..15/Y0..15; T operands denote numeric timer words."
+        )
+    if any(n.comparison_chain or isinstance(n.action, FloatOperation) for n in ladder.networks):
+        warnings.append(
+            "test11: sampled comparison-chain positions and float subcodes only; "
+            "parameter changes are inferred. No D/P, indirect, ERR wiring or runtime model. "
+            "Unknown zero fields preserved; float values occupy two consecutive words."
         )
     if any(isinstance(n.action, (RegisterStep, Bitwise, Compare)) for n in ladder.networks):
         warnings.append(
@@ -953,7 +1556,7 @@ def simulate(
     result = validation(ladder)
     if not result["valid"]:
         raise UnsupportedInstruction(str(result["errors"]))
-    if any(network.action is not None for network in ladder.networks):
+    if any(network.action is not None or network.comparison_chain for network in ladder.networks):
         raise UnsupportedInstruction("Boolean simulation cannot execute register or loop actions")
     if any(network.block is not None for network in ladder.networks):
         raise UnsupportedInstruction("Boolean simulation cannot execute Timer/Counter blocks")

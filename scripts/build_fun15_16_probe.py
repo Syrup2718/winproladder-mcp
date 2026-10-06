@@ -21,6 +21,11 @@ PAYLOADS = {
 
 
 def build(output: Path) -> dict[str, object]:
+    if (ROOT / "samples/test8.ldr").exists():
+        raise ValueError(
+            "Probe A was disproved by test8: FUN15=F496, FUN16=F498; "
+            "F46A is CMP. Use native increment/decrement actions instead."
+        )
     source = (ROOT / "samples/test7.ldr").read_bytes()
     if hashlib.sha256(source).hexdigest() != SOURCE_HASH:
         raise ValueError("test7 source differs from the supplied reference")

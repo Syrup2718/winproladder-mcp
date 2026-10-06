@@ -54,13 +54,9 @@
 
 上述組合已放入 `get_design_guide` 的 `derived_increment_decrement`、`arithmetic_offset_scale_quotient` 範例，可直接交給 `generate_ldr`。範例位址是示意，不應自動套入使用者的專案；需按需求配置並說明用途。
 
-另做了以下原生編碼推理，但**未啟用**：
+test8 已確認原生 FUN15=`F496`、FUN16=`F498`、CMP=`F46A`、AND=`F4C6`；MCP v0.8.0 已支援。原生加一／減一優先使用 `increment`／`decrement`，上述 ADD／SUB 組合保留其自身語意。舊 F46A／F46C 猜測已被推翻，詳見 [test8／test9 原生 function](test8-test9-functions.md)。
 
-已另製作 [FUN15／16 原生編碼試檔 A](fun15-16-probe.md)，首選 `F46A/F46C` 加單一 D 參數，供人工匯入驗證。這些是獨立研究試檔，未加入正常 MCP 指令支援。
-
-- FUN11～14 的低 byte 為 62、64、66、68，步距 2；FUN15／16 的候選低 byte 可能是 6A／6C。但參數數量不同，不能連高 byte、輸入接線和參數布局一起照抄。
-- `F6xx` 可能含 Sb 常數的型別標記；`F4xx` 是否為對應暫存器型別仍待證明。既有 OR 使用 F4C8，只能支持這個假說，不能證明算術指令共用規則。
-- MOV、CMP、AND、XOR 不能僅依這四筆 opcode 推定。要確認，最有價值的後续證據是同一 ADD 只把 Sb 從常數換成 R1，以及原生 FUN15／16 的獨立匯出。這不是現有功能產檔的前置要求。
+`F6xx` 的 Sb 常數標記能否換成 `F4xx` 暫存器形式，仍需同指令的獨立匯出證據；MOV 等尚未啟用；XOR／XNR 已由 test10 確認並加入 v0.9.0，詳見 [test10](test10-functions.md)。
 
 ## 檔頭與驗證
 

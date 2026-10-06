@@ -27,7 +27,6 @@ from winproladder_mcp.ir import (
     validation,
 )
 from winproladder_mcp.layout import lower_ladder, memory_used
-from winproladder_mcp.ldr import parse
 from winproladder_mcp.service import Service
 from winproladder_mcp.timing import timed_simulate
 
@@ -116,7 +115,7 @@ def test_set_reset_hold_when_rung_false(mode, initial, expected):
     scans = [{}, {"X0": True}, {}, {}]
     boolean = simulate(ladder, scans, {"Y0": initial})
     assert [s["Y0"] for s in boolean] == expected
-    assert timed_simulate(ladder, scans, {"Y0": initial}, 10) == boolean
+    assert [s["Y0"] for s in timed_simulate(ladder, scans, {"Y0": initial}, 10)] == expected
 
 
 def test_set_reset_scan_order_and_edge_reset():
@@ -156,7 +155,7 @@ def test_inferred_set_reset_address_variants(address, device):
         "4fe8f46a40c8",
         "4fe8f46c40ca",  # Disproved old probe, never reinterpret as INC/DEC.
         "4fe8f4970ac8",
-        "4fe8f4ca010840f0412c",  # D modifier/XOR not established.
+        "4fe8f4cb010840f0412c",  # F4CA is XOR since test10; this variant is unknown.
         "4fe87fe8f46a0100010200016ffcc874",  # Unknown reserved word.
         "4fe87fe8f46a0100010200006ffac874",  # Unknown status selector.
         "4fe87fe8f46a0100010200006ffdc8746ffdc875",  # Duplicate status output.

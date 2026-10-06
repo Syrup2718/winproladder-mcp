@@ -32,18 +32,22 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
     header[:29] = b"Fatek Resource File Format 1\x16"
     header[128:134] = b"FB-RES"
     header[144:156] = b"WinProladder"
-    if profile not in {"FBs-20MC", "FBs-24MA", "FBs-24MA-test7"}:
+    if profile not in {"FBs-20MC", "FBs-24MA", "FBs-24MA-test7", "FBs-32MA-test11"}:
         raise ValueError("Unsupported header profile")
-    header[160:168] = ("FBs-24MA" if profile == "FBs-24MA-test7" else profile).encode("ascii")
+    header[160:168] = (
+        {"FBs-24MA-test7": "FBs-24MA", "FBs-32MA-test11": "FBs-32MA"}.get(profile, profile)
+    ).encode("ascii")
     # Preserve exact sampled metadata, including unknown profile-specific fields.
     header[176:178] = b"@@" if profile == "FBs-20MC" else bytes.fromhex("1045")
-    if profile == "FBs-24MA-test7":
+    if profile in {"FBs-24MA-test7", "FBs-32MA-test11"}:
         header[176:178] = bytes.fromhex("1040")
     header[192:194] = b"H\x01"
     return bytes(header)
 
 
 def header_profile(header: bytes) -> HeaderProfile | None:
+    if header == default_header("FBs-32MA-test11"):
+        return "FBs-32MA-test11"
     if header == default_header():
         return "FBs-20MC"
     if header == default_header("FBs-24MA"):
@@ -419,7 +423,9 @@ class Service:
         if not document.editable:
             raise LdrError("Cannot edit unknown framing/trailers or invalid CRC")
         if header_profile(document.header) is None:
-            raise LdrError("Editing requires an exact sampled FBs-20MC or FBs-24MA header")
+            raise LdrError(
+                "Editing requires an exact sampled FBs-20MC, FBs-24MA or FBs-32MA header"
+            )
         if not allow_unverified:
             raise ValueError(
                 "Edited program requires import verification; explicitly set allow_unverified=true"
@@ -465,8 +471,9 @@ class Service:
 
 def capabilities() -> dict[str, Any]:
     return {
-        "version": "0.7.0",
-        "profile": "Exact sampled headers: FBs-20MC, FBs-24MA (test6), FBs-24MA-test7; "
+        "version": "0.10.0",
+        "profile": "Exact sampled headers: FBs-20MC, FBs-24MA (test6), FBs-24MA-test7, "
+        "FBs-32MA-test11; "
         "the two 24MA variants retain differing unknown metadata",
         "transport": "stdio",
         "simulation": "Boolean or scan_ms T/C model; max 256 scans, not a PLC emulator",
@@ -501,6 +508,59 @@ def capabilities() -> dict[str, Any]:
             "compare_ldr: aligned record changes",
         ],
         "native_functions": {
+            "test11_functions": {
+                "comparison_contacts": "FUN170..175 via network.comparison_chain. "
+                "Sampled placement only: first eq/ne, subsequent gt/lt/ge/le in series; "
+                "coil outputs including SET/RESET. No OR, mixed Boolean contacts, "
+                "D form or runtime model",
+                "comparison_operands": "Direct existing word banks plus exact WS0, WM0, C2, R5111. "
+                "Only chained le permits constant Sb=0..32767. WM0 expands to M0..15 for policy. "
+                "Other WS/WM/C/high-R addresses and constant forms are not inferred",
+                "float": "FUN200 I->F, 201 F->I, 202 FADD, 203 FSUB, 204 FMUL; "
+                "float_operation action with operation i_to_f/f_to_i/add/sub/mul, "
+                "sa, sb, destination, EN. "
+                "Conversions forbid sb; arithmetic requires it",
+                "float_width": "I->F reads 1 word and writes 2; F->I reads 2 and writes 1; "
+                "FADD/FSUB/FMUL read 2 per source and write 2. Only R0..3839/D0..3999, "
+                "no bank crossing. No immediate operands, D/P modifiers, "
+                "ERR wiring or runtime model",
+                "evidence": "Exact test11 bytes observed; operand/enable changes inferred. "
+                "F47F extension subcodes and unknown zero fields preserved. "
+                "FBs-32MA-test11 exact header, not a generic conversion between CPUs",
+            },
+            "test10_functions": {
+                "xor_xnr": "FUN35 XOR F4CA / FUN36 XNR F4CC; exclusive_logic action, "
+                "sa/sb word sources and writable destination; no D=0 output wiring",
+                "zncmp": "FUN37 F7DA; zone_compare source R/D, signed constant upper/lower; "
+                "within/above/below normal coils. No register bounds or ERR wiring",
+                "to_bcd": "FUN20 F5A6; word_conversion operation to_bcd; "
+                "constant source 0..9999 only, writable word destination",
+                "to_bin": "FUN21 F4A4; word_conversion operation to_bin; word source/destination",
+                "words": "R/D banks; T0..255 read-only numeric values; exact WX0 and WY0 only. "
+                "WX0/WY0 expand to X0..15/Y0..15 for I/O contract and overlap checks",
+                "limitations": "Only sampled 16-bit opcode forms; parameter changes inferred. "
+                "No D/P variants, indirect addressing, runtime simulation or GUI verification",
+            },
+            "test8_functions": {
+                "increment": "FUN15 F496; action type increment, direct R/D destination, EN",
+                "decrement": "FUN16 F498; action type decrement, direct R/D destination, EN",
+                "compare": "FUN17 F46A; register Sa/Sb, EN/U/S, normal equal/greater/less coils; "
+                "preserve unknown 0000 field; no register runtime simulation",
+                "bitwise": "FUN18 AND F4C6 / FUN19 OR F4C8; direct R/D Sa, Sb, destination",
+                "coil_modes": "normal (optionally inverted), set, reset; test8 establishes Y forms",
+            },
+            "test9_functions": {
+                "mc": "FC88 + number; MCE FC89 + number; unique 0..127 inferred from manual. "
+                "Generation requires matched non-overlapping regions; no MC runtime simulation",
+                "difu_difd": "DIFU F8F6 / DIFD FCF7; trigger expression, Y/M bit destination; "
+                "M control dependencies, including implicit MC gates, cannot drive M destinations",
+                "udctr": "07P.UDCTR F100; pulse/up/clear Boolean inputs, constant preset 0..32767, "
+                "writable R/D cv; no 32-bit, register preset, CUP wiring or runtime simulation",
+                "branch_encoding": "test9_or preserves E422 two branches of two contacts; "
+                "no helpers",
+                "sample_status": "test9 decodes but MC2 lacks MCE2 and M1 implicitly drives "
+                "M100/M101: full generation rejected under this workspace policy",
+            },
             "arithmetic": {
                 "fun": [11, 12, 13, 14],
                 "action_type": "arithmetic",
@@ -552,10 +612,11 @@ def capabilities() -> dict[str, Any]:
             "constant offset, integer scaling, quotient and remainder via FUN11..14. "
             "Arithmetic status/overflow semantics remain those of FUN11..14, not FUN15/16.",
             "candidates_not_enabled": [
-                "FUN15/16: next low opcode bytes might be 6A/6C, but arity/type bytes unknown",
                 "Register Sb might change F6 to F4; needs same-operation exported comparison",
-                "MOV/CMP/AND/XOR cannot be established from current arithmetic samples",
+                "MOV and D/P modifiers still need independent exported evidence",
             ],
+            "corrected_hypothesis": "test8 disproves FUN15=F46A/FUN16=F46C; actual F496/F498. "
+            "F46A is CMP. Do not increment FUN numbers to guess opcode families.",
             "policy": "Unconfirmed native opcodes remain opaque; never emitted as supported",
         },
         "opaque_only": [

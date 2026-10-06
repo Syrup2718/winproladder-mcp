@@ -2,6 +2,8 @@
 
 ## 目錄
 
+本機交付檔與歷史資料位置見 [資料夾導覽](folders.md)。
+
 ```text
 src/winproladder_mcp/  MCP、IR、編譯器、配方與模擬器
 tests/                單元與 MCP 整合測試
