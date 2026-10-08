@@ -2,7 +2,7 @@
 
 使用者向 Agent 提出控制需求，Agent 呼叫本 MCP，取得真正的 WinProLadder `.ldr` 二進位檔案。自然語言由連接的 Agent 解讀；MCP 提供配方、編譯、邏輯簡化、掃描驗收與檔案下載，不需要使用者手寫 JSON。
 
-目標格式：既有 FBs-20MC 與 test6／test7 的 FBs-24MA 樣本格式。本專案不連接實體 PLC，也不涵蓋完整 FATEK 指令集。
+已取樣檔頭：FBs-20MC、FBs-24MA、FBs-32MA、FBs-40MA、FBs-44MN、FBs-60MC、FBn-26MC。本專案不連接實體 PLC，也不涵蓋完整 FATEK 指令集。
 
 ## 安裝
 
@@ -30,18 +30,16 @@ uv run winproladder-setup config --format codex
 
 在 WinProLadder 使用 Import Ladder Diagram 匯入 `.ldr`。分析現有檔案時，先放到工作目錄內，例如 `inputs/motor.ldr`。所有輸出使用新檔名，不覆蓋既有檔案。VM 共用目錄、安裝包與疑難排解見 [完整入門流程](docs/quickstart.md)。
 
-支援 11 種控制配方、多控制組合、最多 16 步原生 T 計時流程，以及自訂布林條件、原生 X 上升／下降沿、Timer/Counter、暫存器 OR、FUN11～14 加減乘除、FUN33 LCNV 線性轉換、單層迴圈。另支援原生 INC／DEC、CMP、AND、DIFU／DIFD、MC／MCE 及 07P.UDCTR 產檔，具體參數與樣本限制見 [原生 function 編碼](docs/test8-test9-functions.md)。v0.9.0 新增 [XOR、XNR、ZNCMP、→BCD、→BIN](docs/test10-functions.md)，包含 T 數值及 WX0/WY0 整字 I/O 檢查。v0.10.0 新增 [比較接點170～175、浮點200～204](docs/test11-functions.md) 與 FBs-32MA 樣本檔頭。生成時自動簡化條件與接圖。算術的暫存器／常數限制、加一減一組合與後續推理見 [算術及邊沿功能](docs/fun11-14-arithmetic.md)。
+目前支援布林階梯圖、T/C、11 種控制配方、順序控制，以及已取樣的算術、比較、浮點與 I/O 指令。完整指令按 FUNC 編號列於 [FEATURES](FEATURES.md)，參數與驗證證據由[文件索引](docs/README.md)查閱。
 
-未發版原始碼另支援 [test14 浮點216～220、IMDIO 與 ERR 接線](docs/test14-functions.md)，以及 [test13 FUN209～215](docs/test13-functions.md)、FBs-44MN 樣本檔頭，以及 [test12 浮點205～208](docs/test12-functions.md)、浮點常數與 FBs-40MA 樣本檔頭；現有安裝包不包含本次更新，版本號保持 0.10.0。
+目前原始碼版本仍為 **0.10.0**；最後安裝包不包含後續未發版功能。使用目前原始碼可取得 FUN76～80、浮點200～220、ERR 接線、手冊範圍與 RTC 快照檢查等更新，詳見[未發版變更](docs/unreleased.md)。只有使用者明確要求才更新版本或製作安裝包。
 
 X/Y 必須由需求明確指定，生成工具強制檢查 `io_contract`，不自動新增輸入、輸出或外部時脈。一般計時使用 T；暫停保留時間所需的 FUN87～89 編碼尚未支援，這類需求會明確拒絕，詳見 [計時器核對紀錄](docs/timer-evidence.md)。每次提供 `acceptance` 時，同時驗證需求模型與從生成檔案解碼的模型，失敗即不產檔。GUI 匯入及實體 PLC 執行是另外的驗證層級；未經 GUI 匯入的輸出標為候選檔。
 
 ## 文件
 
-- [現有功能總覽](FEATURES.md)：完整 FUNC、17 個 MCP 工具、配方、模擬與限制。
-
+- [現有功能總覽](FEATURES.md)：完整 FUNC、19 個 MCP 工具、配方、模擬與限制。
 - [資料夾導覽](docs/folders.md)：交付檔、安裝包、原始樣本及研究資料的位置。
-
 - [Agent 操作指南](docs/agent-guide.md)：工具選擇、生成流程、檔案交付。
 - [完整入門流程](docs/quickstart.md)：第一次產檔、VM 共用目錄、wheel 安裝。
 - [功能與參數](docs/reference.md)：配方、IR、時序模型與限制。

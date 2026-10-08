@@ -13,6 +13,23 @@ def design_guide() -> dict[str, Any]:
             "default_policy": "Physical signal/output required; no automatic X/Y assignment.",
         },
         "workflow": [
+            "test17: integer mean/sqrt/neg/abs/ext/crc16. MEAN count is a register, "
+            "not its numeric address: reserve/check 256 possible source words. "
+            "EXT writes 2 words. CRC16 MD=1 is reserved in the supplied manual; "
+            "preserve sampled encoding and do not claim known runtime semantics. "
+            "DIV48 single_input is F474, separate from F46C with U/S. "
+            "No execution simulation for these actions.",
+            "test16: div48 uses 3-word Sa/Sb/D; sum uses count=1..511 words. "
+            "pid enable is A/M, with separate bumpless BUM and direction D/R. "
+            "SR8/OR1/PR7/WR5; exclusive WR; status error/high/low coils. "
+            "PID interval and WDT setting use 10 ms units. WDT accepts 50,60,...120. "
+            "HSCTR only HSC0; HSCTW only sampled 93D source=0,target=PV,HSC0. "
+            "No native runtime simulation; do not infer other HSC selector layouts.",
+            "test15: native tkey/hkey/dsw/7sgdl/muxi. Supply full physical I/O contract, "
+            "not just starts. Reserve KL10/16 and WR1 (DSW WR2); WR cannot be reused. "
+            "MUXI uses ceil(rows/2) destination words. Implicit KL outputs are M-policy checked. "
+            "7SGDL mode is output polarity (0..3), not digit count or a 50 ms timing setting. "
+            "No scan/hardware simulation or D variants; exact special operands R3999/V supported.",
             "test14: float_operation log/pow/asin/acos/atan. pow sa=Sy exponent, sb=Sx base, "
             "result=sb**sa. Inverse trig results are radians, not 0.01 degree integers. "
             "Normal error coils on float actions are checked by I/O and M-to-M policy. "
@@ -22,7 +39,8 @@ def design_guide() -> dict[str, Any]:
             "in 0.01 degrees (-18000..18000), occupying one source word; destination is two. "
             "For neg/abs omit Sa/Sb: destination is read and written in place. "
             "ln/exp use floating sources, D bank ends at D3999 per their manual pages. "
-            "No runtime simulation, P or ERR wiring; FBs-44MN-test13 exact header available.",
+            "No runtime simulation or P; ERR wiring is supported for eligible operations; "
+            "FBs-44MN-test13 exact header available.",
             "Use get_manual_reference for operand maxima, manual edition differences and RTC. "
             "Sample addresses are not PLC maxima. RTC R4128..R4135 and M1952..M1955 are "
             "documented, but special-register/relay binary encoding remains unsupported. "
@@ -32,7 +50,7 @@ def design_guide() -> dict[str, Any]:
             "FZCP via float_zone_compare. Finite numeric sources are rounded to binary32. "
             "Reserve two words per float register, including R8000/R8001 and D4094/D4095. "
             "M999 is supported; comparison outputs remain subject to M-to-M policy. "
-            "F5 constant marker sampled; F6/F7 combinations inferred. No runtime simulation.",
+            "F5/F6 constant markers sampled; F7 combinations inferred. No runtime simulation.",
             "comparison_chain supports all six relations in first/series positions; "
             "all 12 positions user GUI-confirmed in the position probe; "
             "new combinations remain inferred. "

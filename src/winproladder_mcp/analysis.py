@@ -4,26 +4,33 @@ from typing import Any
 
 from .floating import float_source_reads, float_span
 from .ir import (
+    PID,
     Arithmetic,
     Bitwise,
     BreakLoop,
     Compare,
     Differential,
+    Divide48,
     ExclusiveLogic,
     FloatCompare,
     FloatOperation,
     FloatZoneCompare,
     ForLoop,
+    HighSpeedCounter,
     ImmediateIO,
+    IntegerFunction,
     LinearConversion,
     MasterControl,
     MasterEnd,
     Network,
     NextLoop,
+    PeripheralIO,
     RegisterOr,
     RegisterStep,
+    SumWords,
     Timer,
     UpDownCounter,
+    Watchdog,
     WordConversion,
     ZoneCompare,
     comparison_reads,
@@ -31,10 +38,18 @@ from .ir import (
     network_expression,
 )
 from .logic import contacts, expression_text, parse_expression
+from .peripheral import peripheral_words
 from .registers import register_span, word_references
 
 
 def describe(network: Network) -> str:
+    if isinstance(network.action, IntegerFunction):
+        return f"Integer {network.action.type}: {network.action.model_dump(exclude_none=True)}"
+    if isinstance(network.action, (Watchdog, HighSpeedCounter, Divide48, SumWords, PID)):
+        return f"Native {network.action.type}: {network.action.model_dump(exclude_none=True)}"
+
+    if isinstance(network.action, PeripheralIO):
+        return f"Peripheral {network.action.type}: {network.action.model_dump(exclude_none=True)}"
     if isinstance(network.action, ImmediateIO):
         immediate = network.action
         return (
@@ -218,6 +233,12 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
                 RegisterOr,
                 BreakLoop,
                 LinearConversion,
+                PID,
+                Divide48,
+                HighSpeedCounter,
+                IntegerFunction,
+                SumWords,
+                Watchdog,
                 Arithmetic,
                 RegisterStep,
                 Bitwise,
@@ -225,6 +246,7 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
                 MasterControl,
                 FloatOperation,
                 ImmediateIO,
+                PeripheralIO,
                 FloatCompare,
                 FloatZoneCompare,
                 ExclusiveLogic,
@@ -233,6 +255,13 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
             ),
         ):
             reads = contacts(parse_expression(network.action.enable))
+            if isinstance(network.action, PeripheralIO):
+                per = network.action
+                reads |= per.input_devices() | per.work_devices()
+                if per.source:
+                    reads |= peripheral_words(per.source)
+                if per.type in {"tkey", "hkey"}:
+                    reads |= per.destination_devices()
             if isinstance(network.action, ImmediateIO):
                 reads |= network.action.devices()
             if isinstance(network.action, FloatOperation):
@@ -293,7 +322,48 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
             reads = {network.edge.input}
         else:
             reads = contacts(network_expression(network)) if not network.empty else set()
+        if isinstance(network.action, (Watchdog, HighSpeedCounter, Divide48, SumWords, PID)):
+            from .layout import expressions
+
+            reads = set().union(*(contacts(expr) for expr in expressions(network)))
+            a16 = network.action
+            if isinstance(a16, Divide48):
+                reads |= register_span(a16.sa, 3) | register_span(a16.sb, 3)
+            elif isinstance(a16, SumWords):
+                reads |= register_span(a16.source, a16.count)
+            elif isinstance(a16, PID):
+                reads |= (
+                    register_span(a16.setting, 8)
+                    | register_span(a16.parameters, 7)
+                    | a16.work_devices()
+                    | {a16.destination, "D4005"}
+                )
+            elif isinstance(a16, HighSpeedCounter) and a16.type == "hsctr":
+                reads.add("HSC0.CV")
+        if isinstance(network.action, IntegerFunction):
+            reads = (
+                contacts(parse_expression(network.action.enable)) | network.action.source_devices()
+            )
         writes = {f"{c.device}{c.address}" for c in network_coils(network)}
+        if isinstance(network.action, IntegerFunction):
+            writes |= network.action.destination_devices()
+        if isinstance(network.action, Divide48):
+            writes |= register_span(network.action.destination, 3, writable=True)
+        elif isinstance(network.action, SumWords):
+            writes.add(network.action.destination)
+        elif isinstance(network.action, PID):
+            writes |= {network.action.destination} | network.action.work_devices()
+        elif isinstance(network.action, HighSpeedCounter):
+            writes |= (
+                {"R4096", "R4097"}
+                if network.action.type == "hsctr"
+                else {"R4098", "R4099", "HSC0.PV"}
+            )
+        elif isinstance(network.action, Watchdog):
+            writes.add("WDT.setting" if network.action.type == "wdt" else "WDT.elapsed")
+        if isinstance(network.action, PeripheralIO):
+            per = network.action
+            writes |= per.output_devices() | per.destination_devices() | per.work_devices()
         if isinstance(network.action, FloatOperation):
             writes |= float_span(network.action.destination, network.action.destination_words)
         elif isinstance(network.action, (ExclusiveLogic, WordConversion)):
@@ -320,9 +390,22 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
         for kind, devices in [("reads", reads), ("writes", writes)]:
             for device in sorted(devices):
                 references.setdefault(device, {"reads": [], "writes": []})[kind].append(index)
+    uncertain = [
+        i
+        for i, n in networks
+        if n is not None and isinstance(n.action, IntegerFunction) and n.action.type == "crc16"
+    ]
     return {
+        "reference_uncertainties": [
+            {
+                "network": i,
+                "reason": "CRC16 MD=1 is reserved in "
+                "the supplied manual; spans conservatively use MD=0 rules",
+            }
+            for i in uncertain
+        ],
         "devices": dict(sorted(references.items())),
-        "complete": not unknown,
+        "complete": not unknown and not uncertain,
         "opaque_networks": unknown,
         "multiple_writers": {d: v["writes"] for d, v in references.items() if len(v["writes"]) > 1},
         "note": "Decoded networks only. T/C block writes denote device state, not raw registers.",

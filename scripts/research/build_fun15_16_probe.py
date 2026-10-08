@@ -1,4 +1,4 @@
-"""Build explicit, unverified FUN15/16 hypotheses for manual WinProLadder import.
+"""Historical FUN15/16 hypotheses, disproved by test8; not a current generation entry.
 
 This is a research utility, not a production compiler extension. The normal MCP
 must keep these instruction payloads opaque until independent evidence arrives.
@@ -12,7 +12,7 @@ from pathlib import Path
 from winproladder_mcp.ir import decode_network
 from winproladder_mcp.ldr import FOOTER, Document, Record, parse
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 SOURCE_HASH = "cb7085f33a059f0eda2034ae9a18974249a49617b879b224cce0ab28057aed3c"
 PAYLOADS = {
     "FUN15": bytes.fromhex("4fe8f46a40c8"),

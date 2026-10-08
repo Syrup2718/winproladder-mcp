@@ -25,3 +25,12 @@
 - Preserve the user's current timing and I/O contract. Do not invent inputs.
 - Return the new `.ldr` link first. Clearly distinguish independent offline
   modeling, MCP built-in simulation, GUI import, and real PLC verification.
+
+## Instruction reference
+
+- For instruction modes, operand ranges, units, D/P variants and behavior, consult
+  the user-provided `C:/Fatek/FBe進階篇/進階篇應用指令.pdf` before assuming a limitation
+  or asking the user to explain it. Use the basic and RTC manuals where applicable.
+- Separate documented PLC semantics from implemented `.ldr` serialization. A missing
+  encoding is not an illegal PLC operand or unsupported PLC mode. Record exact pages
+  for unresolved differences between the manual and supplied GUI exports.

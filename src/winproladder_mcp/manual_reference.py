@@ -16,12 +16,60 @@ RTC_FIELDS = {
 def manual_reference() -> dict[str, Any]:
     return {
         "sources": {
-            "advanced": "進階篇應用指令.pdf: 7-151..171, 7-66, float operand tables",
+            "advanced": "進階篇應用指令.pdf: 7-3..11, 7-83..86, 7-151..171, 7-66..73",
             "basic": "基本應用指令.pdf: 7-2, 7-18..19, 7-26",
             "rtc": "CH16_萬年曆（RTC）.pdf: 16-1..2 (FB-PLC MA/MC with RTC)",  # noqa: RUF001
         },
         "rule": "Manual operand limits define PLC legality. Sample addresses are not maxima. "
         "LDR encoding support, CPU availability and manual editions are separate evidence.",
+        "instruction_modes": {
+            "DIV48": {
+                "page": "7-3",
+                "unsigned_when": {"0": "signed", "1": "unsigned"},
+                "operand_words": {"Sa": 3, "Sb": 3, "D": 3},
+                "outputs": {"FO0": "quotient zero", "FO1": "divisor zero; no execution"},
+                "encoding_boundary": "Manual explains U/S semantics, not LDR opcodes. "
+                "test16 F46C has U/S; test17 F474 omits it. The supplied page "
+                "does not identify fixed signedness for F474 or FBn-specific behavior.",
+            },
+            "MEAN": {
+                "page": "7-5",
+                "runtime_N": [2, 256],
+                "forms_in_manual": "16-bit, D=32-bit, P=rising-edge execution; N constant/register",
+                "invalid_N": "ERR=1; instruction does not execute",
+                "encoding_boundary": "Current encoder supports register N, 16-bit non-P form; "
+                "constant N and D/P are manual-legal but not encoded yet",
+            },
+            "CRC16": {
+                "page": "7-11",
+                "N_bytes": [1, 256],
+                "MD0": "Uses low byte of each of N consecutive source registers; "
+                "D receives CRC upper byte, D+1 receives lower byte",
+                "MD1": "Reserved in the supplied manual; export test17 proves GUI accepts "
+                "and encodes MD=1, but does not define its runtime algorithm",
+                "encoding_boundary": "MD=1 constant-N export form supported; MD=0 and "
+                "register N are described in the manual but their encodings are not implemented",
+            },
+            "PID": {
+                "page": "7-10",
+                "inputs": ["A/M", "BUM", "D/R"],
+                "Ts": {"range": [1, 3000], "unit_ms": 10},
+                "words": {"SR": 8, "OR": 1, "PR": 7, "WR": 5},
+                "WR": "Exclusive workspace; other locations must not reuse it",
+            },
+            "WDT": {
+                "page": "7-83",
+                "settings": list(range(50, 121, 10)),
+                "unit_ms": 10,
+            },
+            "HSCT": {
+                "pages": ["7-85", "7-86"],
+                "CN": {"0..3": "HSC0..3 or corresponding HST", "4": "HSTA"},
+                "D": {"0": "CV", "1": "PV"},
+                "encoding_boundary": "Manual selector values do not determine serialized "
+                "byte positions. Current anchors: HSC0 read and 93D source=0,HSC0,PV write",
+            },
+        },
         "limits": {
             "trig_angle": {"range": [-18000, 18000], "unit": "0.01 degrees", "source_words": 1},
             "FUN214_220_D_bank": [0, 3999],
@@ -67,7 +115,8 @@ def manual_reference() -> dict[str, Any]:
             "D capacity depends on CPU/manual edition; header alone does not validate hardware.",
             "M": "M0..1911: ordinary relay range, address extension inferred. "
             "Automatic helper allocation remains M0..255. M-to-M remains forbidden.",
-            "not_encoded": "Special M1912..2001, R3904..4167 (including RTC), S and arbitrary "
+            "not_encoded": "Special M1912..2001, R3904..4167 (except peripheral R3999), "
+            "S and arbitrary "
             "word groups are manual-defined but not yet implemented in the binary codec.",
             "forms": "Per-instruction K/register permissions apply. Integer Sb constants are "
             "still 0..32767 in the implemented opcode form; negative/32-bit/P/indirect forms "

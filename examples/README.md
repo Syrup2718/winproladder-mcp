@@ -11,3 +11,7 @@ JSON 可作為 `generate_ldr` 的 ladder 參數；完整配方與 schema 由 `ge
 Timer/Counter 檔案用於重現樣本，不是直接可用的製程設計。一般控制使用高階配方並明確指定輸入條件。
 
 批次生成範例請見 [開發指南](../docs/development.md)，工具用法見 [Agent 指南](../docs/agent-guide.md)。
+
+- [test16 原生指令](test16_functions.json)：七網路完整 IR；使用方式與限制見 [test16](../docs/test16-functions.md)。
+
+- [test17 原生指令](test17_functions.json)：八網路 IR；[支援形式與 CRC16 限制](../docs/test17-functions.md)。

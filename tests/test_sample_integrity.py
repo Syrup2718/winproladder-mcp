@@ -6,6 +6,9 @@ from pathlib import Path
 SAMPLES_DIR = Path(__file__).parents[1] / "samples"
 
 EXPECTED_SHA256 = {
+    "test17.ldr": "d8b9f6d8ad1d4e1364bb2707e1005ef93d48f59e367cfadbc506842845aad2ab",
+    "test16.ldr": "34d612e432e516587e28ffb45bb41ddfe245a67e29f948105f1c55380e716217",
+    "test15.ldr": "587d2bcff2794470be5524cf85355f2d74f303cf9d7213a4f26f6d3f92c73c1f",
     "test14.ldr": "5155c779d0a8bf2bf3fc6511ccd8287de95e266a75ba2dee07cb8caba92489b9",
     "test13.ldr": "c221aafbe6708f529680b537420d6733cc838cd8e8b4edb8dbff5129f247cb88",
     "test12.ldr": "ca61b33cf95e6af85cfe08dec0a6195fae475cad40330e3c00224389bd0caee5",

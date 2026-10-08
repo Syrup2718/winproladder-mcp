@@ -2,7 +2,7 @@
 
 ## 原始樣本
 
-`samples/` 保留十五份原始匯出，共 104 records；104 筆皆可語意解碼並重建，包括原生邊沿與 FUN11～14。雜湊及精確 payload 由 `tests/test_sample_integrity.py` 與編解碼測試固定。這是現有樣本覆蓋率，並不代表完整指令集。
+`samples/` 保留十八份原始匯出，共 124 records；124 筆皆可語意解碼並重建，包括原生邊沿與 FUN11～14。雜湊及精確 payload 由 `tests/test_sample_integrity.py` 與編解碼測試固定。這是現有樣本覆蓋率，並不代表完整指令集。
 
 | 樣本 | bytes | records | 覆蓋 |
 | --- | ---: | ---: | --- |
@@ -18,12 +18,12 @@
 | test9.ldr | 410 | 8 | MC／MCE、DIFU／DIFD、07P.UDCTR、原生並聯 |
 | test10.ldr | 375 | 5 | XOR、XNR、ZNCMP、→BCD、→BIN、T 數值與 WX/WY |
 | test11.ldr | 461 | 7 | 比較接點170～175、浮點200～204、FBs-32MA 檔頭 |
-
 | test12.ldr | 388 | 4 | 浮點205～208、binary32 常數、擴充 R/D/M、FBs-40MA 檔頭 |
-
 | test13.ldr | 409 | 7 | 浮點209～215、單 word 角度、原地雙 word、FBs-44MN 檔頭 |
-
 | test14.ldr | 404 | 6 | 浮點216～220、ERR 接線、74 IMDIO、F6 常數 |
+| test15.ldr | 391 | 5 | FUN76～80、KL／WR／連續 I/O、R3999／V |
+| test16.ldr | 423 | 7 | DIV48、SUM、PID、WDT、HSC0 讀寫、FBs-60MC 檔頭 |
+| test17.ldr | 420 | 8 | 整數25～29／31、DIV48新形式、FBn-26MC |
 
 test9 是格式樣本片段，能解碼不代表符合完整程式的 MC 配對與架構政策。新增 function 的驗證邊界見 [原生 function 編碼](test8-test9-functions.md)。
 
@@ -69,3 +69,15 @@ Connected 基準 SHA-256：`a4694aa8db73737ada925742ebc6ba164aee52e56137bd5ae201
 ## test14 未發版驗證
 
 MCP stdio 產檔下載與原檔 404 bytes 相同；559 項測試通過。包含 ERR 的 M→M 拒絕與 IMDIO X0～X9 完整契約。沒有數學／I/O 執行模型、GUI 或實機驗證。詳見 [test14](test14-functions.md)。
+
+## test15 未發版驗證
+
+MCP stdio 產檔下載與原檔 391 bytes 相同；592 項測試通過。KL 隱含 M 輸出參與三層政策檢查，WR 不可重複使用。未做掃描硬體執行模型、內建模擬、GUI 或 PLC 驗證。詳見 [test15](test15-functions.md)。
+
+## test16 未發版驗證
+
+完整423 bytes 經 MCP stdio 讀取、生成、resource 下載後與原始 test16 相同；630項測試通過。新增 DIV48 三字組、SUM 整段、PID WR 獨占、三路輸入／輸出政策檢查及 FBs-60MC 檔頭。未做獨立執行模型、MCP 內建執行模擬、GUI 或實機驗證。詳見 [test16](test16-functions.md)。
+
+## test17 未發版驗證
+
+MCP stdio 產檔、下載後420 bytes 與原檔完全相同，663項測試通過。包含 MEAN 暫存器 N 的最大可能跨度、EXT 雙字組、DIV48 兩種輸入形式與三層 M→M 檢查。CRC16 MD=1 的引用分析明列不完整；無獨立執行模型、內建模擬、GUI 或實機驗證。詳見 [test17](test17-functions.md)。

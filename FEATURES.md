@@ -2,13 +2,13 @@
 
 版本：**v0.10.0**。整理日期：**2026-10-08**。
 
-未發版更新：新增 [test14 FUN216～220、74 IMDIO 與浮點 ERR 接線](docs/test14-functions.md)。新增 [test13 FUN209～215](docs/test13-functions.md) 與 FBs-44MN 檔頭。依手冊擴充一般 M0..1911 與直接暫存器 bank；新增 `get_manual_reference`／`inspect_rtc_snapshot`，詳見 [手冊與 RTC](docs/manual-limits-rtc.md)。新增 FUN205 FDIV、206 FCMP、207 FZCP、208 FSQR、binary32 常數及 FBs-40MA 樣本檔頭，詳見 [test12](docs/test12-functions.md)。六種比較接點已開放首段／後續串聯位置；12 種位置寫法已由使用者確認試檔 GUI 正確。版本號仍為 v0.10.0，未重製安裝包。本文件依目前原始碼、MCP 工具與既有驗證紀錄整理。
+本文件描述**目前原始碼**。最後打包版本同為 v0.10.0，但未包含後續更新；差異集中記錄於[未發版變更](docs/unreleased.md)。原生指令按 FUNC 編號排列，能力與限制以此表及 MCP schema 為準。
 
 ## 1. 能完成什麼
 
 使用者提出控制需求 → 連接 MCP 的 AI Agent 解讀需求與 I/O → MCP 編譯、檢查 → 取得真正的 **WinProLadder `.ldr` 二進位檔案**。
 
-自然語言由 Agent 解讀；MCP 負責結構化設計、編碼、檔案與支援範圍內的模擬。產檔不需要啟動 WinProLadder 或 VM。目前支援已取樣的 FBs-20MC、FBs-24MA、FBs-32MA、FBs-40MA、FBs-44MN 檔頭，不代表支援全部 CPU、軟體版本或指令變體。
+自然語言由 Agent 解讀；MCP 負責結構化設計、編碼、檔案與支援範圍內的模擬。產檔不需要啟動 WinProLadder 或 VM。目前支援已取樣的 FBs-20MC、FBs-24MA、FBs-32MA、FBs-40MA、FBs-44MN、FBs-60MC、FBn-26MC 檔頭，不代表支援全部 CPU、軟體版本或指令變體。
 
 「支援指令」表示能讀取、編碼並產檔；不代表所有運算元、D/P 形式、狀態腳位或 PLC 執行行為都已驗證。
 
@@ -32,11 +32,29 @@
 | 19 | OR 位元或 | `bitwise` / `or` | 同上；保留舊 `register_or` 介面 |
 | 20 | →BCD 二進位轉 BCD | `word_conversion` / `to_bcd` | **目前僅接受 0..9999 常數來源**，不支援暫存器來源形式 |
 | 21 | →BIN BCD 轉二進位 | `word_conversion` / `to_bin` | word 來源及可寫目的地；不接受常數來源 |
+| 23 | DIV48 48-bit 除法 | `div48` | Sa／Sb／D 各3 words；two_inputs含U/S，single_input不含；D=0／ERR |
+| 24 | SUM 總和 | `sum` | 16-bit 來源整段，N=1..511 常數，R/D 目的地 |
+| 25 | MEAN 平均值 | `mean` | 暫存器 N，執行時2..256；來源按最大256 words檢查；ERR |
+| 26 | SQRT 整數平方根 | `sqrt` | 暫存器來源、目的地各1 word；ERR |
+| 27 | NEG 取負 | `neg` | 原地1 word，與浮點 FNEG 區分 |
+| 28 | ABS 絕對值 | `abs` | 原地1 word，與浮點 FABS 區分 |
+| 29 | EXT 符號擴展 | `ext` | 16-bit 擴展至相鄰2 words |
+| 30 | PID 泛用控制 | `pid` | A/M、BUM、D/R；SR8／OR1／PR7／WR5；ERR／HAL／LAL；Ts 單位10 ms |
+| 31 | CRC16 | `crc16` | 樣本 MD=1、常數 N=1..256；手冊標為保留，僅支援編碼、語意尚未確認 |
 | 33 | LCNV 線性轉換 | `lcnv` | Md、S、Ts、D、L；Md=0..3、L=1..64；超出原樣本的參數組合屬外推 |
 | 35 | XOR 位元互斥或 | `exclusive_logic` / `xor` | word Sa、Sb、可寫目的地；不支援 D=0 腳位接線 |
 | 36 | XNR 位元互斥或反相 | `exclusive_logic` / `xnr` | 同上；支援樣本中的 T1 數值來源 |
 | 37 | ZNCMP 區間比較 | `zone_compare` | R/D 來源；上下限為 -32768..32767 常數；區間內／高於上限／低於下限接普通線圈 |
 | 74 | IMDIO 即時 I/O 更新 | `imdio` | start=X/Y、count=1..36；整段 I/O 契約，限主機點位 |
+| 76 | TKEY 十進位按鍵 | `tkey` | X×10、KL×10；KPR 狀態輸出 |
+| 77 | HKEY 矩陣鍵盤 | `hkey` | X×4、Y×4、KL×16、WR×1；NKP／FKP |
+| 78 | DSW 指撥開關 | `dsw` | X×4、Y×4、WR×2；DN／ERR |
+| 79 | 7SGDL 七段掃描輸出 | `7sgdl` | Y×8、mode=0..3、WR×1；DN |
+| 80 | MUXI 多工接點輸入 | `muxi` | X×8、Y×N，N=2..8；結果 ceil(N/2) words、WR×1 |
+| 90 | WDT 設定監控計時器 | `wdt` | 50、60、…120，單位10 ms；90代表900 ms |
+| 91 | RSWDT 清除監控計時器 | `rswdt` | EN，無運算元 |
+| 92 | HSCTR 讀取硬體計數 | `hsctr` | 目前為 HSC0 精確形式 |
+| 93D | HSCTW 寫入硬體計數 | `hsctw` | 目前為 S=0、CN=HSC0、D=PV 精確形式 |
 | 170 | = 相等比較接點 | `comparison_chain` / `eq` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
 | 171 | > 大於比較接點 | `comparison_chain` / `gt` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
 | 172 | < 小於比較接點 | `comparison_chain` / `lt` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
@@ -63,7 +81,7 @@
 補充限制：
 
 - 比較接點支援六種關係的首段／後續串聯位置，位置試檔已獲 GUI 確認，其他運算元組合仍需驗證；仍不支援 OR、混合普通接點或 D 型；精確新增 WS0、WM0、C2；R5000..8071 已依手冊與編碼錨點擴充。WM0 的 M0..M15 讀取納入架構政策。
-- 浮點暫存器範圍為 R0..3839、R5000..8071、D0..4095；完整雙字组不得跨界。算術與比較支援有限 binary32 常數，轉換指令仍限暫存器。F5/F6 常數格式已取樣，F7 為推導；支援普通浮點 ERR 線圈，FLOG 已取樣，其他 ERR 形式屬推導。不支援 P／間接。詳見 [test12](docs/test12-functions.md)。
+- 浮點暫存器範圍為 R0..3839、R5000..8071、D0..4095；完整雙字組不得跨界；FUN214～220 的 D bank 依個別手冊頁限定至 D3999。算術與比較支援有限 binary32 常數，轉換指令仍限暫存器。F5/F6 常數格式已取樣，F7 為推導；支援普通浮點 ERR 線圈，FLOG 已取樣，其他 ERR 形式屬推導。不支援 P／間接。詳見 [test12](docs/test12-functions.md)。
 
 - 整數加減乘除尚不支援 Sa 常數、Sb 暫存器／負常數、狀態旗標接線、D/P 形式或間接定址。
 - CMP、ZNCMP 的結果線圈目前不接受 SET／RESET／反相模式。
@@ -86,13 +104,14 @@
 | 空網路 | 讀取與保留空網路 |
 | 設計說明 | 回傳 symbols、network_notes；高階產檔另附設計 JSON，尚未寫入 LDR 註解區段 |
 
-單份 IR 支援 1..1000 網路。接點／線圈及 T/C 的編碼範圍為 0..255，這不是實際 PLC 硬體點數保證。
+單份 IR 支援 1..1000 網路。X/Y/T/C 的編碼範圍為 0..255，一般 M 為 0..1911，這不是實際 PLC 硬體點數保證。
 
 ### Word 位址
 
 - 既有直接 R/D：R0..3839、唯讀輸入區 R3840..3903、R5000..8071、D0..4095；多 word 結果不能跨越已支援 bank 邊界。
 - XOR／XNR／→BIN 等新增 word 指令可讀 T0..255 數值；不把它解讀為 T 接點，且不開放 T 作目的地。
-- 新增 word 類型目前僅確認 WX0、WY0，其他 WX/WY 編號尚未開放。比較接點另有精確 WS0、WM0、C2、R5111 支援，不代表整個 bank 已開放。
+- 新增 word 類型目前僅確認 WX0、WY0，其他 WX/WY 編號尚未開放。比較接點另有精確 WS0、WM0、C2 支援；R5000..8071 已納入直接 R bank。
+- FUN76～80 另支援精確特殊 word R3999、V；這不等同整個 SR／RTC 區已實作。
 - WX0 涵蓋 X0..X15；WY0 涵蓋 Y0..Y15。I/O 檢查與寫入重疊分析會展開全部位元；WX0 不可寫入。
 
 ### 時間參數
@@ -125,11 +144,13 @@
 - `generate_sequence_ldr`：1..16 步，可設定各步輸出、計時、完成條件、逾時、reset、abort；每掃描最多轉移一步，同樣受架構政策檢查。
 - 順序控制預設使用原生 T。原生計時暫停續跑尚未支援；只有需求明確指定外部 clock 時，才能使用外部脈波模式，不自動補一個 X。
 
-## 5. MCP 工具清單（17 個）
+## 5. MCP 工具清單（19 個）
 
 | 工具 | 用途 |
 | --- | --- |
 | `get_capabilities` | 查詢版本、功能、限制、政策與輸出位置 |
+| `get_manual_reference` | 查閱手冊範圍、版本差異與 RTC 操作程序 |
+| `inspect_rtc_snapshot` | 檢查提供的 RTC 數值，不連線或操作 PLC |
 | `get_design_guide` | 取得需求轉設計流程、範例與 Ladder schema |
 | `generate_ldr` | 自訂條件／原生指令產生 .ldr，主要產檔入口 |
 | `generate_control_ldr` | 使用單一控制配方產檔 |
@@ -166,12 +187,12 @@
 | 獨立離線核對 | 原始樣本 bytes、CRC、逐 byte 往返、I/O 引用、政策、負數與邊界檢查；不等同 PLC 行為 |
 | MCP 內建模擬 | 布林接點／線圈、SET／RESET、單一 X 邊沿；指定 scan_ms 時支援有限的非保持 T/C 掃描模型 |
 | MCP 真實呼叫 | 已測試 stdio 連線、需求產檔、資源下載與 SHA-256 核對 |
-| WinProLadder GUI | 僅部分歷史檔案有人工匯入紀錄；test8～test14 新生成檔未因此自動取得 GUI 驗證 |
+| WinProLadder GUI | 僅部分歷史檔案有人工匯入紀錄；test8～test15 新生成檔未因此自動取得 GUI 驗證 |
 | 實體 PLC | 未執行實機驗證 |
 
 內建模擬每次最多 256 scans；有時間模型時 scan_ms 為 1..60000 ms。T 時間模型限預設 `.01S` 的 T0..49 及支援的 preset 範圍，不模擬 PLC 非同步時脈相位。數值比較接點、原生 action、暫存器運算、MC/MCE、DIFU/DIFD、UDCTR 與迴圈均未提供執行模型。
 
-v0.10.0 打包時為 **443 項通過**；目前未發版原始碼為 **559 項通過**。原始樣本目前 **15 份、104 networks** 可語意解碼與重建。這是現有樣本覆蓋，不代表所有程式都符合政策或所有指令變體皆有效。test11 的比較接點與浮點指令同樣區分離線、MCP 模擬、GUI 與實機驗證。
+v0.10.0 打包時為 **443 項通過**；目前未發版原始碼為 **663 項通過**。原始樣本目前 **18 份、124 networks** 可語意解碼與重建。這是現有樣本覆蓋，不代表所有程式都符合政策或所有指令變體皆有效。test11 的比較接點與浮點指令同樣區分離線、MCP 模擬、GUI 與實機驗證。
 
 ## 8. 仍未支援
 
@@ -202,3 +223,5 @@ Agent 應先核對需求 I/O 與目前功能，再選擇生成工具，最後交
 相關文件：[入門流程](docs/quickstart.md)、[資料夾導覽](docs/folders.md)、[FUNC test8/test9](docs/test8-test9-functions.md)、[FUNC test10](docs/test10-functions.md)、[詳細參數](docs/reference.md)。
 
 功能與欄位若有後續變更，以實際連線 MCP 回傳的 `get_capabilities`、`get_design_guide` 及工作區政策為準。
+
+最新原生指令與限制見 [test17](docs/test17-functions.md)。

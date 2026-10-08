@@ -41,4 +41,4 @@ FUN16 D101：4F E8  F4 6C  40 CA
 
 檔頭直接取自 test7，包含尚未解明的 `10 40` metadata。合併檔維持 LDR records 與畫面網路順序相反的規則。每個檔案的 SHA-256、payload、預期畫面及驗證狀態記在同目錄 `manifest.json`。
 
-研究腳本為 `scripts/build_fun15_16_probe.py`，以 `uv run python scripts/build_fun15_16_probe.py --output-dir <新的目錄>` 重建。已存在的目錄會被拒絕，原始 test7 不會改寫。正常 MCP 解碼器仍將這兩種 payload 保留為 opaque，避免未驗證的猜測影響一般產檔。
+研究腳本為 `scripts/research/build_fun15_16_probe.py`，僅供追溯舊假說；偵測到 test8 證據時會拒絕重建。已存在的目錄會被拒絕，原始 test7 不會改寫。正常 MCP 解碼器仍將這兩種 payload 保留為 opaque，避免未驗證的猜測影響一般產檔。

@@ -1,35 +1,25 @@
 # 資料夾導覽
 
-## 常用入口
-
-- [交付檔與驗證紀錄](../artifacts/README.md)：各次生成的 .ldr、設計資料與驗證 JSON。
-- [安裝包](../dist/README.md)：最後打包版本 v0.10.0；舊版按版本放在 dist/archive/。只有使用者明確要求才打包或更新版本。
-- [功能文件索引](README.md)：功能範圍、操作流程與編碼研究。
-
-## 各目錄用途
-
-| 目錄 | 用途 |
+| 位置 | 用途與入口 |
 | --- | --- |
-| src/winproladder_mcp/ | 正式 MCP 程式碼 |
-| tests/、tests/fixtures/ | 測試與基準檔 |
-| samples/、samples/screenshots/ | 使用者提供的原始 .ldr 與截圖，保留原名 |
-| examples/ | 可重用 JSON 範例 |
-| scripts/ | 維護用生成、檢查入口 |
-| docs/ | 使用與技術文件 |
-| artifacts/ | 生成檔與報告；保留路徑以維持既有 MCP 資源及下載連結 |
-| dist/ | 目前版安裝包 |
-| dist/archive/<版本>/ | 歷史 wheel 與原始碼安裝包 |
-| tmp/research-history/2026-10-06/ | 先前歸檔的一次性研究與環境紀錄 |
-| tmp/research-history/test11/ | test11 實作歷史與套件驗證腳本 |
-| tmp/research-history/cache-2026-10-06/ | 歸檔保存的測試／型別／格式檢查快取 |
-| tmp/mypy-pure/ | 本機型別檢查工具依賴 |
-| tmp/wheel-v*/ | 各版隔離安裝驗證環境，保留原位避免絕對路徑失效 |
-| tmp/pdfs/ | 手冊研究暫存 |
-| .venv/ | 開發環境 |
-| .codex/ | 本機 MCP 連線設定 |
+| `src/winproladder_mcp/` | 正式程式；模組分工見 [開發指南](development.md) |
+| `tests/`、`tests/fixtures/` | [測試分類](../tests/README.md)與不可覆寫的基準檔 |
+| `samples/`、`samples/screenshots/` | [原始樣本](../samples/README.md)，保留使用者提供的檔名與內容 |
+| `examples/` | [可重用 JSON 範例](../examples/README.md) |
+| `scripts/` | [維護入口](../scripts/README.md)；已被推翻的猜測歸入 `scripts/research/` |
+| `docs/` | [使用、技術與歷史文件索引](README.md) |
+| `artifacts/` | [生成檔與驗證報告](../artifacts/README.md)，保留既有下載與 MCP 資源路徑 |
+| `dist/`、`dist/archive/` | [最後安裝包與歷史版本](../dist/README.md)，只有明確要求才重新打包 |
+| `tmp/research-history/` | 一次性研究，按日期或主題歸檔 |
+| `tmp/organization-2026-10-08/` | 本次整理前的雜湊、移動清單及整理後核對結果 |
+| `tmp/mypy-pure/`、`tmp/wheel-v*/` | 本機工具與隔離驗證環境，保留原位避免環境內絕對路徑失效 |
+| `tmp/pdfs/` | 手冊研究暫存 |
+| `.venv/`、`.codex/` | 開發環境與本機 MCP 連線設定 |
 
-2026-10-06 整理：檔案移動前後皆核對 SHA-256；移動清單保存於 tmp/research-history/2026-10-06/organization-manifest.json。沒有刪除原始資料、修改控制邏輯或搬動 VM 共用目錄。
+## 整理紀錄
 
-歷史研究腳本保留原內容作為紀錄，可能依賴當時的目錄、套件或版本，不作為目前可直接執行的入口。正式操作請使用 scripts/ 與 MCP 工具。artifacts/、dist/、tmp/ 為本機資料，不隨 Git 發布。
+2026-10-08：將 test12～15、comparison-positions、manual-rtc 共六組研究資料移至 `tmp/research-history/`；歷史 FUN15／16 猜測腳本移至 `scripts/research/`，並修正其專案根目錄定位。每次移動均核對檔案雜湊。正式指令常數與能力回報分別集中到 `instruction_catalog.py`、`capabilities.py`，原有匯入介面保留。
 
-本次補充整理：v0.9.0 已歸檔至 dist/archive/0.9.0/；test11 研究資料與舊快取移入 research-history，未刪除檔案。36 個檔案移動後均核對 SHA-256，清單為 tmp/research-history/organization-2026-10-06-02.json。交付索引已重新掃描完整目錄，包含所有 test11 與倒數相關檔案。既有 .ldr、原始樣本與 VM 共享資料位置不變。
+之前的整理紀錄仍在 `tmp/research-history/2026-10-06/organization-manifest.json` 與 `tmp/research-history/organization-2026-10-06-02.json`。test11 研究與舊檢查快取也保存在該歷史目錄。
+
+歷史腳本可能依賴當時的路徑、套件或輸出，只作證據保存；目前操作請使用正式 MCP 工具及 `scripts/` 維護入口。`artifacts/`、`dist/`、`tmp/` 是本機資料，不隨 Git 發布。

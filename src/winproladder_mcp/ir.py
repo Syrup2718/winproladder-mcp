@@ -1,6 +1,6 @@
 """Inferred semantic IR/compiler; unknown instruction families remain opaque."""
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -11,6 +11,60 @@ from .floating import (
     encode_float_source,
     float_span,
     normalize_float_source,
+)
+from .instruction_catalog import (
+    ARITHMETIC_OPCODES as ARITHMETIC_OPCODES,
+)
+from .instruction_catalog import (
+    ARITHMETIC_PAYLOADS as ARITHMETIC_PAYLOADS,
+)
+from .instruction_catalog import (
+    BLOCK_CASES as BLOCK_CASES,
+)
+from .instruction_catalog import (
+    COMPARISON_CHAIN_CODES as COMPARISON_CHAIN_CODES,
+)
+from .instruction_catalog import (
+    COMPARISON_FIRST_CODES as COMPARISON_FIRST_CODES,
+)
+from .instruction_catalog import (
+    EDGE_PAYLOADS as EDGE_PAYLOADS,
+)
+from .instruction_catalog import (
+    FLOAT_CODES as FLOAT_CODES,
+)
+from .instruction_catalog import (
+    LCNV_PAYLOADS as LCNV_PAYLOADS,
+)
+from .instruction_catalog import (
+    PERIPHERAL_CODES as PERIPHERAL_CODES,
+)
+from .instruction_catalog import (
+    PERIPHERAL_FIELDS as PERIPHERAL_FIELDS,
+)
+from .instruction_catalog import (
+    TEST8_PAYLOADS as TEST8_PAYLOADS,
+)
+from .instruction_catalog import (
+    TEST9_PAYLOADS as TEST9_PAYLOADS,
+)
+from .instruction_catalog import (
+    TEST10_PAYLOADS as TEST10_PAYLOADS,
+)
+from .instruction_catalog import (
+    TEST11_PAYLOADS as TEST11_PAYLOADS,
+)
+from .instruction_catalog import (
+    TEST12_PAYLOADS as TEST12_PAYLOADS,
+)
+from .instruction_catalog import (
+    TEST13_PAYLOADS as TEST13_PAYLOADS,
+)
+from .instruction_catalog import (
+    TEST14_PAYLOADS as TEST14_PAYLOADS,
+)
+from .instruction_catalog import (
+    TEST15_PAYLOADS as TEST15_PAYLOADS,
 )
 from .logic import (
     Expr,
@@ -24,6 +78,7 @@ from .logic import (
     negate,
     parse_expression,
 )
+from .peripheral import bit_span, decode_peripheral_word, peripheral_word, peripheral_words
 from .registers import (
     comparison_word_references,
     decode_comparison_word,
@@ -480,6 +535,285 @@ class ImmediateIO(Model):
         return {f"{self.start[0]}{i}" for i in range(start, start + self.count)}
 
 
+class PeripheralIO(Model):
+    type: Literal["tkey", "hkey", "dsw", "7sgdl", "muxi"]
+    input: str | None = None
+    output: str | None = None
+    destination: str | None = None
+    key_start: str | None = None
+    work: str | None = None
+    source: str | None = None
+    mode: Annotated[int, Field(strict=True, ge=0, le=3)] | None = None
+    rows: Annotated[int, Field(strict=True, ge=2, le=8)] | None = None
+    enable: str = "TRUE"
+    pressed: list[Coil] = Field(default_factory=list, max_length=32)
+    function_pressed: list[Coil] = Field(default_factory=list, max_length=32)
+    done: list[Coil] = Field(default_factory=list, max_length=32)
+    error: list[Coil] = Field(default_factory=list, max_length=32)
+
+    def statuses(self) -> list[list[Coil]]:
+        if self.type == "tkey":
+            return [self.pressed]
+        if self.type == "hkey":
+            return [self.pressed, self.function_pressed]
+        if self.type == "dsw":
+            return [self.done, self.error]
+        return [self.done]
+
+    def input_devices(self) -> set[str]:
+        if self.input is None:
+            return set()
+        return bit_span(
+            self.input, 10 if self.type == "tkey" else 8 if self.type == "muxi" else 4, "X"
+        )
+
+    def output_devices(self) -> set[str]:
+        if self.output is None:
+            return set()
+        return bit_span(
+            self.output,
+            8
+            if self.type == "7sgdl"
+            else self.rows
+            if self.type == "muxi" and self.rows is not None
+            else 4,
+            "Y",
+        )
+
+    def key_devices(self) -> set[str]:
+        return (
+            bit_span(self.key_start, 10 if self.type == "tkey" else 16, "YM")
+            if self.key_start
+            else set()
+        )
+
+    def work_devices(self) -> set[str]:
+        return (
+            register_span(self.work, 2 if self.type == "dsw" else 1, writable=True)
+            if self.work
+            else set()
+        )
+
+    def destination_devices(self) -> set[str]:
+        count = (self.rows + 1) // 2 if self.type == "muxi" and self.rows is not None else 1
+        return (
+            peripheral_words(self.destination, count, writable=True) if self.destination else set()
+        )
+
+    @model_validator(mode="after")
+    def check_operands(self) -> "PeripheralIO":
+        expected = {
+            "tkey": {"input", "destination", "key_start"},
+            "hkey": {"input", "output", "destination", "key_start", "work"},
+            "dsw": {"input", "output", "destination", "work"},
+            "7sgdl": {"source", "output", "mode", "work"},
+            "muxi": {"input", "output", "rows", "destination", "work"},
+        }[self.type]
+        for name in [
+            "input",
+            "output",
+            "destination",
+            "key_start",
+            "work",
+            "source",
+            "mode",
+            "rows",
+        ]:
+            if (getattr(self, name) is not None) != (name in expected):
+                raise ValueError(f"{self.type}: incorrect or missing operand {name}")
+        allowed = {
+            "tkey": {"pressed"},
+            "hkey": {"pressed", "function_pressed"},
+            "dsw": {"done", "error"},
+            "7sgdl": {"done"},
+            "muxi": {"done"},
+        }[self.type]
+        for name in ["pressed", "function_pressed", "done", "error"]:
+            if getattr(self, name) and name not in allowed:
+                raise ValueError(f"{self.type}: invalid status {name}")
+        if any(c.mode != "normal" or c.inverted for group in self.statuses() for c in group):
+            raise ValueError("Peripheral status outputs require normal coils")
+        self.input_devices()
+        self.output_devices()
+        self.key_devices()
+        self.work_devices()
+        self.destination_devices()
+        if self.source:
+            peripheral_words(self.source)
+        other = self.destination_devices() | (
+            peripheral_words(self.source) if self.source else set()
+        )
+        if self.work_devices() & other:
+            raise ValueError("Peripheral WR cannot overlap source/destination")
+        return self
+
+
+class Watchdog(Model):
+    type: Literal["wdt", "rswdt"]
+    enable: str = "TRUE"
+    setting: Literal[50, 60, 70, 80, 90, 100, 110, 120] | None = None
+
+    @model_validator(mode="after")
+    def check(self) -> "Watchdog":
+        if (self.type == "wdt") != (self.setting is not None):
+            raise ValueError("WDT requires setting; RSWDT has no operand")
+        parse_expression(self.enable)
+        return self
+
+
+class HighSpeedCounter(Model):
+    """Exact HSC0 read / double-word constant-zero PV write anchors only."""
+
+    type: Literal["hsctr", "hsctw"]
+    enable: str = "TRUE"
+    counter: Literal["HSC0"] = "HSC0"
+    source: Literal[0] | None = None
+    target: Literal["PV"] | None = None
+
+    @model_validator(mode="after")
+    def check(self) -> "HighSpeedCounter":
+        if self.type == "hsctw":
+            if self.source != 0 or self.target != "PV":
+                raise ValueError("HSCTW currently requires sampled S=0, CN=HSC0, D=PV")
+        elif self.source is not None or self.target is not None:
+            raise ValueError("HSCTR has no source/target operands")
+        parse_expression(self.enable)
+        return self
+
+
+class Divide48(Model):
+    encoding: Literal["two_inputs", "single_input"] = "two_inputs"
+    type: Literal["div48"] = "div48"
+    enable: str = "TRUE"
+    unsigned_when: str = "FALSE"
+    sa: str
+    sb: str
+    destination: str
+    zero: list[Coil] = Field(default_factory=list, max_length=32)
+    error: list[Coil] = Field(default_factory=list, max_length=32)
+
+    @model_validator(mode="after")
+    def check(self) -> "Divide48":
+        if self.encoding == "single_input" and self.unsigned_when != "FALSE":
+            raise ValueError("Single-input DIV48 has no U/S pin; signedness is not inferred")
+        for name in [self.sa, self.sb, self.destination]:
+            register_span(name, 3, writable=True)
+        for coil in self.zero + self.error:
+            if coil.mode != "normal" or coil.inverted:
+                raise ValueError("DIV48 status outputs require normal coils")
+        parse_expression(self.enable)
+        parse_expression(self.unsigned_when)
+        return self
+
+
+class SumWords(Model):
+    type: Literal["sum"] = "sum"
+    enable: str = "TRUE"
+    source: str
+    count: Annotated[int, Field(strict=True, ge=1, le=511)]
+    destination: str
+
+    @model_validator(mode="after")
+    def check(self) -> "SumWords":
+        register_span(self.source, self.count)
+        register_span(self.destination, 1, writable=True)
+        parse_expression(self.enable)
+        return self
+
+
+class PID(Model):
+    """FUN30: enable denotes A/M, not an execution enable pin. Ts is in 10 ms units."""
+
+    type: Literal["pid"] = "pid"
+    enable: str = "TRUE"
+    bumpless: str = "FALSE"
+    direction: str = "TRUE"
+    interval: Annotated[int, Field(strict=True, ge=1, le=3000)]
+    setting: str
+    destination: str
+    parameters: str
+    work: str
+    error: list[Coil] = Field(default_factory=list, max_length=32)
+    high: list[Coil] = Field(default_factory=list, max_length=32)
+    low: list[Coil] = Field(default_factory=list, max_length=32)
+
+    def work_devices(self) -> set[str]:
+        return register_span(self.work, 5, writable=True)
+
+    @model_validator(mode="after")
+    def check(self) -> "PID":
+        blocks = [
+            register_span(n, size, writable=True)
+            for n, size in [
+                (self.setting, 8),
+                (self.destination, 1),
+                (self.parameters, 7),
+                (self.work, 5),
+            ]
+        ]
+        if blocks[-1] & set().union(*blocks[:-1]):
+            raise ValueError("PID WR cannot overlap SR/OR/PR")
+        for coil in self.error + self.high + self.low:
+            if coil.mode != "normal" or coil.inverted:
+                raise ValueError("PID status outputs require normal coils")
+        for expr in [self.enable, self.bumpless, self.direction]:
+            parse_expression(expr)
+        return self
+
+
+class IntegerFunction(Model):
+    type: Literal["mean", "sqrt", "neg", "abs", "ext", "crc16"]
+    enable: str = "TRUE"
+    source: str | None = None
+    count: str | Annotated[int, Field(strict=True, ge=1, le=256)] | None = None
+    destination: str
+    mode: Literal[1] | None = None
+    zero: list[Coil] = Field(default_factory=list, max_length=32)
+    error: list[Coil] = Field(default_factory=list, max_length=32)
+
+    def source_devices(self) -> set[str]:
+        if self.type in {"neg", "abs", "ext"}:
+            return {self.destination}
+        assert self.source is not None
+        if self.type == "mean":
+            assert isinstance(self.count, str)
+            # Runtime N may select any valid length 2..256. Never treat the
+            # count register address as its value or silently assume N=2.
+            return register_span(self.source, 256) | {self.count}
+        return register_span(self.source, self.count if isinstance(self.count, int) else 1)
+
+    def destination_devices(self) -> set[str]:
+        return register_span(
+            self.destination, 2 if self.type in {"ext", "crc16"} else 1, writable=True
+        )
+
+    @model_validator(mode="after")
+    def check(self) -> "IntegerFunction":
+        required_source = self.type in {"mean", "sqrt", "crc16"}
+        if required_source != (self.source is not None):
+            raise ValueError("Source required only for MEAN, SQRT and CRC16")
+        if self.type == "mean":
+            if not isinstance(self.count, str):
+                raise ValueError("MEAN currently requires register N; runtime valid range 2..256")
+            register_span(self.count, 1)
+        elif self.type == "crc16":
+            if not isinstance(self.count, int) or self.mode != 1:
+                raise ValueError("CRC16 currently requires constant N=1..256 and sampled MD=1")
+        elif self.count is not None:
+            raise ValueError("Count is only supported for MEAN/CRC16")
+        if self.type != "crc16" and (self.mode is not None or self.zero):
+            raise ValueError("Only CRC16 supports mode and zero status")
+        if self.type in {"neg", "abs", "ext"} and self.error:
+            raise ValueError("In-place integer operations have no ERR output")
+        for coil in self.zero + self.error:
+            if coil.mode != "normal" or coil.inverted:
+                raise ValueError("Integer status outputs require normal coils")
+        self.source_devices()
+        self.destination_devices()
+        parse_expression(self.enable)
+        return self
+
+
 class Network(Model):
     """Left-associative logic steps, then coils. No implicit operator precedence."""
 
@@ -504,6 +838,13 @@ class Network(Model):
             | RegisterStep
             | Bitwise
             | ExclusiveLogic
+            | IntegerFunction
+            | Watchdog
+            | HighSpeedCounter
+            | Divide48
+            | SumWords
+            | PID
+            | PeripheralIO
             | ImmediateIO
             | FloatOperation
             | FloatCompare
@@ -523,6 +864,8 @@ class Network(Model):
 
 
 HeaderProfile = Literal[
+    "FBn-26MC-test17",
+    "FBs-60MC-test16",
     "FBs-20MC",
     "FBs-24MA",
     "FBs-24MA-test7",
@@ -542,139 +885,6 @@ class UnsupportedInstruction(ValueError):
     pass
 
 
-# Exact exported networks, not extrapolated address/preset formulae.
-# kind, address, preset, optional Y coil, raw payload, source network
-BLOCK_CASES = (
-    ("timer", 1, 100, 4, "4fe8fd80006403926ffcc104", "test.ldr N003"),
-    ("timer", 2, 101, 0, "4fe8fd80006503946ffcc100", "test2.ldr N004"),
-    ("timer", 1, 256, None, "4fe8fd8001000392", "test3.ldr N004"),
-    ("timer", 2, 1000, None, "4fe8fd8003e80394", "test3.ldr N005"),
-    ("timer", 3, 101, None, "4fe8fd8000650396", "test3.ldr N006"),
-    ("counter", 1, 10, None, "4fe87fe8f940000a0592", "test3.ldr N007"),
-    ("counter", 2, 16, None, "4fe87fe8f94000100594", "test3.ldr N008"),
-    ("counter", 3, 17, None, "4fe87fe8f94000110596", "test3.ldr N009"),
-)
-
-# Independent payloads from test6, in display order. N008 is outside the screenshot;
-# its operand labels are inferred from the four photographed rows' address pattern.
-LCNV_PAYLOADS = {
-    0: "4fe8f57c0000010019a247d00001",
-    2: "4fe8f57c0000010219ac47d20001",
-    4: "4fe8f57c0000010419b647d40001",
-    6: "4fe8f57c0000010619c047d60001",
-    8: "4fe8f57c0000010819ca47d80001",
-}
-
-ARITHMETIC_OPCODES = {
-    "add": b"\xf6\x62",
-    "sub": b"\xf6\x64",
-    "mul": b"\xf6\x66",
-    "div": b"\xf6\x68",
-}
-ARITHMETIC_PAYLOADS = {
-    1: "4fe87fe8f6620100000540c8",
-    2: "4fe87fe8f66440c8000140ca",
-    3: "4fe87fe8f66640cc000240ce",
-    4: "4fe87fe8f6680102001440d2",
-}
-EDGE_PAYLOADS = {
-    "e0004000c101": "test4.ldr N005 / test7.ldr N000",
-    "e0005001c103": "test4.ldr N006",
-}
-
-TEST8_PAYLOADS = {
-    0: "4fe8f4960ac8",
-    1: "4fe8f4984190",
-    2: "e00050000100",
-    3: "4febd102",
-    4: "4feb1103",
-    5: "4fe87fe8f46a0100010200006ffcc8746ffdc8756ffec876",
-    6: "4fe8f4c6010840f0412c",
-}
-
-TEST9_PAYLOADS = {
-    0: "4810fc880000",
-    1: "4201910061009201e422c100",
-    2: "5201fd8000640392",
-    3: "fc890000",
-    4: "4811fc880002",
-    5: "4fe8f8f60874",
-    6: "4fe8fcf70875",
-    7: "400160026003f10000640b90",
-}
-
-
-TEST10_PAYLOADS = {
-    0: "4fe8f4ca13a442580adc",
-    1: "4fe8f4cc0b9a03920bd2",
-    2: "4fe8f7da0064fff601006ffcc1006ffdc1016ffec102",
-    3: "4fe8f5a6014d0bbc",
-    4: "4fe8f4a408000820",
-}
-
-
-TEST11_PAYLOADS = {
-    0: "f47f00150a0428def47f002208850902f47f002341bc03940101",
-    1: "f47f00180eb00f78f47f002503f40c58f67f0026059400641103",
-    2: "4fe8f47f000000000aca0aca",
-    3: "4fe8f47f00010acc40ce",
-    4: "4fe8f47f000200000ad0000044560ac6",
-    5: "4fe8f47f000300000a1200000a140acc",
-    6: "4fe8f47f000400000a0000000a020a04",
-}
-# Position families inferred from test11: six adjacent relations, series offset +0x0C.
-# First eq/ne and series gt/lt/ge/le are exported; all 12 positions are user GUI-confirmed.
-COMPARISON_FIRST_CODES = {"eq": 0x15, "gt": 0x16, "lt": 0x17, "ne": 0x18, "ge": 0x19, "le": 0x1A}
-TEST14_PAYLOADS = {
-    0: "4fe8f47f001000001b5c515a6ffcc827",
-    1: "4fe8f67f001100000f78400000000f8c",
-    2: "4fe8f47f001200000aca0acc",
-    3: "4fe8f47f001300000ace0ad2",
-    4: "4fe8f47f0014000028003ffc",
-    5: "4fe8f4e80000000a",
-}
-
-TEST13_PAYLOADS = {
-    0: "4fe8f47f00091b5c1b5e",
-    1: "4fe8f47f000a3ffe5ffc",
-    2: "4fe8f57f000b007b0bbc",
-    3: "4fe8f47f000c0bbc",
-    4: "4fe8f47f000d0a00",
-    5: "4fe8f47f000e00000a2c0ac4",
-    6: "4fe8f47f000f00003f7040f6",
-}
-
-TEST12_PAYLOADS = {
-    0: "4fe8f57f000540c0624e00005ffc3f70",
-    1: "4fe8f57f000642cc666600001a966ffcc1006ffdc88b6ffec847",
-    2: "4fe8f57f00073ffeb85200000a1e27fc6ffcc1016ffdc8136ffecbf7",
-    3: "4fe8f47f0008000040f60b94",
-}
-
-COMPARISON_CHAIN_CODES = {"eq": 0x21, "gt": 0x22, "lt": 0x23, "ne": 0x24, "ge": 0x25, "le": 0x26}
-FLOAT_CODES = {
-    "i_to_f": 0,
-    "f_to_i": 1,
-    "add": 2,
-    "sub": 3,
-    "mul": 4,
-    "div": 5,
-    "sqrt": 8,
-    "sin": 9,
-    "cos": 10,
-    "tan": 11,
-    "neg": 12,
-    "abs": 13,
-    "ln": 14,
-    "exp": 15,
-    "log": 16,
-    "pow": 17,
-    "asin": 18,
-    "acos": 19,
-    "atan": 20,
-}
-
-
 def comparison_reads(network: Network) -> set[str]:
     reads: set[str] = set()
     for c in network.comparison_chain:
@@ -685,6 +895,20 @@ def comparison_reads(network: Network) -> set[str]:
 
 
 def network_coils(network: Network) -> list[Coil]:
+    if isinstance(network.action, IntegerFunction):
+        return network.coils + network.action.zero + network.action.error
+    if isinstance(network.action, PID):
+        pid = network.action
+        return network.coils + pid.error + pid.high + pid.low
+    if isinstance(network.action, Divide48):
+        return network.coils + network.action.zero + network.action.error
+    if isinstance(network.action, PeripheralIO):
+        a = network.action
+        implicit = [
+            Coil.model_validate({"device": d[0], "address": int(d[1:])})
+            for d in sorted(a.key_devices())
+        ]
+        return network.coils + implicit + [c for group in a.statuses() for c in group]
     if isinstance(network.action, FloatOperation):
         return network.coils + network.action.error
     if isinstance(network.action, (ZoneCompare, FloatZoneCompare)):
@@ -941,6 +1165,14 @@ def compile_network(network: Network) -> bytes:
                     + action.preset.to_bytes(2, "big")
                     + encode_register(action.cv)
                 )
+            if isinstance(action, IntegerFunction):
+                from .integer_functions import compile_integer
+
+                return compile_integer(action)
+            if isinstance(action, (Watchdog, HighSpeedCounter, Divide48, SumWords, PID)):
+                from .control_functions import compile_control
+
+                return compile_control(action)
             prefix = compile_expression(parse_expression(action.enable))
             if isinstance(action, ExclusiveLogic):
                 return (
@@ -977,6 +1209,20 @@ def compile_network(network: Network) -> bytes:
                 ]:
                     if coils:
                         result += bytes.fromhex(marker) + compile_coils(coils)
+                return result
+            if isinstance(action, PeripheralIO):
+                result = prefix + bytes.fromhex(PERIPHERAL_CODES[action.type])
+                for field in PERIPHERAL_FIELDS[action.type]:
+                    value = getattr(action, field)
+                    if field in {"input", "output", "key_start"}:
+                        result += bit_address(value).to_bytes(2, "big")
+                    elif field in {"rows", "mode"}:
+                        result += value.to_bytes(2, "big")
+                    else:
+                        result += peripheral_word(value, writable=field != "source")
+                for i, coils in enumerate(action.statuses()):
+                    if coils:
+                        result += (0x6FFC + i).to_bytes(2, "big") + compile_coils(coils)
                 return result
             if isinstance(action, ImmediateIO):
                 return (
@@ -1166,6 +1412,15 @@ def decode_status_coils(tail: bytes) -> list[list[Coil]]:
 
 
 def decode_network(payload: bytes) -> Network | None:
+    from .control_functions import decode_control
+    from .integer_functions import decode_integer
+
+    integer = decode_integer(payload)
+    if integer is not None:
+        return integer
+    control = decode_control(payload)
+    if control is not None:
+        return control
     try:
         if payload[:2] == bytes.fromhex("f47f"):
             comparison_items = []
@@ -1193,6 +1448,51 @@ def decode_network(payload: bytes) -> Network | None:
                 offset11 += 8
             n11 = Network(comparison_chain=comparison_items, coils=decode_coils(payload[offset11:]))
             return n11 if compile_network(n11) == payload else None
+        for offset15 in range(2, len(payload) - 1, 2):
+            kind15 = next(
+                (
+                    k
+                    for k, v in PERIPHERAL_CODES.items()
+                    if payload[offset15 : offset15 + 2].hex() == v
+                ),
+                None,
+            )
+            if kind15 is None:
+                continue
+            try:
+                fields15 = PERIPHERAL_FIELDS[kind15]
+                end15 = offset15 + 2 + 2 * len(fields15)
+                if len(payload) < end15:
+                    continue
+                values15: dict[str, Any] = {
+                    "type": kind15,
+                    "enable": expression_text(decode_expression(payload[:offset15])),
+                }
+                for j, field in enumerate(fields15):
+                    raw15 = payload[offset15 + 2 + 2 * j : offset15 + 4 + 2 * j]
+                    values15[field] = (
+                        device_name(int.from_bytes(raw15, "big"))
+                        if field in {"input", "output", "key_start"}
+                        else int.from_bytes(raw15, "big")
+                        if field in {"mode", "rows"}
+                        else decode_peripheral_word(raw15)
+                    )
+                outs15 = decode_status_coils(payload[end15:])
+                names15 = {
+                    "tkey": ["pressed"],
+                    "hkey": ["pressed", "function_pressed"],
+                    "dsw": ["done", "error"],
+                    "7sgdl": ["done"],
+                    "muxi": ["done"],
+                }[kind15]
+                if any(outs15[len(names15) :]):
+                    continue
+                values15.update({name: outs15[i] for i, name in enumerate(names15)})
+                n15 = Network(action=PeripheralIO.model_validate(values15))
+                if compile_network(n15) == payload:
+                    return n15
+            except ValueError:
+                continue
         for offset11 in range(2, len(payload) - 3, 2):
             if payload[offset11 : offset11 + 2] not in {
                 b"\xf4\x7f",
@@ -1310,6 +1610,13 @@ def decode_network(payload: bytes) -> Network | None:
             | RegisterStep
             | Bitwise
             | ExclusiveLogic
+            | IntegerFunction
+            | Watchdog
+            | HighSpeedCounter
+            | Divide48
+            | SumWords
+            | PID
+            | PeripheralIO
             | ImmediateIO
             | FloatOperation
             | FloatCompare
@@ -1678,6 +1985,72 @@ def validation(ladder: Ladder) -> dict[str, object]:
             observed13 = next(
                 (i for i, raw in TEST13_PAYLOADS.items() if payload.hex() == raw), None
             )
+            if isinstance(network.action, PeripheralIO):
+                observed15 = next(
+                    (i for i, raw in TEST15_PAYLOADS.items() if payload.hex() == raw), None
+                )
+                instruction_evidence.append(
+                    {
+                        "network_index": index,
+                        "instruction": network.action.type,
+                        "status": "observed_export"
+                        if observed15 is not None
+                        else "inferred_variant",
+                        "source": f"test15.ldr N{observed15:03}"
+                        if observed15 is not None
+                        else "test15",
+                        "gui_import_verified": False,
+                    }
+                )
+            if isinstance(network.action, (Watchdog, HighSpeedCounter, Divide48, SumWords, PID)):
+                from .instruction_catalog import TEST16_PAYLOADS
+
+                observed16 = next(
+                    (i for i, raw in TEST16_PAYLOADS.items() if payload.hex() == raw), None
+                )
+                instruction_evidence.append(
+                    {
+                        "network_index": index,
+                        "instruction": network.action.type,
+                        "status": "observed_export"
+                        if observed16 is not None
+                        else "inferred_variant",
+                        "source": f"test16.ldr N{observed16:03}"
+                        if observed16 is not None
+                        else "test16",
+                        "gui_import_verified": False,
+                    }
+                )
+            if isinstance(network.action, (IntegerFunction, Divide48, SumWords)):
+                from .instruction_catalog import TEST17_PAYLOADS
+
+                observed17 = next(
+                    (i for i, raw in TEST17_PAYLOADS.items() if payload.hex() == raw), None
+                )
+                if (
+                    observed17 is not None
+                    or isinstance(network.action, IntegerFunction)
+                    or (
+                        isinstance(network.action, Divide48)
+                        and network.action.encoding == "single_input"
+                    )
+                ):
+                    instruction_evidence[:] = [
+                        e for e in instruction_evidence if e["network_index"] != index
+                    ]
+                    instruction_evidence.append(
+                        {
+                            "network_index": index,
+                            "instruction": network.action.type,
+                            "status": "observed_export"
+                            if observed17 is not None
+                            else "inferred_variant",
+                            "source": f"test17.ldr N{observed17:03}"
+                            if observed17 is not None
+                            else "test17",
+                            "gui_import_verified": False,
+                        }
+                    )
             observed14 = next(
                 (i for i, raw in TEST14_PAYLOADS.items() if payload.hex() == raw), None
             )
@@ -1856,7 +2229,43 @@ def validation(ladder: Ladder) -> dict[str, object]:
     errors.extend(f"N{i:03}: MC {number} missing MCE {number}" for number, i in masters.items())
     verified = payloads == ["41 00 a0 00 90 01 c1 00"] and not errors
     coils = [f"{c.device}{c.address}" for n in ladder.networks for c in network_coils(n)]
+    if any(isinstance(n.action, (PeripheralIO, PID)) for n in ladder.networks):
+        from .analysis import device_references
+
+        refs15 = device_references(list(enumerate(ladder.networks)))["devices"]
+        for i15, n15 in enumerate(ladder.networks):
+            if isinstance(n15.action, (PeripheralIO, PID)):
+                for word15 in sorted(n15.action.work_devices()):
+                    other15 = (set(refs15[word15]["reads"]) | set(refs15[word15]["writes"])) - {i15}
+                    if other15:
+                        errors.append(
+                            f"N{i15:03}: exclusive WR {word15} also used by "
+                            f"networks {sorted(other15)}"
+                        )
     warnings = [] if verified else ["Composition has not been verified by WinProLadder import."]
+    if any(isinstance(n.action, IntegerFunction) for n in ladder.networks):
+        warnings.append(
+            "test17: MEAN register N tracks all 256 potentially read words; "
+            "CRC16 MD=1 is reserved in the supplied manual, so only encoding "
+            "is supported and its runtime/reference semantics remain unverified. "
+            "No native runtime simulation."
+        )
+    if any(
+        isinstance(n.action, (Watchdog, HighSpeedCounter, Divide48, SumWords, PID))
+        for n in ladder.networks
+    ):
+        warnings.append(
+            "test16: WDT and PID times use 10 ms units. PID A/M is not EN. "
+            "Only sampled HSC0 read and 93D zero-to-PV write supported. "
+            "No runtime simulation or hardware verification."
+        )
+    if any(isinstance(n.action, PeripheralIO) for n in ladder.networks):
+        warnings.append(
+            "FUN76..80: sampled 16-bit forms; other operands/status wiring inferred. "
+            "Full I/O, KL and WR spans tracked; scan outputs require appropriate "
+            "transistor hardware. No D/P or runtime simulation. R3999/V are exact "
+            "special-word anchors, not whole-bank support."
+        )
     if any(isinstance(n.action, ImmediateIO) for n in ladder.networks):
         warnings.append(
             "IMDIO refreshes main-unit I/O only. N=1..36; X35/Y23 are table-wide "

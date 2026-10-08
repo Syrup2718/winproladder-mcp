@@ -15,7 +15,7 @@
 | 207 FZCP | `float_zone_compare` | source、upper、lower；within / above / below 普通 Y/M 線圈 |
 | 208 FSQR | `float_operation`, operation=`sqrt` | sa → destination，拒絕負常數來源 |
 
-所有 action 的 enable 預設 TRUE。狀態線圈仍受 I/O contract 與 M→M 政策檢查，不接受 SET／RESET／反相狀態線圈。不支援 P、間接定址或 ERR 接線。
+所有 action 的 enable 預設 TRUE。狀態線圈仍受 I/O contract 與 M→M 政策檢查，不接受 SET／RESET／反相狀態線圈。不支援 P／間接定址。浮點算術 ERR 已由 test14 補上；FCMP／FZCP 的限制維持不變。
 
 ## 可使用的結構
 
@@ -40,7 +40,7 @@
 子碼 0005..0008 分別對應這四個指令。FZCP 編碼順序是 **upper、lower、source**，不是畫面的 S、Su、Sl。FCMP/FZCP 的三個結果使用 6FFC、6FFD、6FFE。
 
 - F47F：暫存器來源；F57F：第一個編碼運算元為浮點常數，已有原始樣本。
-- F67F（第二個常數）與 F77F（兩個常數）是依旗標規律推導，已做內部編解碼測試，但未取得獨立原廠匯出或 GUI 確認。新增運算元／EN／狀態組合標為 `inferred_variant`。
+- F67F（第二個常數）已在 test14 FPOW 匯出取得證據；F77F（兩個常數）仍為推導，僅完成內部編解碼測試。兩者都不代表新檔經 GUI 確認。新增運算元／EN／狀態組合標為 `inferred_variant`。
 - 常數以 big-endian IEEE-754 binary32 存放：6.0120001 → 40C0624E、102.2 → 42CC6666、1.99 → 3FFEB852。讀回可能顯示單精度的實際十進位值；bytes 保持相同。拒絕 NaN、Infinity、溢位與布林值。
 - 常數也開放於既有 FADD／FSUB／FMUL；I→F、F→I 仍限暫存器來源。未知暫存器前綴及其他子碼保留 opaque，不假裝支援。
 
@@ -59,4 +59,4 @@
 - `test12_float_blocks.ldr`：N000/N003 除法與平方根片段。
 - `artifacts/test12_verification.json`：目前原始碼的 MCP stdio 讀取、產檔、resource 下載及政策拒絕測試。
 
-離線驗證包含 CRC、完整 bytes、邊界、雙字組、常數與政策；不包含独立 PLC 浮點執行模型。MCP 內建執行模擬尚未支援這些 action，會明確拒絕。新生成檔尚未經 GUI 匯入或實體 PLC 驗證；既有比較接點位置的人工確認不適用於 test12。
+離線驗證包含 CRC、完整 bytes、邊界、雙字組、常數與政策；不包含獨立 PLC 浮點執行模型。MCP 內建執行模擬尚未支援這些 action，會明確拒絕。新生成檔尚未經 GUI 匯入或實體 PLC 驗證；既有比較接點位置的人工確認不適用於 test12。
