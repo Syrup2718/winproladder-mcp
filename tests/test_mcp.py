@@ -30,6 +30,8 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
             tools = (await session.list_tools()).tools
             assert {tool.name for tool in tools} == {
                 "get_capabilities",
+                "get_manual_reference",
+                "inspect_rtc_snapshot",
                 "get_ldr_artifact",
                 "inspect_ldr",
                 "read_ldr",
@@ -52,6 +54,24 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
             assert create.annotations.destructiveHint is False
             caps = await session.call_tool("get_capabilities", {})
             assert not caps.isError
+            manual = await session.call_tool("get_manual_reference", {})
+            assert not manual.isError and "R4135" in manual.content[0].text
+            clock = await session.call_tool(
+                "inspect_rtc_snapshot",
+                {
+                    "registers": {
+                        "R4128": 0,
+                        "R4129": 30,
+                        "R4130": 8,
+                        "R4131": 7,
+                        "R4132": 10,
+                        "R4133": 26,
+                        "R4134": 3,
+                        "R4135": 2078,
+                    }
+                },
+            )
+            assert not clock.isError and "2078" in clock.content[0].text
             resource = await session.read_resource("winproladder://capabilities")
             assert "start_stop" in resource.contents[0].text
             block_ladder = {"networks": [{"block": {"type": "timer", "address": 1, "preset": 256}}]}

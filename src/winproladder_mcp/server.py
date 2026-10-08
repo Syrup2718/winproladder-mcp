@@ -17,7 +17,7 @@ from mcp.types import (
     TextContent,
     ToolAnnotations,
 )
-from pydantic import AnyUrl
+from pydantic import AnyUrl, StrictInt
 
 from .acceptance import AcceptanceCase
 from .control import ControlSpec, control_ladder
@@ -26,6 +26,7 @@ from .io_contract import IOContract
 from .ir import Ladder, Network, simulate, start_stop, validation
 from .layout import lower_ladder
 from .ldr import MAX_SIZE
+from .manual_reference import analyze_rtc_snapshot, manual_reference
 from .sequence import SequenceSpec, sequence_ladder
 from .service import Service, capabilities
 from .system import SystemSpec, system_ladder
@@ -126,6 +127,16 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
                 "format": "MCP binary resource (base64 on the wire), application/octet-stream",
             },
         }
+
+    @mcp.tool(annotations=read)
+    def get_manual_reference() -> dict[str, Any]:
+        """Get manual operand maxima, edition differences and RTC register/control procedures."""
+        return manual_reference()
+
+    @mcp.tool(annotations=read)
+    def inspect_rtc_snapshot(registers: dict[str, StrictInt]) -> dict[str, Any]:
+        """Validate supplied R4128..R4134 values and optional packed R4135; no PLC access."""
+        return analyze_rtc_snapshot(registers)
 
     @mcp.tool(annotations=read)
     def get_design_guide() -> dict[str, Any]:

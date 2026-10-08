@@ -147,7 +147,7 @@ def test_udctr_inferred_inputs_preserve_direct_clear_polarity():
     assert decoded.action.up == "FALSE"
     assert decoded.action.clear == "(X3 OR X4)"
     assert compile_network(decoded) == compile_network(n)
-    for invalid in ["R3840", "D4000"]:
+    for invalid in ["R3840", "D4096"]:
         with pytest.raises(ValueError):
             UpDownCounter(cv=invalid, preset=100, pulse="X1", up="X2", clear="X3")
 

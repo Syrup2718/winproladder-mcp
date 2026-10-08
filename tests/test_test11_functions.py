@@ -127,12 +127,12 @@ def test_grouped_m_policy_source_lowered_and_raw_export(tmp_path):
     [
         ("i_to_f", "R0", None, "R3839"),
         ("f_to_i", "R3839", None, "R1"),
-        ("add", "D3999", "R0", "D0"),
-        ("sub", "R0", "D3999", "R1"),
-        ("mul", "R0", "R1", "D3999"),
+        ("add", "D4095", "R0", "D0"),
+        ("sub", "R0", "D4095", "R1"),
+        ("mul", "R0", "R1", "D4095"),
         ("add", "R3840", "R0", "R2"),
         ("i_to_f", "T1", None, "R0"),
-        ("f_to_i", "R5111", None, "R0"),
+        ("f_to_i", "R8071", None, "R0"),
         ("add", "R0", None, "R2"),
         ("i_to_f", "R0", "R1", "R2"),
     ],
@@ -162,7 +162,7 @@ def test_valid_float_boundaries_and_inferred_enable(operation, sa, sb, dest):
     )
 
 
-@pytest.mark.parametrize("name", ["WS1", "WM16", "C3", "R5112", "R5000"])
+@pytest.mark.parametrize("name", ["WS1", "WM16", "C3", "R4999", "R8072"])
 def test_unconfirmed_compare_banks_not_extrapolated(name):
     with pytest.raises(ValueError):
         encode_comparison_word(name)
@@ -172,7 +172,7 @@ def test_unconfirmed_compare_banks_not_extrapolated(name):
     "first,later",
     [("gt", "lt"), ("lt", "ge"), ("ge", "le"), ("le", "lt"), ("eq", "eq"), ("ne", "ne")],
 )
-def test_unsampled_comparison_positions_rejected(first, later):
+def test_inferred_comparison_positions_roundtrip(first, later):
     n = Network(
         comparison_chain=[
             ComparisonContact(operation=first, sa="R0", sb="R1"),
@@ -180,7 +180,10 @@ def test_unsampled_comparison_positions_rejected(first, later):
         ],
         coils=[Coil(address=0)],
     )
-    assert not validation(Ladder(networks=[n]))["valid"]
+    report = validation(Ladder(networks=[n]))
+    assert report["valid"]
+    assert report["instruction_evidence"][0]["status"] == "inferred_variant"
+    assert decode_network(compile_network(n)) == n
 
 
 @pytest.mark.parametrize("value", [-1, 32768, True])
@@ -202,11 +205,11 @@ def test_mixed_logic_rejected_and_io_checked(tmp_path):
 @pytest.mark.parametrize(
     "raw",
     [
-        "4fe8f47f000500000a0000000a020a04",  # unconfirmed FDIV
+        "4fe8f47f000900000a0000000a020a04",  # unsupported subcode; FDIV known by test12
         "4fe8f47f000000010aca0aca",  # unknown extra word
         "4fe8f47f000200000ad0000144560ac6",
         "4fe8f47f00010acc40ce6ffcc100",  # ERR wiring
-        "f47f00160a0428de0101",  # unobserved first gt
+        "f47f001b0a0428de0101",  # outside inferred first-position family
         "f47f00150a040902f67f002209020064c100",  # unobserved constant gt
         "f47f00150a0428def47f002208850902f47f002341bc0394",  # missing coil
     ],
@@ -231,3 +234,36 @@ def test_header_unknown_fields_and_runtime_rejection():
                 run()
     n = Network(block=Timer(address=1, preset=0xF47F, enable="TRUE"))
     assert decode_network(compile_network(n)) == n
+
+
+@pytest.mark.parametrize(
+    "op,first,series",
+    [
+        ("eq", "0015", "0021"),
+        ("gt", "0016", "0022"),
+        ("lt", "0017", "0023"),
+        ("ne", "0018", "0024"),
+        ("ge", "0019", "0025"),
+        ("le", "001a", "0026"),
+    ],
+)
+def test_all_comparison_position_probe_bytes(op, first, series):
+    # Explicit hypothesis oracle, not an independent WinProLadder export.
+    n = Network(
+        comparison_chain=[
+            ComparisonContact(operation=op, sa="R600", sb="R700"),
+            ComparisonContact(operation=op, sa="R600", sb="R700"),
+        ],
+        coils=[Coil(address=1)],
+    )
+    expected = bytes.fromhex(f"f47f{first}0eb00f78f47f{series}0eb00f78c101")
+    assert compile_network(n) == expected
+    assert decode_network(expected) == n
+
+
+def test_first_constant_comparison_still_rejected():
+    n = Network(
+        comparison_chain=[ComparisonContact(operation="le", sa="C2", sb=100)],
+        coils=[Coil(address=1)],
+    )
+    assert not validation(Ladder(networks=[n]))["valid"]

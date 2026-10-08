@@ -14,16 +14,16 @@ class Expr:
 
 
 def bit_address(name: str) -> int:
-    if not re.fullmatch(r"[XYMTC](0|[1-9][0-9]{0,2})", name):
-        raise ValueError(f"Invalid device {name!r}; use X/Y/M/T/C0..255")
+    if not re.fullmatch(r"[XYMTC](0|[1-9][0-9]{0,3})", name):
+        raise ValueError(f"Invalid device {name!r}; use X/Y/T/C0..255 or M0..1911")
     address = int(name[1:])
-    if address > 255:
-        raise ValueError(f"Device outside inferred 0..255 profile: {name}")
+    if address > (1911 if name[0] == "M" else 255):
+        raise ValueError(f"Device outside supported X/Y/T/C0..255 or M0..1911 range: {name}")
     return {"X": 0, "Y": 0x100, "T": 0x200, "C": 0x300, "M": 0x810}[name[0]] + address
 
 
 def device_name(value: int) -> str:
-    if 0x810 <= value <= 0x90F:
+    if 0x810 <= value <= 0xF87:
         return f"M{value - 0x810}"
     if 0 <= value <= 0x3FF:
         return f"{'XYTC'[value >> 8]}{value & 255}"

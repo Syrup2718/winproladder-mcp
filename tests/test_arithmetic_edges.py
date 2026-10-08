@@ -105,7 +105,7 @@ def test_inferred_conditions_registers_and_constant_address_collision(operation)
         {"sb": 32768},
         {"destination": "R3840"},
         {"operation": "mul", "destination": "R3839"},
-        {"operation": "div", "destination": "D3999"},
+        {"operation": "div", "destination": "D4095"},
         {"operation": "div", "sb": 0},
         {"operation": "mov"},
         {"pulse": True},

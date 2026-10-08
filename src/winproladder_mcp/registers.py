@@ -1,4 +1,4 @@
-"""Direct word operands inferred from test5/test6, not from FUN numbers."""
+"""Direct word operands: manual banks and test5/6/11/12 binary anchors."""
 
 import re
 
@@ -12,9 +12,11 @@ def register_bank(name: str) -> tuple[int, int, int]:
         return address, 0, 3839
     if name[0] == "R" and address <= 3903:
         return address, 3840, 3903
-    if name[0] == "D" and address <= 3999:
-        return address, 0, 3999
-    raise ValueError("Supported inferred banks: R0..3839, R3840..3903, D0..3999")
+    if name[0] == "R" and 5000 <= address <= 8071:
+        return address, 5000, 8071
+    if name[0] == "D" and address <= 4095:
+        return address, 0, 4095
+    raise ValueError("Supported inferred banks: R0..3839, R3840..3903, R5000..8071, D0..4095")
 
 
 def register_span(name: str, count: int, *, writable: bool = False) -> set[str]:
@@ -30,6 +32,8 @@ def encode_register(name: str) -> bytes:
     address, low, _ = register_bank(name)
     if name[0] == "D":
         value = 0x4000 + 2 * address
+    elif low == 5000:
+        value = 0x2800 + 2 * (address - 5000)
     elif low == 3840:
         value = 0x100 + 2 * (address - 3840)
     else:
@@ -47,7 +51,9 @@ def decode_register(raw: bytes) -> str:
         return f"R{3840 + (value - 0x100) // 2}"
     if 0xA00 <= value <= 0x27FE:
         return f"R{(value - 0xA00) // 2}"
-    if 0x4000 <= value <= 0x5F3E:
+    if 0x2800 <= value <= 0x3FFE:
+        return f"R{5000 + (value - 0x2800) // 2}"
+    if 0x4000 <= value <= 0x5FFE:
         return f"D{(value - 0x4000) // 2}"
     raise ValueError("Unknown direct-register bank")
 
@@ -84,7 +90,7 @@ def word_references(name: str) -> set[str]:
     return {name}
 
 
-# Comparison-only operands: exact test11 addresses, not a guessed global bank mapping.
+# Exact test11 anchors; R5111 also belongs to the expanded common ROR bank.
 COMPARISON_WORDS = {
     "WS0": bytes.fromhex("0885"),
     "WM0": bytes.fromhex("0902"),

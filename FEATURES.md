@@ -1,12 +1,14 @@
 # WinProLadder MCP 現有功能總覽
 
-版本：**v0.10.0**。整理日期：**2026-10-06**。本文件依目前原始碼、MCP 工具與既有驗證紀錄整理。
+版本：**v0.10.0**。整理日期：**2026-10-08**。
+
+未發版更新：新增 [test14 FUN216～220、74 IMDIO 與浮點 ERR 接線](docs/test14-functions.md)。新增 [test13 FUN209～215](docs/test13-functions.md) 與 FBs-44MN 檔頭。依手冊擴充一般 M0..1911 與直接暫存器 bank；新增 `get_manual_reference`／`inspect_rtc_snapshot`，詳見 [手冊與 RTC](docs/manual-limits-rtc.md)。新增 FUN205 FDIV、206 FCMP、207 FZCP、208 FSQR、binary32 常數及 FBs-40MA 樣本檔頭，詳見 [test12](docs/test12-functions.md)。六種比較接點已開放首段／後續串聯位置；12 種位置寫法已由使用者確認試檔 GUI 正確。版本號仍為 v0.10.0，未重製安裝包。本文件依目前原始碼、MCP 工具與既有驗證紀錄整理。
 
 ## 1. 能完成什麼
 
 使用者提出控制需求 → 連接 MCP 的 AI Agent 解讀需求與 I/O → MCP 編譯、檢查 → 取得真正的 **WinProLadder `.ldr` 二進位檔案**。
 
-自然語言由 Agent 解讀；MCP 負責結構化設計、編碼、檔案與支援範圍內的模擬。產檔不需要啟動 WinProLadder 或 VM。目前支援已取樣的 FBs-20MC、FBs-24MA、FBs-32MA 檔頭，不代表支援全部 CPU、軟體版本或指令變體。
+自然語言由 Agent 解讀；MCP 負責結構化設計、編碼、檔案與支援範圍內的模擬。產檔不需要啟動 WinProLadder 或 VM。目前支援已取樣的 FBs-20MC、FBs-24MA、FBs-32MA、FBs-40MA、FBs-44MN 檔頭，不代表支援全部 CPU、軟體版本或指令變體。
 
 「支援指令」表示能讀取、編碼並產檔；不代表所有運算元、D/P 形式、狀態腳位或 PLC 執行行為都已驗證。
 
@@ -34,27 +36,36 @@
 | 35 | XOR 位元互斥或 | `exclusive_logic` / `xor` | word Sa、Sb、可寫目的地；不支援 D=0 腳位接線 |
 | 36 | XNR 位元互斥或反相 | `exclusive_logic` / `xnr` | 同上；支援樣本中的 T1 數值來源 |
 | 37 | ZNCMP 區間比較 | `zone_compare` | R/D 來源；上下限為 -32768..32767 常數；區間內／高於上限／低於下限接普通線圈 |
-| 170 | = 相等比較接點 | `comparison_chain` / `eq` | 目前限定串聯首段 |
-| 171 | > 大於比較接點 | `comparison_chain` / `gt` | 目前限定後續串聯段 |
-| 172 | < 小於比較接點 | `comparison_chain` / `lt` | 目前限定後續串聯段 |
-| 173 | <> 不等比較接點 | `comparison_chain` / `ne` | 目前限定串聯首段 |
-| 174 | >= 大於等於比較接點 | `comparison_chain` / `ge` | 目前限定後續串聯段 |
-| 175 | <= 小於等於比較接點 | `comparison_chain` / `le` | 目前限定後續串聯段，可用常數 Sb=0..32767 |
+| 74 | IMDIO 即時 I/O 更新 | `imdio` | start=X/Y、count=1..36；整段 I/O 契約，限主機點位 |
+| 170 | = 相等比較接點 | `comparison_chain` / `eq` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
+| 171 | > 大於比較接點 | `comparison_chain` / `gt` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
+| 172 | < 小於比較接點 | `comparison_chain` / `lt` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
+| 173 | <> 不等比較接點 | `comparison_chain` / `ne` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
+| 174 | >= 大於等於比較接點 | `comparison_chain` / `ge` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
+| 175 | <= 小於等於比較接點 | `comparison_chain` / `le` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認，可用常數 Sb=0..32767 |
 | 200 | I→F 整數轉浮點 | `float_operation` / `i_to_f` | 來源 1 word，結果 2 words |
 | 201 | F→I 浮點轉整數 | `float_operation` / `f_to_i` | 來源 2 words，結果 1 word |
 | 202 | FADD 浮點加法 | `float_operation` / `add` | 各來源及結果都是 2 words |
 | 203 | FSUB 浮點減法 | `float_operation` / `sub` | 同上 |
 | 204 | FMUL 浮點乘法 | `float_operation` / `mul` | 同上 |
+| 205 | FDIV 浮點除法 | `float_operation` / `div` | 暫存器或浮點常數來源；拒絕常數除零 |
+| 206 | FCMP 浮點比較 | `float_compare` | equal／greater／less 普通 Y/M 線圈 |
+| 207 | FZCP 浮點區間比較 | `float_zone_compare` | S 為暫存器，上下限可為暫存器或常數；within／above／below 線圈 |
+| 208 | FSQR 浮點平方根 | `float_operation` / `sqrt` | 暫存器或常數來源，結果 2 words |
+| 209～211 | FSIN／FCOS／FTAN | `float_operation` / `sin`、`cos`、`tan` | 16-bit 角度 -18000～18000，單位 0.01 度；結果為浮點雙字組 |
+| 212～213 | FNEG／FABS | `float_operation` / `neg`、`abs` | destination 原地讀寫雙字組，不提供 sa／sb |
+| 214～215 | FLN／FEXP | `float_operation` / `ln`、`exp` | 浮點來源／結果；這兩個指令的 D bank 上限為 D3999 |
+| 216～220 | FLOG／FPOW／FASIN／FACOS／FATAN | `float_operation` / `log`、`pow`、`asin`、`acos`、`atan` | pow 的 sa 為指數、sb 為底數；反三角結果為弧度 |
 | — | FOR 迴圈開始 | `for` | 次數為 1..16383 常數；單層迴圈 |
 | — | NEXT 迴圈結束 | `next` | 必須與 FOR 配對 |
 | — | BREAK 跳出迴圈 | `break` | EN 條件；必須位於迴圈內 |
 
 補充限制：
 
-- 比較接點僅支援上述串聯位置，不支援 OR、混合普通接點或 D 型；精確新增 WS0、WM0、C2、R5111。WM0 的 M0..M15 讀取納入架構政策。
-- 浮點來源／目的地限直接 R0..3839、D0..3999，完整字組不得跨界；不支援 P、常數、間接或 ERR 接線。詳見 [test11](docs/test11-functions.md)。
+- 比較接點支援六種關係的首段／後續串聯位置，位置試檔已獲 GUI 確認，其他運算元組合仍需驗證；仍不支援 OR、混合普通接點或 D 型；精確新增 WS0、WM0、C2；R5000..8071 已依手冊與編碼錨點擴充。WM0 的 M0..M15 讀取納入架構政策。
+- 浮點暫存器範圍為 R0..3839、R5000..8071、D0..4095；完整雙字组不得跨界。算術與比較支援有限 binary32 常數，轉換指令仍限暫存器。F5/F6 常數格式已取樣，F7 為推導；支援普通浮點 ERR 線圈，FLOG 已取樣，其他 ERR 形式屬推導。不支援 P／間接。詳見 [test12](docs/test12-functions.md)。
 
-- 加減乘除尚不支援 Sa 常數、Sb 暫存器／負常數、狀態旗標接線、D/P 形式或間接定址。
+- 整數加減乘除尚不支援 Sa 常數、Sb 暫存器／負常數、狀態旗標接線、D/P 形式或間接定址。
 - CMP、ZNCMP 的結果線圈目前不接受 SET／RESET／反相模式。
 - ZNCMP 尚不支援暫存器上下限或 ERR 接線，lower 不得大於 upper。
 - →BCD／→BIN 尚不支援 ERR 接線；LCNV 不支援 33P、間接定址、暫存器 L 或轉換表自動初始化。
@@ -79,7 +90,7 @@
 
 ### Word 位址
 
-- 既有直接 R/D：R0..3839、唯讀輸入區 R3840..3903、D0..3999；多 word 結果不能跨越已支援 bank 邊界。
+- 既有直接 R/D：R0..3839、唯讀輸入區 R3840..3903、R5000..8071、D0..4095；多 word 結果不能跨越已支援 bank 邊界。
 - XOR／XNR／→BIN 等新增 word 指令可讀 T0..255 數值；不把它解讀為 T 接點，且不開放 T 作目的地。
 - 新增 word 類型目前僅確認 WX0、WY0，其他 WX/WY 編號尚未開放。比較接點另有精確 WS0、WM0、C2、R5111 支援，不代表整個 bank 已開放。
 - WX0 涵蓋 X0..X15；WY0 涵蓋 Y0..Y15。I/O 檢查與寫入重疊分析會展開全部位元；WX0 不可寫入。
@@ -155,12 +166,12 @@
 | 獨立離線核對 | 原始樣本 bytes、CRC、逐 byte 往返、I/O 引用、政策、負數與邊界檢查；不等同 PLC 行為 |
 | MCP 內建模擬 | 布林接點／線圈、SET／RESET、單一 X 邊沿；指定 scan_ms 時支援有限的非保持 T/C 掃描模型 |
 | MCP 真實呼叫 | 已測試 stdio 連線、需求產檔、資源下載與 SHA-256 核對 |
-| WinProLadder GUI | 僅部分歷史檔案有人工匯入紀錄；test8～test11 新生成檔未因此自動取得 GUI 驗證 |
+| WinProLadder GUI | 僅部分歷史檔案有人工匯入紀錄；test8～test14 新生成檔未因此自動取得 GUI 驗證 |
 | 實體 PLC | 未執行實機驗證 |
 
 內建模擬每次最多 256 scans；有時間模型時 scan_ms 為 1..60000 ms。T 時間模型限預設 `.01S` 的 T0..49 及支援的 preset 範圍，不模擬 PLC 非同步時脈相位。數值比較接點、原生 action、暫存器運算、MC/MCE、DIFU/DIFD、UDCTR 與迴圈均未提供執行模型。
 
-v0.10.0 完整測試紀錄為 **443 項通過**。原始樣本目前 **12 份、87 networks** 可語意解碼與重建。這是現有樣本覆蓋，不代表所有程式都符合政策或所有指令變體皆有效。test11 的比較接點與浮點指令同樣區分離線、MCP 模擬、GUI 與實機驗證。
+v0.10.0 打包時為 **443 項通過**；目前未發版原始碼為 **559 項通過**。原始樣本目前 **15 份、104 networks** 可語意解碼與重建。這是現有樣本覆蓋，不代表所有程式都符合政策或所有指令變體皆有效。test11 的比較接點與浮點指令同樣區分離線、MCP 模擬、GUI 與實機驗證。
 
 ## 8. 仍未支援
 

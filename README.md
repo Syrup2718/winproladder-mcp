@@ -32,6 +32,8 @@ uv run winproladder-setup config --format codex
 
 支援 11 種控制配方、多控制組合、最多 16 步原生 T 計時流程，以及自訂布林條件、原生 X 上升／下降沿、Timer/Counter、暫存器 OR、FUN11～14 加減乘除、FUN33 LCNV 線性轉換、單層迴圈。另支援原生 INC／DEC、CMP、AND、DIFU／DIFD、MC／MCE 及 07P.UDCTR 產檔，具體參數與樣本限制見 [原生 function 編碼](docs/test8-test9-functions.md)。v0.9.0 新增 [XOR、XNR、ZNCMP、→BCD、→BIN](docs/test10-functions.md)，包含 T 數值及 WX0/WY0 整字 I/O 檢查。v0.10.0 新增 [比較接點170～175、浮點200～204](docs/test11-functions.md) 與 FBs-32MA 樣本檔頭。生成時自動簡化條件與接圖。算術的暫存器／常數限制、加一減一組合與後續推理見 [算術及邊沿功能](docs/fun11-14-arithmetic.md)。
 
+未發版原始碼另支援 [test14 浮點216～220、IMDIO 與 ERR 接線](docs/test14-functions.md)，以及 [test13 FUN209～215](docs/test13-functions.md)、FBs-44MN 樣本檔頭，以及 [test12 浮點205～208](docs/test12-functions.md)、浮點常數與 FBs-40MA 樣本檔頭；現有安裝包不包含本次更新，版本號保持 0.10.0。
+
 X/Y 必須由需求明確指定，生成工具強制檢查 `io_contract`，不自動新增輸入、輸出或外部時脈。一般計時使用 T；暫停保留時間所需的 FUN87～89 編碼尚未支援，這類需求會明確拒絕，詳見 [計時器核對紀錄](docs/timer-evidence.md)。每次提供 `acceptance` 時，同時驗證需求模型與從生成檔案解碼的模型，失敗即不產檔。GUI 匯入及實體 PLC 執行是另外的驗證層級；未經 GUI 匯入的輸出標為候選檔。
 
 ## 文件

@@ -24,6 +24,8 @@ Y、計時器或暫存器指令。不可改名或停用規則來繞過限制。
 
 | 工具 | 用途 |
 | --- | --- |
+| `get_manual_reference` | 手冊定義的運算元上限、版本差異與 RTC 操作方式 |
+| `inspect_rtc_snapshot` | 檢查提供的 RTC 數值及 R4135 時分組合，不連線 PLC |
 | `get_capabilities` | 能力、限制、工作目錄與 schema |
 | `get_design_guide` | 設計流程與 IR 範例 |
 | `get_ldr_artifact` | 取得生成檔的二進位內容與 SHA-256，供 client 下載保存 |

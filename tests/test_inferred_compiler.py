@@ -103,7 +103,7 @@ def test_random_trees_against_independent_vm() -> None:
         "X0 + X1",
         "X00",
         "X256",
-        "M999",
+        "M1912",
         "R0",
         "X0 and",
         "(" * 1000 + "X0" + ")" * 1000,
@@ -160,8 +160,8 @@ def test_all_sample_decoding_coverage() -> None:
             if decoded is not None:
                 assert compile_network(decoded) == record.payload
                 count += 1
-    # Twelve exports; decoding does not imply structural/policy validity.
-    assert count == 87
+    # Thirteen exports; decoding does not imply structural/policy validity.
+    assert count == 104
 
 
 def test_flat_chains_keep_node_limit_without_consuming_branch_depth() -> None:

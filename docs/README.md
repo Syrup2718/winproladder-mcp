@@ -3,9 +3,14 @@
 | 文件 | 用途 |
 | --- | --- |
 | [現有功能總覽](../FEATURES.md) | v0.10.0 完整功能、FUNC、工具與限制 |
+| [資料夾導覽](folders.md) | 原始碼、交付檔、安裝包與研究資料分類 |
 | [Agent 操作指南](agent-guide.md) | 從需求到檔案的工具流程 |
 | [功能與參數](reference.md) | 配方、IR、模擬及支援限制 |
 | [算術與邊沿](fun11-14-arithmetic.md) | FUN11～14、原生接點、後續功能推理 |
+| [手冊範圍與 RTC](manual-limits-rtc.md) | 運算元上限、手冊差異、萬年曆程序與快照檢查 |
+| [test14 原生 function](test14-functions.md) | 浮點216～220、ERR、IMDIO 整段 I/O |
+| [test13 原生 function](test13-functions.md) | 三角函數209～211、原地212～213、對數／指數214～215 |
+| [test12 原生 function](test12-functions.md) | 浮點205～208、常數、擴充字組與比較線圈 |
 | [test11 原生 function](test11-functions.md) | 比較接點170～175、浮點200～204、字組範圍 |
 | [test10 原生 function](test10-functions.md) | XOR、XNR、ZNCMP、→BCD、→BIN，整字 I/O 契約 |
 | [test8／test9 原生 function](test8-test9-functions.md) | DIFU／DIFD、MC／MCE、UDCTR、INC／DEC、CMP、AND |

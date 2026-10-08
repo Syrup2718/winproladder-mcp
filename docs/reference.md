@@ -35,7 +35,7 @@ SET/RST 與邊沿配方由布林網路實作，不代表原生指令編碼已支
 {"networks": [{"condition": "(Y0 OR X0) AND NOT X1", "coils": [{"device": "Y", "address": 0}]}]}
 ```
 
-`condition` 支援 AND/OR/NOT、`&`/`|`/`!`、括號與 TRUE/FALSE；AND 優先於 OR。X/Y/M/T/C 編碼範圍為 0..255，普通及反相 Y/M coil 可用 `inverted` 指定。此範圍不是實體 PLC 容量保證。
+`condition` 支援 AND/OR/NOT、`&`/`|`/`!`、括號與 TRUE/FALSE；AND 優先於 OR。X/Y/T/C 編碼範圍為 0..255，一般 M 為 0..1911，普通及反相 Y/M coil 可用 `inverted` 指定。此範圍不是實體 PLC 容量保證。
 
 限制：1..1000 網路，條件最多 4096 字元、256 AST nodes、深度 32。Legacy `steps` 按左摺疊執行，不能與 condition 混用。工具 schema 列出完整欄位及互斥條件。
 
@@ -74,3 +74,5 @@ FUN11～14 已支援 16-bit、Sa 暫存器／Sb 非負常數的加減乘除。�
 ## test11 新增
 
 比較接點170～175的已取樣串聯位置、浮點200～204及FBs-32MA檔頭已加入，詳見 [test11](test11-functions.md)。浮點按1／2字組寬度檢查，WM0比較展開M0..15檢查政策；兩者尚無執行模擬。
+
+手冊運算元範圍與 RTC 使用方式見 [手冊與萬年曆](manual-limits-rtc.md)。

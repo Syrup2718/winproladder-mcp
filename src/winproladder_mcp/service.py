@@ -32,20 +32,38 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
     header[:29] = b"Fatek Resource File Format 1\x16"
     header[128:134] = b"FB-RES"
     header[144:156] = b"WinProladder"
-    if profile not in {"FBs-20MC", "FBs-24MA", "FBs-24MA-test7", "FBs-32MA-test11"}:
+    if profile not in {
+        "FBs-20MC",
+        "FBs-24MA",
+        "FBs-24MA-test7",
+        "FBs-32MA-test11",
+        "FBs-40MA-test12",
+        "FBs-44MN-test13",
+    }:
         raise ValueError("Unsupported header profile")
     header[160:168] = (
-        {"FBs-24MA-test7": "FBs-24MA", "FBs-32MA-test11": "FBs-32MA"}.get(profile, profile)
+        {
+            "FBs-24MA-test7": "FBs-24MA",
+            "FBs-32MA-test11": "FBs-32MA",
+            "FBs-40MA-test12": "FBs-40MA",
+            "FBs-44MN-test13": "FBs-44MN",
+        }.get(profile, profile)
     ).encode("ascii")
     # Preserve exact sampled metadata, including unknown profile-specific fields.
     header[176:178] = b"@@" if profile == "FBs-20MC" else bytes.fromhex("1045")
-    if profile in {"FBs-24MA-test7", "FBs-32MA-test11"}:
+    if profile in {"FBs-24MA-test7", "FBs-32MA-test11", "FBs-40MA-test12"}:
         header[176:178] = bytes.fromhex("1040")
+    if profile == "FBs-44MN-test13":
+        header[176:178] = b"@@"
     header[192:194] = b"H\x01"
     return bytes(header)
 
 
 def header_profile(header: bytes) -> HeaderProfile | None:
+    if header == default_header("FBs-44MN-test13"):
+        return "FBs-44MN-test13"
+    if header == default_header("FBs-40MA-test12"):
+        return "FBs-40MA-test12"
     if header == default_header("FBs-32MA-test11"):
         return "FBs-32MA-test11"
     if header == default_header():
@@ -473,7 +491,7 @@ def capabilities() -> dict[str, Any]:
     return {
         "version": "0.10.0",
         "profile": "Exact sampled headers: FBs-20MC, FBs-24MA (test6), FBs-24MA-test7, "
-        "FBs-32MA-test11; "
+        "FBs-32MA-test11, FBs-40MA-test12, FBs-44MN-test13; "
         "the two 24MA variants retain differing unknown metadata",
         "transport": "stdio",
         "simulation": "Boolean or scan_ms T/C model; max 256 scans, not a PLC emulator",
@@ -482,9 +500,9 @@ def capabilities() -> dict[str, Any]:
         "address_subset": {
             "X": "0..255",
             "Y": "0..255",
-            "M": "0..255",
+            "M": "0..1911 (manual range, inferred encoding); helpers remain 0..255",
             "T": "0..255",
-            "LCNV_registers": "R0..3839, input R3840..3903, D0..3999 (inferred banks)",
+            "LCNV_registers": "R0..3839, input R3840..3903, R5000..8071, D0..4095 (CPU-dependent)",
             "C": "0..255",
         },
         "generation": "generate_control_ldr: 11 recipes; generate_sequence_ldr: up to 16 steps, "
@@ -493,6 +511,8 @@ def capabilities() -> dict[str, Any]:
         "internal allocation; generate_ldr: Boolean, native X edges, T/C, register, "
         "arithmetic, LCNV and loop IR.",
         "inference_notice": "Unseen combinations/ranges are inferred, not PLC-validated.",
+        "manual_reference_tool": "get_manual_reference",
+        "rtc_snapshot_tool": "inspect_rtc_snapshot (no PLC connection)",
         "design_guide": design_guide(),
         "block_templates": [
             {
@@ -508,9 +528,66 @@ def capabilities() -> dict[str, Any]:
             "compare_ldr: aligned record changes",
         ],
         "native_functions": {
+            "test14_functions": {
+                "release_status": "unreleased, version unchanged",
+                "float_operations": "log (base 10), pow, asin, acos, atan (FUN216..220)",
+                "power_order": "pow: sa=Sy exponent, sb=Sx base; result=sb**sa",
+                "inverse_angles": "binary32 source and result in radians; asin/acos input -1..1",
+                "D_bank": "FUN216..220 D0..3999; two-word start at most D3998",
+                "error_coils": "float_operation.error: normal Y/M coils on ERR (6FFC); "
+                "FLOG observed, other eligible float operations inferred; M-to-M policy applies",
+                "constant_flags": "F6 second-operand constant observed in FPOW; F7 still inferred",
+                "imdio": "action imdio: start X/Y, count 1..36, enable; all points in io_contract. "
+                "X0,N10 observed; other X/Y spans inferred. Main-unit I/O only; table maxima "
+                "X35/Y23 do not confirm capacity of the selected CPU",
+                "unsupported": "No P/indirect, runtime simulation, GUI or PLC verification",
+            },
+            "test13_functions": {
+                "release_status": "unreleased source; version unchanged",
+                "operations": "float_operation sin/cos/tan/neg/abs/ln/exp (FUN209..215)",
+                "angles": "Sa is one signed 16-bit word or integral constant -18000..18000; "
+                "unit=0.01 degrees, not radians or binary32. D is two words.",
+                "in_place": "neg/abs require only destination; read and write its two words",
+                "ln_exp": "Float source and result; manual D0..3999 bank, max pair start D3998; "
+                "ln literal must be positive",
+                "header": "Exact FBs-44MN-test13 header including 4040 metadata",
+                "evidence": "Seven exact test13 payloads observed; other operands, negative "
+                "angle constants and float constant ln/exp forms inferred",
+                "unsupported": "P, indirect, ERR wiring and runtime simulation; "
+                "no generated-file GUI/PLC check; ERR support added in test14",
+            },
+            "test12_functions": {
+                "release_status": "Unreleased source update; package version unchanged",
+                "float_arithmetic": "FUN205 FDIV and FUN208 FSQR: float_operation div/sqrt. "
+                "Arithmetic accepts register or finite binary32 immediate sources; "
+                "I->F/F->I still require register source",
+                "float_compare": "FUN206 FCMP: float_compare sa/sb, "
+                "equal/greater/less normal coils",
+                "float_zone_compare": "FUN207 FZCP: float_zone_compare register source, "
+                "upper/lower register or immediate, within/above/below normal coils; no ERR wiring",
+                "banks": "Float-only R0..3839, R5000..8071, D0..4095; full two-word spans checked. "
+                "R8000 and D4094 sampled; other newly available offsets inferred",
+                "constants": "IEEE-754 binary32, big-endian; F5 first-source constant observed. "
+                "F6/F7 second/both-source markers inferred from flag pattern, not GUI verified",
+                "outputs": "M0..1911 including sampled M999; M-to-M policy covers compare outputs",
+                "header": "Exact FBs-40MA-test12 header",
+                "verification": "Sample bytes observed; new outputs not GUI/PLC verified. "
+                "No execution simulation; reject NaN/Inf, overflow, bank crossings, unknown forms",
+            },
             "test11_functions": {
+                "position_probe_gui_confirmation": {
+                    "artifact": "FUN170_175_all_positions_probe.ldr",
+                    "sha256": "252622c9cc544eeac82d525200a40c084b4aceb06f9978803ccfc7513db3781a",
+                    "evidence": "User reported all positions correct on 2026-10-07",
+                    "scope": "Exact six-rung R600/R700 probe; "
+                    "first and series forms of six relations",
+                    "reexport_received": False,
+                    "plc_verified": False,
+                },
                 "comparison_contacts": "FUN170..175 via network.comparison_chain. "
-                "Sampled placement only: first eq/ne, subsequent gt/lt/ge/le in series; "
+                "All six relations at first and subsequent series positions; "
+                "all 12 positions user GUI-confirmed in the exact R600/R700 probe; "
+                "other operand combinations remain inferred; "
                 "coil outputs including SET/RESET. No OR, mixed Boolean contacts, "
                 "D form or runtime model",
                 "comparison_operands": "Direct existing word banks plus exact WS0, WM0, C2, R5111. "
@@ -521,8 +598,8 @@ def capabilities() -> dict[str, Any]:
                 "sa, sb, destination, EN. "
                 "Conversions forbid sb; arithmetic requires it",
                 "float_width": "I->F reads 1 word and writes 2; F->I reads 2 and writes 1; "
-                "FADD/FSUB/FMUL read 2 per source and write 2. Only R0..3839/D0..3999, "
-                "no bank crossing. No immediate operands, D/P modifiers, "
+                "FADD/FSUB/FMUL read 2 per source and write 2. "
+                "test12 extends float banks and immediate operands; no D/P modifiers, "
                 "ERR wiring or runtime model",
                 "evidence": "Exact test11 bytes observed; operand/enable changes inferred. "
                 "F47F extension subcodes and unknown zero fields preserved. "

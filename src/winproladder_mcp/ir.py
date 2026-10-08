@@ -4,6 +4,14 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from .floating import (
+    decode_float_register,
+    decode_float_source,
+    encode_float_register,
+    encode_float_source,
+    float_span,
+    normalize_float_source,
+)
 from .logic import (
     Expr,
     bit_address,
@@ -26,6 +34,8 @@ from .registers import (
     encode_word,
     register_span,
 )
+
+FloatSource = str | Annotated[float, Field(strict=True)]
 
 
 class Model(BaseModel):
@@ -308,15 +318,36 @@ class ComparisonContact(Model):
 
 class FloatOperation(Model):
     type: Literal["float_operation"] = "float_operation"
-    operation: Literal["i_to_f", "f_to_i", "add", "sub", "mul"]
-    sa: str
-    sb: str | None = None
+    operation: Literal[
+        "i_to_f",
+        "f_to_i",
+        "add",
+        "sub",
+        "mul",
+        "div",
+        "sqrt",
+        "sin",
+        "cos",
+        "tan",
+        "neg",
+        "abs",
+        "ln",
+        "exp",
+        "log",
+        "pow",
+        "asin",
+        "acos",
+        "atan",
+    ]
+    sa: FloatSource | None = None
+    sb: FloatSource | None = None
     destination: str
     enable: str = "TRUE"
+    error: list[Coil] = Field(default_factory=list, max_length=32)
 
     @property
     def source_words(self) -> int:
-        return 1 if self.operation == "i_to_f" else 2
+        return 1 if self.operation in {"i_to_f", "sin", "cos", "tan"} else 2
 
     @property
     def destination_words(self) -> int:
@@ -324,17 +355,129 @@ class FloatOperation(Model):
 
     @model_validator(mode="after")
     def check_operands(self) -> "FloatOperation":
-        binary = self.operation in {"add", "sub", "mul"}
-        if binary != (self.sb is not None):
-            raise ValueError("Float arithmetic requires Sb; conversions forbid Sb")
-        for name in [self.sa, self.sb, self.destination]:
-            if name and name.startswith("R") and int(name[1:]) >= 3840:
-                raise ValueError("Float operands currently support R0..3839 and D0..3999 only")
-        register_span(self.sa, self.source_words)
+        if self.error:
+            if self.operation in {"neg", "abs", "i_to_f", "f_to_i"}:
+                raise ValueError("ERR wiring is not supported on this operation")
+            if any(c.mode != "normal" or c.inverted for c in self.error):
+                raise ValueError("ERR supports normal coils only")
+        float_span(self.destination, self.destination_words)
+        if self.operation in {"neg", "abs"}:
+            if self.sa is not None or self.sb is not None:
+                raise ValueError("FNEG/FABS operate in place; specify destination only")
+            return self
+        if self.sa is None:
+            raise ValueError("This float operation requires Sa")
+        if self.operation in {"sin", "cos", "tan"}:
+            if self.sb is not None:
+                raise ValueError("Trigonometric operations forbid Sb")
+            if isinstance(self.sa, str):
+                float_span(self.sa, 1)
+            elif not self.sa.is_integer() or not -18000 <= self.sa <= 18000:
+                raise ValueError("Angle must be an integer -18000..18000 in 0.01 degree units")
+            return self
+        self.sa = normalize_float_source(self.sa)
         if self.sb is not None:
-            register_span(self.sb, 2)
-        register_span(self.destination, self.destination_words, writable=True)
+            self.sb = normalize_float_source(self.sb)
+        binary = self.operation in {"add", "sub", "mul", "div", "pow"}
+        if binary != (self.sb is not None):
+            raise ValueError("Binary float operations require Sb; unary operations forbid it")
+        if self.operation in {"i_to_f", "f_to_i"}:
+            if not isinstance(self.sa, str):
+                raise ValueError("Integer/float conversions currently require register sources")
+            float_span(self.sa, self.source_words)
+        else:
+            encode_float_source(self.sa)
+        if self.sb is not None:
+            encode_float_source(self.sb)
+        if self.operation == "div" and isinstance(self.sb, float) and self.sb == 0:
+            raise ValueError("Constant division by zero")
+        if self.operation in {"ln", "exp", "log", "pow", "asin", "acos", "atan"}:
+            for operand in [self.sa, self.sb, self.destination]:
+                if isinstance(operand, str) and operand.startswith("D") and int(operand[1:]) > 3998:
+                    raise ValueError(
+                        "This instruction manual D bank ends at D3999; reserve two words"
+                    )
+            if self.operation in {"ln", "log"} and isinstance(self.sa, float) and self.sa <= 0:
+                raise ValueError("Constant logarithm requires a positive source")
+        if (
+            self.operation in {"asin", "acos"}
+            and isinstance(self.sa, float)
+            and not -1 <= self.sa <= 1
+        ):
+            raise ValueError("Inverse sine/cosine constant must be -1..1")
+        if self.operation == "sqrt" and isinstance(self.sa, float) and self.sa < 0:
+            raise ValueError("Constant square root of negative value")
+        float_span(self.destination, self.destination_words)
         return self
+
+
+class FloatCompare(Model):
+    type: Literal["float_compare"] = "float_compare"
+    sa: FloatSource
+    sb: FloatSource
+    enable: str = "TRUE"
+    equal: list[Coil] = Field(default_factory=list, max_length=32)
+    greater: list[Coil] = Field(default_factory=list, max_length=32)
+    less: list[Coil] = Field(default_factory=list, max_length=32)
+
+    @model_validator(mode="after")
+    def check_operands(self) -> "FloatCompare":
+        self.sa = normalize_float_source(self.sa)
+        self.sb = normalize_float_source(self.sb)
+        encode_float_source(self.sa)
+        encode_float_source(self.sb)
+        if any(c.mode != "normal" or c.inverted for c in self.equal + self.greater + self.less):
+            raise ValueError("FCMP supports normal output coils only")
+        return self
+
+
+class FloatZoneCompare(Model):
+    type: Literal["float_zone_compare"] = "float_zone_compare"
+    source: str
+    upper: FloatSource
+    lower: FloatSource
+    enable: str = "TRUE"
+    within: list[Coil] = Field(default_factory=list, max_length=32)
+    above: list[Coil] = Field(default_factory=list, max_length=32)
+    below: list[Coil] = Field(default_factory=list, max_length=32)
+
+    @model_validator(mode="after")
+    def check_operands(self) -> "FloatZoneCompare":
+        self.upper = normalize_float_source(self.upper)
+        self.lower = normalize_float_source(self.lower)
+        float_span(self.source, 2)
+        encode_float_source(self.upper)
+        encode_float_source(self.lower)
+        if (
+            isinstance(self.upper, float)
+            and isinstance(self.lower, float)
+            and self.lower > self.upper
+        ):
+            raise ValueError("FZCP lower exceeds upper")
+        if any(c.mode != "normal" or c.inverted for c in self.within + self.above + self.below):
+            raise ValueError("FZCP supports normal output coils only")
+        return self
+
+
+class ImmediateIO(Model):
+    type: Literal["imdio"] = "imdio"
+    start: str
+    count: Annotated[int, Field(strict=True, ge=1, le=36)]
+    enable: str = "TRUE"
+
+    @model_validator(mode="after")
+    def check_span(self) -> "ImmediateIO":
+        bit_address(self.start)
+        if self.start[0] not in "XY":
+            raise ValueError("IMDIO requires X or Y start")
+        maximum = 35 if self.start[0] == "X" else 23
+        if int(self.start[1:]) + self.count - 1 > maximum:
+            raise ValueError("IMDIO exceeds maximum main-unit I/O range in manual")
+        return self
+
+    def devices(self) -> set[str]:
+        start = int(self.start[1:])
+        return {f"{self.start[0]}{i}" for i in range(start, start + self.count)}
 
 
 class Network(Model):
@@ -361,7 +504,10 @@ class Network(Model):
             | RegisterStep
             | Bitwise
             | ExclusiveLogic
+            | ImmediateIO
             | FloatOperation
+            | FloatCompare
+            | FloatZoneCompare
             | WordConversion
             | ZoneCompare
             | Compare
@@ -376,7 +522,14 @@ class Network(Model):
     ) = None
 
 
-HeaderProfile = Literal["FBs-20MC", "FBs-24MA", "FBs-24MA-test7", "FBs-32MA-test11"]
+HeaderProfile = Literal[
+    "FBs-20MC",
+    "FBs-24MA",
+    "FBs-24MA-test7",
+    "FBs-32MA-test11",
+    "FBs-40MA-test12",
+    "FBs-44MN-test13",
+]
 
 
 class Ladder(Model):
@@ -469,9 +622,57 @@ TEST11_PAYLOADS = {
     5: "4fe8f47f000300000a1200000a140acc",
     6: "4fe8f47f000400000a0000000a020a04",
 }
-COMPARISON_CHAIN_CODES = {"gt": 0x22, "lt": 0x23, "ge": 0x25, "le": 0x26}
-COMPARISON_FIRST_CODES = {"eq": 0x15, "ne": 0x18}
-FLOAT_CODES = {"i_to_f": 0, "f_to_i": 1, "add": 2, "sub": 3, "mul": 4}
+# Position families inferred from test11: six adjacent relations, series offset +0x0C.
+# First eq/ne and series gt/lt/ge/le are exported; all 12 positions are user GUI-confirmed.
+COMPARISON_FIRST_CODES = {"eq": 0x15, "gt": 0x16, "lt": 0x17, "ne": 0x18, "ge": 0x19, "le": 0x1A}
+TEST14_PAYLOADS = {
+    0: "4fe8f47f001000001b5c515a6ffcc827",
+    1: "4fe8f67f001100000f78400000000f8c",
+    2: "4fe8f47f001200000aca0acc",
+    3: "4fe8f47f001300000ace0ad2",
+    4: "4fe8f47f0014000028003ffc",
+    5: "4fe8f4e80000000a",
+}
+
+TEST13_PAYLOADS = {
+    0: "4fe8f47f00091b5c1b5e",
+    1: "4fe8f47f000a3ffe5ffc",
+    2: "4fe8f57f000b007b0bbc",
+    3: "4fe8f47f000c0bbc",
+    4: "4fe8f47f000d0a00",
+    5: "4fe8f47f000e00000a2c0ac4",
+    6: "4fe8f47f000f00003f7040f6",
+}
+
+TEST12_PAYLOADS = {
+    0: "4fe8f57f000540c0624e00005ffc3f70",
+    1: "4fe8f57f000642cc666600001a966ffcc1006ffdc88b6ffec847",
+    2: "4fe8f57f00073ffeb85200000a1e27fc6ffcc1016ffdc8136ffecbf7",
+    3: "4fe8f47f0008000040f60b94",
+}
+
+COMPARISON_CHAIN_CODES = {"eq": 0x21, "gt": 0x22, "lt": 0x23, "ne": 0x24, "ge": 0x25, "le": 0x26}
+FLOAT_CODES = {
+    "i_to_f": 0,
+    "f_to_i": 1,
+    "add": 2,
+    "sub": 3,
+    "mul": 4,
+    "div": 5,
+    "sqrt": 8,
+    "sin": 9,
+    "cos": 10,
+    "tan": 11,
+    "neg": 12,
+    "abs": 13,
+    "ln": 14,
+    "exp": 15,
+    "log": 16,
+    "pow": 17,
+    "asin": 18,
+    "acos": 19,
+    "atan": 20,
+}
 
 
 def comparison_reads(network: Network) -> set[str]:
@@ -484,13 +685,15 @@ def comparison_reads(network: Network) -> set[str]:
 
 
 def network_coils(network: Network) -> list[Coil]:
-    if isinstance(network.action, ZoneCompare):
+    if isinstance(network.action, FloatOperation):
+        return network.coils + network.action.error
+    if isinstance(network.action, (ZoneCompare, FloatZoneCompare)):
         z = network.action
         return network.coils + z.within + z.above + z.below
     if isinstance(network.action, Differential):
         d = network.action.destination
         return [*network.coils, Coil.model_validate({"device": d[0], "address": int(d[1:])})]
-    if isinstance(network.action, Compare):
+    if isinstance(network.action, (Compare, FloatCompare)):
         return network.coils + network.action.equal + network.action.greater + network.action.less
     return network.coils
 
@@ -650,9 +853,9 @@ def compile_network(network: Network) -> bytes:
             result = b""
             for index, c in enumerate(network.comparison_chain):
                 codes = COMPARISON_FIRST_CODES if index == 0 else COMPARISON_CHAIN_CODES
-                if c.operation not in codes or (index == 0 and isinstance(c.sb, int)):
+                if index == 0 and isinstance(c.sb, int):
                     raise UnsupportedInstruction(
-                        "Sampled comparison placement: first eq/ne, subsequent gt/lt/ge/le only"
+                        "First comparison with constant Sb is not yet supported"
                     )
                 result += bytes.fromhex("f67f" if isinstance(c.sb, int) else "f47f")
                 result += codes[c.operation].to_bytes(2, "big") + encode_comparison_word(c.sa)
@@ -775,19 +978,53 @@ def compile_network(network: Network) -> bytes:
                     if coils:
                         result += bytes.fromhex(marker) + compile_coils(coils)
                 return result
-            if isinstance(action, FloatOperation):
-                result = (
+            if isinstance(action, ImmediateIO):
+                return (
                     prefix
-                    + bytes.fromhex("f47f")
-                    + FLOAT_CODES[action.operation].to_bytes(2, "big")
+                    + bytes.fromhex("f4e8")
+                    + bit_address(action.start).to_bytes(2, "big")
+                    + action.count.to_bytes(2, "big")
                 )
-                if action.operation == "f_to_i":
-                    result += encode_register(action.sa)
+            if isinstance(action, (FloatOperation, FloatCompare, FloatZoneCompare)):
+                if isinstance(action, FloatOperation):
+                    code = FLOAT_CODES[action.operation]
+                    operands = ([] if action.sa is None else [action.sa]) + (
+                        [] if action.sb is None else [action.sb]
+                    )
+                    suffix = encode_float_register(action.destination)
+                elif isinstance(action, FloatCompare):
+                    code, operands, suffix = 6, [action.sa, action.sb], b""
                 else:
-                    result += b"\x00\x00" + encode_register(action.sa)
-                    if action.sb is not None:
-                        result += b"\x00\x00" + encode_register(action.sb)
-                return result + encode_register(action.destination)
+                    code, operands = 7, [action.upper, action.lower]
+                    suffix = encode_float_register(action.source)
+                flags = sum(1 << i for i, v in enumerate(operands) if isinstance(v, float))
+                result = prefix + bytes([0xF4 + flags, 0x7F]) + code.to_bytes(2, "big")
+                if isinstance(action, FloatOperation) and action.operation in {"sin", "cos", "tan"}:
+                    assert action.sa is not None
+                    result += (
+                        encode_float_register(action.sa)
+                        if isinstance(action.sa, str)
+                        else int(action.sa).to_bytes(2, "big", signed=True)
+                    )
+                elif isinstance(action, FloatOperation) and action.operation == "f_to_i":
+                    assert isinstance(action.sa, str)
+                    result += encode_float_register(action.sa)
+                elif isinstance(action, FloatOperation) and action.operation == "i_to_f":
+                    assert isinstance(action.sa, str)
+                    result += b"\x00\x00" + encode_float_register(action.sa)
+                else:
+                    result += b"".join(encode_float_source(v) for v in operands)
+                result += suffix
+                if isinstance(action, FloatCompare):
+                    outputs = [action.equal, action.greater, action.less]
+                elif isinstance(action, FloatZoneCompare):
+                    outputs = [action.within, action.above, action.below]
+                else:
+                    outputs = [action.error]
+                for i, coils in enumerate(outputs):
+                    if coils:
+                        result += (0x6FFC + i).to_bytes(2, "big") + compile_coils(coils)
+                return result
             if isinstance(action, MasterControl):
                 return prefix + bytes.fromhex("fc88") + action.number.to_bytes(2, "big")
             if isinstance(action, BreakLoop):
@@ -957,36 +1194,98 @@ def decode_network(payload: bytes) -> Network | None:
             n11 = Network(comparison_chain=comparison_items, coils=decode_coils(payload[offset11:]))
             return n11 if compile_network(n11) == payload else None
         for offset11 in range(2, len(payload) - 3, 2):
-            if payload[offset11 : offset11 + 2] != b"\xf4\x7f":
+            if payload[offset11 : offset11 + 2] not in {
+                b"\xf4\x7f",
+                b"\xf5\x7f",
+                b"\xf6\x7f",
+                b"\xf7\x7f",
+            }:
                 continue
             try:
                 enable11 = expression_text(decode_expression(payload[:offset11]))
                 code11 = int.from_bytes(payload[offset11 + 2 : offset11 + 4], "big")
-                op_float = next((k for k, v in FLOAT_CODES.items() if v == code11), None)
+                flags12 = payload[offset11] - 0xF4
                 tail11 = payload[offset11 + 4 :]
-                sb11 = None
-                if op_float == "f_to_i" and len(tail11) == 4:
-                    sa11 = decode_register(tail11[:2])
-                elif op_float == "i_to_f" and len(tail11) == 6 and tail11[:2] == b"\x00\x00":
-                    sa11 = decode_register(tail11[2:4])
-                elif (
-                    op_float in {"add", "sub", "mul"}
-                    and len(tail11) == 10
-                    and tail11[:2] == tail11[4:6] == b"\x00\x00"
-                ):
-                    sa11, sb11 = decode_register(tail11[2:4]), decode_register(tail11[6:8])
+                op_float = next((k for k, v in FLOAT_CODES.items() if v == code11), None)
+                f_action: FloatOperation | FloatCompare | FloatZoneCompare
+                if code11 == 6 and len(tail11) >= 8:
+                    outs = decode_status_coils(tail11[8:])
+                    f_action = FloatCompare(
+                        sa=decode_float_source(tail11[:4], bool(flags12 & 1)),
+                        sb=decode_float_source(tail11[4:8], bool(flags12 & 2)),
+                        enable=enable11,
+                        equal=outs[0],
+                        greater=outs[1],
+                        less=outs[2],
+                    )
+                elif code11 == 7 and len(tail11) >= 10:
+                    outs = decode_status_coils(tail11[10:])
+                    f_action = FloatZoneCompare(
+                        upper=decode_float_source(tail11[:4], bool(flags12 & 1)),
+                        lower=decode_float_source(tail11[4:8], bool(flags12 & 2)),
+                        source=decode_float_register(tail11[8:10]),
+                        enable=enable11,
+                        within=outs[0],
+                        above=outs[1],
+                        below=outs[2],
+                    )
+                elif op_float is not None:
+                    width14 = (
+                        2
+                        if op_float in {"neg", "abs"}
+                        else 4
+                        if op_float in {"sin", "cos", "tan", "f_to_i"}
+                        else 10
+                        if op_float in {"add", "sub", "mul", "div", "pow"}
+                        else 6
+                    )
+                    status14 = decode_status_coils(tail11[width14:])
+                    if status14[1] or status14[2]:
+                        continue
+                    tail11 = tail11[:width14]
+                    sb12 = None
+                    sa12: str | float | None
+                    if op_float in {"neg", "abs"} and len(tail11) == 2 and flags12 == 0:
+                        sa12 = None
+                    elif op_float in {"sin", "cos", "tan"} and len(tail11) == 4 and flags12 <= 1:
+                        sa12 = (
+                            float(int.from_bytes(tail11[:2], "big", signed=True))
+                            if flags12
+                            else decode_float_register(tail11[:2])
+                        )
+                    elif op_float == "f_to_i" and len(tail11) == 4 and flags12 == 0:
+                        sa12 = decode_float_register(tail11[:2])
+                    elif (
+                        op_float == "i_to_f"
+                        and len(tail11) == 6
+                        and flags12 == 0
+                        and tail11[:2] == b"\x00\x00"
+                    ):
+                        sa12 = decode_float_register(tail11[2:4])
+                    elif (
+                        op_float in {"sqrt", "ln", "exp", "log", "asin", "acos", "atan"}
+                        and len(tail11) == 6
+                        and flags12 <= 1
+                    ):
+                        sa12 = decode_float_source(tail11[:4], bool(flags12 & 1))
+                    elif op_float in {"add", "sub", "mul", "div", "pow"} and len(tail11) == 10:
+                        sa12 = decode_float_source(tail11[:4], bool(flags12 & 1))
+                        sb12 = decode_float_source(tail11[4:8], bool(flags12 & 2))
+                    else:
+                        continue
+                    f_action = FloatOperation.model_validate(
+                        {
+                            "operation": op_float,
+                            "sa": sa12,
+                            "sb": sb12,
+                            "destination": decode_float_register(tail11[-2:]),
+                            "error": status14[0],
+                            "enable": enable11,
+                        }
+                    )
                 else:
                     continue
-                float_action = FloatOperation.model_validate(
-                    {
-                        "operation": op_float,
-                        "sa": sa11,
-                        "sb": sb11,
-                        "destination": decode_register(tail11[-2:]),
-                        "enable": enable11,
-                    }
-                )
-                n11 = Network(action=float_action)
+                n11 = Network(action=f_action)
                 if compile_network(n11) == payload:
                     return n11
             except ValueError:
@@ -1011,7 +1310,10 @@ def decode_network(payload: bytes) -> Network | None:
             | RegisterStep
             | Bitwise
             | ExclusiveLogic
+            | ImmediateIO
             | FloatOperation
+            | FloatCompare
+            | FloatZoneCompare
             | WordConversion
             | ZoneCompare
             | Compare
@@ -1071,7 +1373,13 @@ def decode_network(payload: bytes) -> Network | None:
                 continue
         if candidates10:
             return candidates10[0] if len(candidates10) == 1 else None
-        if len(payload) == 4 and payload[:2] == bytes.fromhex("fc89"):
+        if len(payload) >= 8 and payload[-6:-4] == bytes.fromhex("f4e8"):
+            action = ImmediateIO(
+                start=device_name(int.from_bytes(payload[-4:-2], "big")),
+                count=int.from_bytes(payload[-2:], "big"),
+                enable=expression_text(decode_expression(payload[:-6])),
+            )
+        elif len(payload) == 4 and payload[:2] == bytes.fromhex("fc89"):
             action = MasterEnd(number=int.from_bytes(payload[2:], "big"))
         elif len(payload) >= 6 and payload[-4:-2] == bytes.fromhex("fc88"):
             action = MasterControl(
@@ -1364,7 +1672,80 @@ def validation(ladder: Ladder) -> dict[str, object]:
                         "gui_import_verified": False,
                     }
                 )
-            if network.comparison_chain or isinstance(network.action, FloatOperation):
+            observed12 = next(
+                (i for i, raw in TEST12_PAYLOADS.items() if payload.hex() == raw), None
+            )
+            observed13 = next(
+                (i for i, raw in TEST13_PAYLOADS.items() if payload.hex() == raw), None
+            )
+            observed14 = next(
+                (i for i, raw in TEST14_PAYLOADS.items() if payload.hex() == raw), None
+            )
+            if isinstance(network.action, ImmediateIO) or (
+                isinstance(network.action, FloatOperation)
+                and (
+                    network.action.operation in {"log", "pow", "asin", "acos", "atan"}
+                    or network.action.error
+                )
+            ):
+                instruction_evidence.append(
+                    {
+                        "network_index": index,
+                        "instruction": network.action.type,
+                        "status": "observed_export"
+                        if observed14 is not None
+                        else "inferred_variant",
+                        "source": f"test14.ldr N{observed14:03}"
+                        if observed14 is not None
+                        else "test14",
+                        "gui_import_verified": False,
+                    }
+                )
+            elif isinstance(network.action, FloatOperation) and network.action.operation in {
+                "sin",
+                "cos",
+                "tan",
+                "neg",
+                "abs",
+                "ln",
+                "exp",
+            }:
+                instruction_evidence.append(
+                    {
+                        "network_index": index,
+                        "instruction": network.action.operation,
+                        "status": "observed_export"
+                        if observed13 is not None
+                        else "inferred_variant",
+                        "source": f"test13.ldr N{observed13:03}"
+                        if observed13 is not None
+                        else "test13",
+                        "gui_import_verified": False,
+                    }
+                )
+            elif (
+                observed12 is not None
+                or isinstance(network.action, (FloatCompare, FloatZoneCompare))
+                or (
+                    isinstance(network.action, FloatOperation)
+                    and network.action.operation in {"div", "sqrt"}
+                )
+            ):
+                assert network.action is not None
+                instruction_evidence.append(
+                    {
+                        "network_index": index,
+                        "instruction": network.action.type,
+                        "status": "observed_export"
+                        if observed12 is not None
+                        else "inferred_variant",
+                        "source": f"test12.ldr N{observed12:03}"
+                        if observed12 is not None
+                        else "test12",
+                        "gui_import_verified": False,
+                    }
+                )
+            elif network.comparison_chain or isinstance(network.action, FloatOperation):
                 observed11 = next(
                     (i for i, raw in TEST11_PAYLOADS.items() if payload.hex() == raw), None
                 )
@@ -1476,6 +1857,12 @@ def validation(ladder: Ladder) -> dict[str, object]:
     verified = payloads == ["41 00 a0 00 90 01 c1 00"] and not errors
     coils = [f"{c.device}{c.address}" for n in ladder.networks for c in network_coils(n)]
     warnings = [] if verified else ["Composition has not been verified by WinProLadder import."]
+    if any(isinstance(n.action, ImmediateIO) for n in ladder.networks):
+        warnings.append(
+            "IMDIO refreshes main-unit I/O only. N=1..36; X35/Y23 are table-wide "
+            "maxima, not this CPU capacity. Exact CPU I/O capacity is not verified "
+            "by this codec or header. No refresh runtime simulation."
+        )
     if any(
         isinstance(n.action, (MasterControl, MasterEnd, Differential, UpDownCounter))
         for n in ladder.networks
@@ -1514,9 +1901,22 @@ def validation(ladder: Ladder) -> dict[str, object]:
             "are inferred. No D/P forms, additional flag wiring or runtime simulation. "
             "WX0/WY0 cover X0..15/Y0..15; T operands denote numeric timer words."
         )
-    if any(n.comparison_chain or isinstance(n.action, FloatOperation) for n in ladder.networks):
+    if any(
+        isinstance(n.action, (FloatOperation, FloatCompare, FloatZoneCompare))
+        for n in ladder.networks
+    ):
         warnings.append(
-            "test11: sampled comparison-chain positions and float subcodes only; "
+            "Floating functions: binary32 constants and double-word register spans; "
+            "sin/cos/tan sources are single-word integer angles in 0.01 degrees; "
+            "neg/abs modify the destination pair in place. "
+            "test12 observes F5; test14 observes F6 second-operand constants; F7 is inferred. "
+            "Normal ERR coils supported (FLOG sampled, other ERR forms inferred). "
+            "No P or indirect forms; no runtime simulation or generated-file GUI/PLC check."
+        )
+    if any(n.comparison_chain for n in ladder.networks):
+        warnings.append(
+            "test11: all six comparisons support first/series positions; "
+            "all 12 positions user GUI-confirmed in the exact position probe. "
             "parameter changes are inferred. No D/P, indirect, ERR wiring or runtime model. "
             "Unknown zero fields preserved; float values occupy two consecutive words."
         )

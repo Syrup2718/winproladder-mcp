@@ -22,6 +22,9 @@ def test_lossless_roundtrip(path: Path) -> None:
         "test9.ldr": "FBs-24MA-test7",
         "test10.ldr": "FBs-24MA-test7",
         "test11.ldr": "FBs-32MA-test11",
+        "test14.ldr": "FBs-44MN-test13",
+        "test13.ldr": "FBs-44MN-test13",
+        "test12.ldr": "FBs-40MA-test12",
     }.get(path.name, "FBs-20MC")
     assert doc.header == default_header(profile)
 

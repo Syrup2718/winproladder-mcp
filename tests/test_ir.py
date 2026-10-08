@@ -80,7 +80,7 @@ def test_invalid_ir_and_addresses() -> None:
             steps=[Step(op="and", contact=Contact(device="X", address=0))], coils=[Coil(address=0)]
         ),
         Network(
-            steps=[Step(op="load", contact=Contact(device="M", address=256))],
+            steps=[Step(op="load", contact=Contact(device="X", address=256))],
             coils=[Coil(address=0)],
         ),
     ]:

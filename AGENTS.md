@@ -1,5 +1,15 @@
 # Ladder generation requirements
 
+## Release preferences
+
+- Do not build installation packages (wheel, sdist, or installers) unless the user
+  explicitly requests them. Ordinary feature updates do not authorize packaging.
+- Do not bump version numbers unless the user explicitly requests a version update.
+  Continue updating implementation, tests, and documentation without a version bump;
+  describe unreleased changes separately from the last packaged release.
+
+## Generation constraints
+
 - This workspace forbids M contacts driving M coils (including self-holds, copies,
   SET/RESET destinations, block status outputs, and automatically lowered helpers).
   The user explicitly requested this as a permanent architecture constraint.

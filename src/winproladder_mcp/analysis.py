@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from .floating import float_source_reads, float_span
 from .ir import (
     Arithmetic,
     Bitwise,
@@ -9,8 +10,11 @@ from .ir import (
     Compare,
     Differential,
     ExclusiveLogic,
+    FloatCompare,
     FloatOperation,
+    FloatZoneCompare,
     ForLoop,
+    ImmediateIO,
     LinearConversion,
     MasterControl,
     MasterEnd,
@@ -31,12 +35,34 @@ from .registers import register_span, word_references
 
 
 def describe(network: Network) -> str:
+    if isinstance(network.action, ImmediateIO):
+        immediate = network.action
+        return (
+            f"FUN74 IMDIO: refresh {immediate.start} + {immediate.count} points; "
+            f"EN={immediate.enable}"
+        )
+    if isinstance(network.action, FloatCompare):
+        fc = network.action
+        return f"FUN206 FCMP: Sa={fc.sa}, Sb={fc.sb}; EN={fc.enable}"
+    if isinstance(network.action, FloatZoneCompare):
+        fz = network.action
+        return f"FUN207 FZCP: S={fz.source}, Su={fz.upper}, Sl={fz.lower}; EN={fz.enable}"
     if network.comparison_chain:
         conditions = " AND ".join(f"{c.sa} {c.operation} {c.sb}" for c in network.comparison_chain)
         outputs = ", ".join(f"{c.mode} {c.device}{c.address}" for c in network.coils)
         return f"Signed 16-bit comparison contacts: {conditions} -> {outputs}"
     if isinstance(network.action, FloatOperation):
         fp = network.action
+        if fp.operation == "pow":
+            return (
+                f"FUN217 FPOW: Sx(base)={fp.sb} ** Sy(exponent)={fp.sa} -> {fp.destination}; "
+                f"EN={fp.enable}; ERR={fp.error}"
+            )
+        if fp.operation in {"neg", "abs"}:
+            return (
+                f"Float {fp.operation}: in-place read/write {fp.destination} (2 words); "
+                f"EN={fp.enable}"
+            )
         return (
             f"Float {fp.operation}: Sa={fp.sa}, Sb={fp.sb}, D={fp.destination}; "
             f"source_words={fp.source_words}, destination_words={fp.destination_words}; "
@@ -198,16 +224,32 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
                 Compare,
                 MasterControl,
                 FloatOperation,
+                ImmediateIO,
+                FloatCompare,
+                FloatZoneCompare,
                 ExclusiveLogic,
                 WordConversion,
                 ZoneCompare,
             ),
         ):
             reads = contacts(parse_expression(network.action.enable))
+            if isinstance(network.action, ImmediateIO):
+                reads |= network.action.devices()
             if isinstance(network.action, FloatOperation):
-                reads |= register_span(network.action.sa, network.action.source_words)
+                if network.action.operation in {"neg", "abs"}:
+                    reads |= float_span(network.action.destination, 2)
+                if isinstance(network.action.sa, str):
+                    reads |= float_span(network.action.sa, network.action.source_words)
                 if network.action.sb is not None:
-                    reads |= register_span(network.action.sb, 2)
+                    reads |= float_source_reads(network.action.sb)
+            elif isinstance(network.action, FloatCompare):
+                reads |= float_source_reads(network.action.sa) | float_source_reads(
+                    network.action.sb
+                )
+            elif isinstance(network.action, FloatZoneCompare):
+                reads |= float_span(network.action.source, 2)
+                reads |= float_source_reads(network.action.upper)
+                reads |= float_source_reads(network.action.lower)
             elif isinstance(network.action, ExclusiveLogic):
                 reads |= word_references(network.action.sa) | word_references(network.action.sb)
             elif isinstance(network.action, WordConversion):
@@ -253,9 +295,7 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
             reads = contacts(network_expression(network)) if not network.empty else set()
         writes = {f"{c.device}{c.address}" for c in network_coils(network)}
         if isinstance(network.action, FloatOperation):
-            writes |= register_span(
-                network.action.destination, network.action.destination_words, writable=True
-            )
+            writes |= float_span(network.action.destination, network.action.destination_words)
         elif isinstance(network.action, (ExclusiveLogic, WordConversion)):
             writes |= word_references(network.action.destination)
         elif isinstance(network.action, RegisterOr):
@@ -272,6 +312,8 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
             writes.add(network.action.destination)
         elif isinstance(network.action, UpDownCounter):
             writes.add(network.action.cv)
+        if isinstance(network.action, ImmediateIO) and network.action.start.startswith("Y"):
+            writes |= network.action.devices()
         if network.block is not None:
             family = "T" if isinstance(network.block, Timer) else "C"
             writes.add(f"{family}{network.block.address}")
