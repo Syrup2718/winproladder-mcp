@@ -13,8 +13,30 @@ def design_guide() -> dict[str, Any]:
             "default_policy": "Physical signal/output required; no automatic X/Y assignment.",
         },
         "workflow": [
-            "test11 adds comparison_chain networks (first eq/ne, then gt/lt/ge/le, series only) "
-            "and float_operation actions. Float values use two consecutive registers; "
+            "test14: float_operation log/pow/asin/acos/atan. pow sa=Sy exponent, sb=Sx base, "
+            "result=sb**sa. Inverse trig results are radians, not 0.01 degree integers. "
+            "Normal error coils on float actions are checked by I/O and M-to-M policy. "
+            "imdio start/count refreshes the full consecutive X/Y range; require all points "
+            "in io_contract and main-unit capacity verification. No execution simulator.",
+            "test13 adds float_operation sin/cos/tan/neg/abs/ln/exp. Trig Sa is an integer "
+            "in 0.01 degrees (-18000..18000), occupying one source word; destination is two. "
+            "For neg/abs omit Sa/Sb: destination is read and written in place. "
+            "ln/exp use floating sources, D bank ends at D3999 per their manual pages. "
+            "No runtime simulation, P or ERR wiring; FBs-44MN-test13 exact header available.",
+            "Use get_manual_reference for operand maxima, manual edition differences and RTC. "
+            "Sample addresses are not PLC maxima. RTC R4128..R4135 and M1952..M1955 are "
+            "documented, but special-register/relay binary encoding remains unsupported. "
+            "inspect_rtc_snapshot checks supplied values without PLC access. Never invent I/O "
+            "or M-to-M control chains for clock setting; preserve project timer units.",
+            "Unreleased test12: FDIV/FSQR via float_operation div/sqrt; FCMP via float_compare; "
+            "FZCP via float_zone_compare. Finite numeric sources are rounded to binary32. "
+            "Reserve two words per float register, including R8000/R8001 and D4094/D4095. "
+            "M999 is supported; comparison outputs remain subject to M-to-M policy. "
+            "F5 constant marker sampled; F6/F7 combinations inferred. No runtime simulation.",
+            "comparison_chain supports all six relations in first/series positions; "
+            "all 12 positions user GUI-confirmed in the position probe; "
+            "new combinations remain inferred. "
+            "Float_operation actions use two consecutive registers for float values; "
             "I->F reads one integer word and writes two, F->I reads two and writes one. "
             "Reserve the full spans. WM0 comparisons read M0..15 and cannot drive M outputs "
             "under forbid_m_to_m. No built-in execution simulation for either new family.",
