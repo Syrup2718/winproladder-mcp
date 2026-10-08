@@ -2,13 +2,14 @@
 
 from typing import Any
 
+from . import __version__
 from .design import design_guide
 from .ir import Ladder, block_catalog, start_stop
 
 
 def capabilities() -> dict[str, Any]:
     return {
-        "version": "0.10.0",
+        "version": __version__,
         "profile": "Exact sampled headers: FBs-20MC, FBs-24MA (test6), FBs-24MA-test7, "
         "FBs-32MA-test11, FBs-40MA-test12, FBs-44MN-test13, FBs-60MC-test16, FBn-26MC-test17; "
         "the two 24MA variants retain differing unknown metadata",
@@ -48,7 +49,7 @@ def capabilities() -> dict[str, Any]:
         ],
         "native_functions": {
             "test17_functions": {
-                "release_status": "unreleased source; version unchanged",
+                "release_status": "included in 0.11.0 source; package not built",
                 "actions": "mean(25), sqrt(26), neg(27), abs(28), ext(29), crc16(31); "
                 "DIV48 single_input encoding and SUM additional export anchors",
                 "forms": "16-bit direct R/D; MEAN register N (runtime 2..256), "
@@ -64,7 +65,7 @@ def capabilities() -> dict[str, Any]:
                 "CRC16 MD=0 or register N, runtime simulation; no GUI/PLC verification",
             },
             "test16_functions": {
-                "release_status": "unreleased source; version unchanged",
+                "release_status": "included in 0.11.0 source; package not built",
                 "actions": "div48 (23), sum (24), pid (30), wdt (90), rswdt (91), "
                 "hsctr (92), hsctw (93D)",
                 "spans": "DIV48 Sa/Sb/D each 3 words; SUM N=1..511 words; "
@@ -80,7 +81,7 @@ def capabilities() -> dict[str, Any]:
                 "runtime simulation. No generated-file GUI or PLC verification",
             },
             "test15_functions": {
-                "release_status": "unreleased source; version unchanged",
+                "release_status": "included in 0.11.0 source; package not built",
                 "actions": "tkey (76), hkey (77), dsw (78), 7sgdl (79), muxi (80)",
                 "forms": "Sampled 16-bit forms; other parameters and status coils inferred. "
                 "No D/P forms",
@@ -96,7 +97,7 @@ def capabilities() -> dict[str, Any]:
                 "No generated-file GUI or PLC verification; transistor output hardware must match.",
             },
             "test14_functions": {
-                "release_status": "unreleased, version unchanged",
+                "release_status": "included in 0.11.0 source; package not built",
                 "float_operations": "log (base 10), pow, asin, acos, atan (FUN216..220)",
                 "power_order": "pow: sa=Sy exponent, sb=Sx base; result=sb**sa",
                 "inverse_angles": "binary32 source and result in radians; asin/acos input -1..1",
@@ -110,7 +111,7 @@ def capabilities() -> dict[str, Any]:
                 "unsupported": "No P/indirect, runtime simulation, GUI or PLC verification",
             },
             "test13_functions": {
-                "release_status": "unreleased source; version unchanged",
+                "release_status": "included in 0.11.0 source; package not built",
                 "operations": "float_operation sin/cos/tan/neg/abs/ln/exp (FUN209..215)",
                 "angles": "Sa is one signed 16-bit word or integral constant -18000..18000; "
                 "unit=0.01 degrees, not radians or binary32. D is two words.",
@@ -125,7 +126,7 @@ def capabilities() -> dict[str, Any]:
                 "Normal ERR wiring for eligible operations is available via test14",
             },
             "test12_functions": {
-                "release_status": "Unreleased source update; package version unchanged",
+                "release_status": "included in 0.11.0 source; package not built",
                 "float_arithmetic": "FUN205 FDIV and FUN208 FSQR: float_operation div/sqrt. "
                 "Arithmetic accepts register or finite binary32 immediate sources; "
                 "I->F/F->I still require register source",

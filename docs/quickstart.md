@@ -38,6 +38,8 @@ uv run winproladder-setup config --format codex --root C:\VM_Share
 
 ## 使用 wheel 安裝包
 
+目前原始碼已為0.11.0，但尚未製作該版安裝包。以下為既有0.10.0安裝包流程，功能不包含0.11.0更新。
+
 取得本專案產出的 `winproladder_mcp-0.10.0-py3-none-any.whl` 後，可不保留原始碼。以下以將 wheel 放在 `C:\LadderWork` 為例：
 
 ```powershell
