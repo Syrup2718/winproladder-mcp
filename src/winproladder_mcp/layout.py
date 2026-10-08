@@ -3,11 +3,13 @@
 from typing import Any
 
 from .ir import (
+    PID,
     Arithmetic,
     Coil,
     Compare,
     Counter,
     Differential,
+    Divide48,
     Ladder,
     Network,
     Timer,
@@ -24,6 +26,11 @@ from .optimize import contact_count, simplify
 def expressions(network: Network) -> list[Expr]:
     if network.empty or network.edge is not None or network.comparison_chain:
         return []
+    if isinstance(network.action, PID):
+        return [
+            parse_expression(x)
+            for x in (network.action.enable, network.action.bumpless, network.action.direction)
+        ]
     if isinstance(network.action, Differential):
         return [parse_expression(network.action.trigger)]
     if isinstance(network.action, UpDownCounter):
@@ -31,7 +38,9 @@ def expressions(network: Network) -> list[Expr]:
             parse_expression(x)
             for x in (network.action.pulse, network.action.up, network.action.clear)
         ]
-    if isinstance(network.action, (Arithmetic, Compare)):
+    if isinstance(network.action, Divide48) and network.action.encoding == "single_input":
+        return [parse_expression(network.action.enable)]
+    if isinstance(network.action, (Arithmetic, Compare, Divide48)):
         return [
             parse_expression(network.action.enable),
             parse_expression(network.action.unsigned_when),
@@ -72,10 +81,15 @@ def needs_lowering(network: Network, index: int, expr: Expr) -> bool:
         return False
     if isinstance(network.action, UpDownCounter) and index in {1, 2} and expr.op == "false":
         return False
+    if isinstance(network.action, PID) and index in {1, 2} and expr.op == "false":
+        return False
     # Counter CLR uses inverted polarity. Its sampled 7FE8 encodes the direct
     # CLR rail, not an OPEN contact drawn inside a Boolean rung.
     if (
-        (isinstance(network.block, Counter) or isinstance(network.action, (Arithmetic, Compare)))
+        (
+            isinstance(network.block, Counter)
+            or isinstance(network.action, (Arithmetic, Compare, Divide48))
+        )
         and index == 1
         and expr.op == "false"
     ):
@@ -180,9 +194,13 @@ def lower_ladder(ladder: Ladder, reserved: set[int] | None = None) -> tuple[Ladd
                     network.action.pulse, network.action.up, network.action.clear = map(
                         expression_text, fixed
                     )
+                elif isinstance(network.action, PID):
+                    network.action.enable, network.action.bumpless, network.action.direction = map(
+                        expression_text, fixed
+                    )
                 else:
                     network.action.enable = expression_text(fixed[0])  # type: ignore[union-attr]
-                if isinstance(network.action, (Arithmetic, Compare)):
+                if isinstance(network.action, (Arithmetic, Compare, Divide48)) and len(fixed) > 1:
                     network.action.unsigned_when = expression_text(fixed[1])
             else:
                 network.steps = []
