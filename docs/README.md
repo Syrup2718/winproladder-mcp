@@ -28,6 +28,9 @@
 | [test15 原生 function](test15-functions.md) | TKEY／HKEY／DSW／7SGDL／MUXI、KL／WR／I/O |
 | [test16 原生 function](test16-functions.md) | DIV48、SUM、PID、WDT／RSWDT、HSC0 讀寫 |
 | [test17 原生 function](test17-functions.md) | MEAN／SQRT／NEG／ABS／EXT／CRC16、單輸入 DIV48 |
+| [test18 原生 function](test18-functions.md) | ADCNV、MLC、BITRD／BITWR、精確LBL／JMP樣本 |
+| [test19 原生 function](test19-functions.md) | 積算型計時87～89、TPCTL、CALL解析及手冊版本差異 |
+| [test20 原生 function](test20-functions.md) | ASCWR、RAMP、RAMP2、R→T、時間單位與工作區衝突 |
 | [LDR 格式](ldr-format.md) | Record、CRC、指令編碼與未知欄位 |
 | [驗證依據](verification.md) | 樣本覆蓋、匯入基準與驗證邊界 |
 
@@ -41,3 +44,5 @@
 | [FUN15／16 舊試檔](fun15-16-probe.md) | 已被 test8 推翻的歷史假說 |
 
 首次安裝請見 [專案首頁](../README.md)。目前參數以 `get_capabilities`、`get_design_guide` 回傳的 schema 為準。
+
+- [2026-10-13 全資料夾檢查與整理](folder-audit-2026-10-13.md)

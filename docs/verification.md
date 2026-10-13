@@ -2,7 +2,7 @@
 
 ## 原始樣本
 
-`samples/` 保留十八份原始匯出，共 124 records；124 筆皆可語意解碼並重建，包括原生邊沿與 FUN11～14。雜湊及精確 payload 由 `tests/test_sample_integrity.py` 與編解碼測試固定。這是現有樣本覆蓋率，並不代表完整指令集。
+`samples/` 保留二十一份原始匯出，共141 records；141筆皆可解析並在取證編碼層重建，不代表全部允許生成。雜湊及精確payload由`tests/test_sample_integrity.py`與編解碼測試固定。這是現有樣本覆蓋率，並不代表完整指令集。
 
 | 樣本 | bytes | records | 覆蓋 |
 | --- | ---: | ---: | --- |
@@ -24,6 +24,9 @@
 | test15.ldr | 391 | 5 | FUN76～80、KL／WR／連續 I/O、R3999／V |
 | test16.ldr | 423 | 7 | DIV48、SUM、PID、WDT、HSC0 讀寫、FBs-60MC 檔頭 |
 | test17.ldr | 420 | 8 | 整數25～29／31、DIV48新形式、FBn-26MC |
+| test18.ldr | 400 | 6 | ADCNV、MLC、BITRD／BITWR、精確LBL／JMP |
+| test19.ldr | 439 | 7 | 積算型計時、TPCTL、精確CALL解析、FBe-20MA |
+| test20.ldr | 396 | 4 | ASCWR、RAMP、RAMP2、R→T；已解析但完整樣本有工作區衝突 |
 
 test9 是格式樣本片段，能解碼不代表符合完整程式的 MC 配對與架構政策。新增 function 的驗證邊界見 [原生 function 編碼](test8-test9-functions.md)。
 
@@ -81,3 +84,15 @@ MCP stdio 產檔下載與原檔 391 bytes 相同；592 項測試通過。KL 隱�
 ## test17 未發版驗證
 
 MCP stdio 產檔、下載後420 bytes 與原檔完全相同，663項測試通過。包含 MEAN 暫存器 N 的最大可能跨度、EXT 雙字組、DIV48 兩種輸入形式與三層 M→M 檢查。CRC16 MD=1 的引用分析明列不完整；無獨立執行模型、內建模擬、GUI 或實機驗證。詳見 [test17](test17-functions.md)。
+
+## test18 未發版驗證
+
+MCP stdio 重建、下載後400 bytes與原檔完全相同；701項測試通過。另生成四個資料處理網路，不含無條件向後跳躍。新指令無獨立執行模型、內建模擬、GUI或PLC驗證；[LBL／JMP重定位限制](test18-functions.md)保持明列。
+
+## test19 未發版驗證
+
+新啟動的MCP stdio生成330 bytes試檔，包含原N004與N006，兩個payload及FBe-20MA檔頭與原樣本相同。二進位資源下載、CRC、完整I/O範圍、當時嚴格模式的M→M拒絕、CALL生成拒絕均經實際工具呼叫確認。使用者後續澄清允許function所需M→M；更新試檔包含原N001～N006，完整CALL仍拒絕。新增功能沒有執行模型、GUI或PLC驗證；詳見[test19](test19-functions.md)。
+
+## test20 未發版驗證
+
+MCP stdio已生成並讀回原N000～N002、N003兩份候選檔，payload與原樣本一致。完整樣本R15～R17工作區衝突被正確拒絕；function的M→M通過。沒有新指令執行模型、GUI或實體PLC驗證；見[test20](test20-functions.md)。

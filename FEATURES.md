@@ -1,6 +1,6 @@
 # WinProLadder MCP 現有功能總覽
 
-版本：**v0.11.0**。整理日期：**2026-10-08**。
+版本：**v0.11.0**。整理日期：**2026-10-13**。
 
 本文件描述**目前原始碼**。最後安裝包為 v0.10.0，差異記錄於[0.11.0版本紀錄](docs/release-0.11.0.md)；本次未打包。原生指令按 FUNC 編號排列，能力與限制以此表及 MCP schema 為準。
 
@@ -8,7 +8,7 @@
 
 使用者提出控制需求 → 連接 MCP 的 AI Agent 解讀需求與 I/O → MCP 編譯、檢查 → 取得真正的 **WinProLadder `.ldr` 二進位檔案**。
 
-自然語言由 Agent 解讀；MCP 負責結構化設計、編碼、檔案與支援範圍內的模擬。產檔不需要啟動 WinProLadder 或 VM。目前支援已取樣的 FBs-20MC、FBs-24MA、FBs-32MA、FBs-40MA、FBs-44MN、FBs-60MC、FBn-26MC 檔頭，不代表支援全部 CPU、軟體版本或指令變體。
+自然語言由 Agent 解讀；MCP 負責結構化設計、編碼、檔案與支援範圍內的模擬。產檔不需要啟動 WinProLadder 或 VM。目前支援已取樣的 FBs-20MC、FBs-24MA、FBs-32MA、FBs-40MA、FBs-44MN、FBs-60MC、FBn-26MC、FBe-20MA 檔頭，不代表支援全部 CPU、軟體版本或指令變體。
 
 「支援指令」表示能讀取、編碼並產檔；不代表所有運算元、D/P 形式、狀態腳位或 PLC 執行行為都已驗證。
 
@@ -32,6 +32,7 @@
 | 19 | OR 位元或 | `bitwise` / `or` | 同上；保留舊 `register_or` 介面 |
 | 20 | →BCD 二進位轉 BCD | `word_conversion` / `to_bcd` | **目前僅接受 0..9999 常數來源**，不支援暫存器來源形式 |
 | 21 | →BIN BCD 轉二進位 | `word_conversion` / `to_bin` | word 來源及可寫目的地；不接受常數來源 |
+| 22 | BREAK 跳出迴圈 | `break` | EN 條件；須位於迴圈內 |
 | 23 | DIV48 48-bit 除法 | `div48` | Sa／Sb／D 各3 words；two_inputs含U/S，single_input不含；D=0／ERR |
 | 24 | SUM 總和 | `sum` | 16-bit 來源整段，N=1..511 常數，R/D 目的地 |
 | 25 | MEAN 平均值 | `mean` | 暫存器 N，執行時2..256；來源按最大256 words檢查；ERR |
@@ -41,20 +42,37 @@
 | 29 | EXT 符號擴展 | `ext` | 16-bit 擴展至相鄰2 words |
 | 30 | PID 泛用控制 | `pid` | A/M、BUM、D/R；SR8／OR1／PR7／WR5；ERR／HAL／LAL；Ts 單位10 ms |
 | 31 | CRC16 | `crc16` | 樣本 MD=1、常數 N=1..256；手冊標為保留，僅支援編碼、語意尚未確認 |
+| 32 | ADCNV 類比轉換 | `adcnv` | Pl=0、N=1..64常數；EN／F/T；來源目的整段檢查 |
 | 33 | LCNV 線性轉換 | `lcnv` | Md、S、Ts、D、L；Md=0..3、L=1..64；超出原樣本的參數組合屬外推 |
+| 34 | MLC 多段線性轉換 | `mlc` | Sl常數1..64、Tl暫存器；EN／X/Y、OVR；表格各255個可能讀取word |
 | 35 | XOR 位元互斥或 | `exclusive_logic` / `xor` | word Sa、Sb、可寫目的地；不支援 D=0 腳位接線 |
 | 36 | XNR 位元互斥或反相 | `exclusive_logic` / `xnr` | 同上；支援樣本中的 T1 數值來源 |
 | 37 | ZNCMP 區間比較 | `zone_compare` | R/D 來源；上下限為 -32768..32767 常數；區間內／高於上限／低於下限接普通線圈 |
+| 40 | BITRD 讀取位元 | `bitrd` | R/D word、bit=0..15、OTB／ERR；EN=0受M1919影響 |
+| 41 | BITWR 寫入位元 | `bitwr` | R/D word、bit=0..15、EN／INB、ERR；其他bits保持 |
+| 65 | LBL 標籤 | `lbl` | 精確標籤1記錄，尚未支援任意名稱 |
+| 66 | JMP 跳躍 | `jmp` | 僅完整test18原樣重建；目標欄位未解碼，不支援重定位或改動程式 |
+| 67 | CALL 副程式呼叫 | `call` | 僅解析 test19 精確記錄；目標重定位未解碼，禁止生成 |
+| 70 | FOR 迴圈開始 | `for` | 次數1..16383常數，單層迴圈 |
+| 71 | NEXT 迴圈結束 | `next` | 須與 FOR 配對 |
 | 74 | IMDIO 即時 I/O 更新 | `imdio` | start=X/Y、count=1..36；整段 I/O 契約，限主機點位 |
 | 76 | TKEY 十進位按鍵 | `tkey` | X×10、KL×10；KPR 狀態輸出 |
 | 77 | HKEY 矩陣鍵盤 | `hkey` | X×4、Y×4、KL×16、WR×1；NKP／FKP |
 | 78 | DSW 指撥開關 | `dsw` | X×4、Y×4、WR×2；DN／ERR |
 | 79 | 7SGDL 七段掃描輸出 | `7sgdl` | Y×8、mode=0..3、WR×1；DN |
 | 80 | MUXI 多工接點輸入 | `muxi` | X×8、Y×N，N=2..8；結果 ceil(N/2) words、WR×1 |
+| 86 | TPCTL 溫控 | `tpctl` | EN／H/C；Sn+Zn≤32、Yn及參數各Zn、WR9；ERR／ALM；Md未編碼 |
+| 87 | T.01S 積算計時 | `accumulative_timer` | unit_ms=10；TIM／EN、R/D PV、T或R/D CV、TUP／NUP |
+| 88 | T.1S 積算計時 | `accumulative_timer` | 同上，unit_ms=100 |
+| 89 | T1S 積算計時 | `accumulative_timer` | 同上，unit_ms=1000 |
 | 90 | WDT 設定監控計時器 | `wdt` | 50、60、…120，單位10 ms；90代表900 ms |
 | 91 | RSWDT 清除監控計時器 | `rswdt` | EN，無運算元 |
 | 92 | HSCTR 讀取硬體計數 | `hsctr` | 目前為 HSC0 精確形式 |
 | 93D | HSCTW 寫入硬體計數 | `hsctw` | 目前為 S=0、CN=HSC0、D=PV 精確形式 |
+| 94P | ASCWR ASCII輸出 | `ascwr` | 樣本MD=1保留用途，僅編碼；EN／PAU／ABT、Pt8、ACT／ERR／DN；來源範圍未完全解析 |
+| 95 | RAMP 緩升降 | `ramp` | Tn須10 ms且獨占、暫存器PV／SL／SU、D+1獨占；EN／PAU／U/D與三狀態 |
+| 98 | RAMP2 追蹤緩升降 | `ramp2` | 暫存器Om／Ta／Td／Rt／Rc、WR4；OR區與D0..3999，Ta／Td內容為ms |
+| 100 | R→T 暫存器到表格 | `reg_to_table` | 16-bit非P；暫存器Rs／Td／Pr、L=2..2048；EN／INC／CLR、END／ERR |
 | 170 | = 相等比較接點 | `comparison_chain` / `eq` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
 | 171 | > 大於比較接點 | `comparison_chain` / `gt` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
 | 172 | < 小於比較接點 | `comparison_chain` / `lt` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
@@ -74,9 +92,6 @@
 | 212～213 | FNEG／FABS | `float_operation` / `neg`、`abs` | destination 原地讀寫雙字組，不提供 sa／sb |
 | 214～215 | FLN／FEXP | `float_operation` / `ln`、`exp` | 浮點來源／結果；這兩個指令的 D bank 上限為 D3999 |
 | 216～220 | FLOG／FPOW／FASIN／FACOS／FATAN | `float_operation` / `log`、`pow`、`asin`、`acos`、`atan` | pow 的 sa 為指數、sb 為底數；反三角結果為弧度 |
-| — | FOR 迴圈開始 | `for` | 次數為 1..16383 常數；單層迴圈 |
-| — | NEXT 迴圈結束 | `next` | 必須與 FOR 配對 |
-| — | BREAK 跳出迴圈 | `break` | EN 條件；必須位於迴圈內 |
 
 補充限制：
 
@@ -138,11 +153,11 @@
 | `forward_reverse` | 正反轉互鎖 |
 | `star_delta` | 星三角順序 |
 
-這是配方介面清單，**不保證每個參數組合都能在目前政策下產檔**。部分配方會合成內部 M 網路，若構成 M→M 就會被拒絕；不能停用政策來輸出。配方也不必然採用同名原生 FUNC。
+這是配方介面清單，**不保證每個參數組合都能在目前政策下產檔**。部分配方會合成內部 M 網路，若構成無意義的 M→M 複製或中繼仍會被拒絕；原生 function 的 M 結果／狀態允許。配方也不必然採用同名原生 FUNC。
 
 - `generate_system_ldr`：最多組合 24 個獨立控制配方，自動分配內部 M/T/C，允許共用輸入、拒絕資源衝突；不是跨配方製程協調器。
 - `generate_sequence_ldr`：1..16 步，可設定各步輸出、計時、完成條件、逾時、reset、abort；每掃描最多轉移一步，同樣受架構政策檢查。
-- 順序控制預設使用原生 T。原生計時暫停續跑尚未支援；只有需求明確指定外部 clock 時，才能使用外部脈波模式，不自動補一個 X。
+- 順序控制預設使用原生 T。高階順序控制尚未整合原生累積計時器的暫停續跑；只有需求明確指定外部 clock 時，才能使用外部脈波模式，不自動補一個 X。
 
 ## 5. MCP 工具清單（19 個）
 
@@ -173,7 +188,7 @@
 ## 6. 產檔與架構規則
 
 - 主要生成工具必填 `io_contract`，只使用需求指定的 X/Y。原始設計和生成 bytes 的 I/O 都會檢查，超出即拒絕。
-- 本工作區 `.winproladder-policy.json` 啟用 `forbid_m_to_m=true`。M 接點不能驅動 M 線圈，包含 SET／RESET、function 結果、MC 隱含控制及編譯器 helpers。
+- 本工作區啟用 `forbid_m_to_m=true`、`allow_function_m_to_m=true`：禁止無意義的 M→M 複製、中繼及自動 helpers；允許 M 控制原生 function，並由其輸出 M 結果／狀態（含計時、計數、比較、DIFU／DIFD）。MC 區域內的普通 M 複製仍禁止，不能用假 function 包裝複製。
 - 數值與狀態設計應使用原生暫存器；不以改名或偽裝的繼電器鏈繞過政策。
 - 寫出前檢查來源、接圖轉換後程式及實際 bytes 解碼结果。無法符合要求時回報限制，不自行增加 I/O。
 - 新檔採不覆寫方式建立；操作限於指定工作目錄，預設輸出至 `artifacts/`。
@@ -187,17 +202,17 @@
 | 獨立離線核對 | 原始樣本 bytes、CRC、逐 byte 往返、I/O 引用、政策、負數與邊界檢查；不等同 PLC 行為 |
 | MCP 內建模擬 | 布林接點／線圈、SET／RESET、單一 X 邊沿；指定 scan_ms 時支援有限的非保持 T/C 掃描模型 |
 | MCP 真實呼叫 | 已測試 stdio 連線、需求產檔、資源下載與 SHA-256 核對 |
-| WinProLadder GUI | 僅部分歷史檔案有人工匯入紀錄；test8～test15 新生成檔未因此自動取得 GUI 驗證 |
+| WinProLadder GUI | 僅部分歷史檔案有人工匯入紀錄；test8～test20 新生成檔未因此自動取得 GUI 驗證 |
 | 實體 PLC | 未執行實機驗證 |
 
 內建模擬每次最多 256 scans；有時間模型時 scan_ms 為 1..60000 ms。T 時間模型限預設 `.01S` 的 T0..49 及支援的 preset 範圍，不模擬 PLC 非同步時脈相位。數值比較接點、原生 action、暫存器運算、MC/MCE、DIFU/DIFD、UDCTR 與迴圈均未提供執行模型。
 
-v0.10.0 打包時為 **443 項通過**；目前0.11.0原始碼為 **663 項通過**。原始樣本目前 **18 份、124 networks** 可語意解碼與重建。這是現有樣本覆蓋，不代表所有程式都符合政策或所有指令變體皆有效。test11 的比較接點與浮點指令同樣區分離線、MCP 模擬、GUI 與實機驗證。
+v0.10.0 打包時為 **443 項通過**；0.11.0升版時為 **663 項通過**，目前含test20的原始碼測試結果見 [test20驗證紀錄](docs/test20-functions.md)。原始樣本目前 **21 份、141 networks** 可語意解碼與重建。這是現有樣本覆蓋，不代表所有程式都符合政策或所有指令變體皆有效。test11 的比較接點與浮點指令同樣區分離線、MCP 模擬、GUI 與實機驗證。
 
 ## 8. 仍未支援
 
 - MOV 等尚未取得可靠編碼的原生 FUNC。
-- 原生保持型計時 FUN87～89。
+- FUN87～89 的常數 PV、其他 word bank、高階順序產生器整合與執行模擬。
 - 未明列的 32-bit／P 形式、間接定址、運算元種類與狀態接線。
 - 多數硬體專用指令、通訊與定位功能。
 - 全指令 PLC 執行模擬、自動 GUI 匯入驗證、實體 PLC 連線／下載。
@@ -224,4 +239,4 @@ Agent 應先核對需求 I/O 與目前功能，再選擇生成工具，最後交
 
 功能與欄位若有後續變更，以實際連線 MCP 回傳的 `get_capabilities`、`get_design_guide` 及工作區政策為準。
 
-最新原生指令與限制見 [test17](docs/test17-functions.md)。
+最新未發版指令與限制見 [test20](docs/test20-functions.md)。

@@ -9,6 +9,9 @@ from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from winproladder_mcp.analysis import device_references
+from winproladder_mcp.ir import Ladder
+
 
 async def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -26,13 +29,35 @@ async def main() -> None:
             raise RuntimeError(str(result.content))
         guide = json.loads(result.content[0].text)
         for name, ladder in guide["examples"].items():
-            request = {"output_name": f"{args.prefix}_{name}.ldr", "ladder": ladder}
+            # These are explicit guide fixtures, not an inferred customer's I/O contract.
+            program = Ladder.model_validate(ladder)
+            devices = device_references(list(enumerate(program.networks)))["devices"]
+            contract = {
+                "inputs": sorted(d for d in devices if d.startswith("X")),
+                "outputs": sorted(d for d in devices if d.startswith("Y")),
+            }
+            request = {
+                "output_name": f"{args.prefix}_{name}.ldr",
+                "ladder": ladder,
+                "io_contract": contract,
+            }
             if name == "self_hold_stop_active_high":
                 request["acceptance"] = guide["acceptance_example"]
             elif name in guide.get("timed_acceptance", {}):
                 request["acceptance"] = guide["timed_acceptance"][name]
             result = await session.call_tool("generate_ldr", request)
             if result.isError:
+                if "M-to-M" in str(result.content):
+                    print(
+                        json.dumps(
+                            {
+                                "example": name,
+                                "status": "policy_rejected",
+                                "reason": str(result.content),
+                            }
+                        )
+                    )
+                    continue
                 raise RuntimeError(str(result.content))
             created = json.loads(result.content[0].text)
             print(

@@ -131,7 +131,10 @@ def test_tool_preview_and_guide_expose_live_workspace_policy(tmp_path):
         guide = await server.call_tool("get_design_guide", {})
         # FastMCP returns content plus structured data for dict results.
         guide_data = guide[1] if isinstance(guide, tuple) else json.loads(guide[0].text)
-        assert guide_data["architecture_policy"] == {"forbid_m_to_m": True}
+        assert guide_data["architecture_policy"] == {
+            "forbid_m_to_m": True,
+            "allow_function_m_to_m": False,
+        }
         preview = await server.call_tool("validate_ladder", {"ladder": ladder("M0").model_dump()})
         data = preview[1] if isinstance(preview, tuple) else json.loads(preview[0].text)
         assert not data["valid"]

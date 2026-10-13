@@ -1,4 +1,4 @@
-"""Generate every high-level recipe via MCP; keep a JSON design report beside each LDR."""
+"""Generate explicit demo I/O examples; report policy-rejected recipes without bypassing rules."""
 
 import argparse
 import asyncio
@@ -26,7 +26,21 @@ async def main() -> None:
             raise RuntimeError(str(guide_result.content))
         guide = json.loads(guide_result.content[0].text)
         requests = [
-            (kind, "generate_control_ldr", {"requirement": f"Example: {kind}", "kind": kind})
+            (
+                kind,
+                "generate_control_ldr",
+                {
+                    "requirement": f"Demo fixture: {kind}, X0 signal/X1 stop/X2 reset/X3 reverse, "
+                    "outputs Y0..Y2 as required by the recipe",
+                    "kind": kind,
+                    "signal": "X0",
+                    "stop": "X1",
+                    "reset": "X2",
+                    "reverse": "X3",
+                    "output": 0,
+                },
+                {"inputs": ["X0", "X1", "X2", "X3"], "outputs": ["Y0", "Y1", "Y2"]},
+            )
             for kind in guide["control_recipes"]["kinds"]
         ]
         requests.append(
@@ -34,18 +48,37 @@ async def main() -> None:
                 "fill_mix_drain",
                 "generate_sequence_ldr",
                 guide["sequence_generation"]["example_spec"],
+                {"inputs": ["X0", "X5", "X6"], "outputs": ["Y0", "Y1", "Y2"]},
             )
         )
         requests.append(
-            ("two_motors", "generate_system_ldr", guide["system_generation"]["example_spec"])
+            (
+                "two_motors",
+                "generate_system_ldr",
+                guide["system_generation"]["example_spec"],
+                {"inputs": ["X0", "X1", "X2", "X3"], "outputs": ["Y0", "Y1"]},
+            )
         )
-        for name, tool, spec in requests:
+        for name, tool, spec, contract in requests:
             filename = f"{args.prefix}_{name}.ldr"
             report_path = root / "artifacts" / f"{filename}.design.json"
             if report_path.exists():
                 raise FileExistsError(report_path)
-            result = await session.call_tool(tool, {"output_name": filename, "spec": spec})
+            result = await session.call_tool(
+                tool, {"output_name": filename, "spec": spec, "io_contract": contract}
+            )
             if result.isError:
+                if "M-to-M" in str(result.content):
+                    print(
+                        json.dumps(
+                            {
+                                "example": name,
+                                "status": "policy_rejected",
+                                "reason": str(result.content),
+                            }
+                        )
+                    )
+                    continue
                 raise RuntimeError(str(result.content))
             data = json.loads(result.content[0].text)
             if "design_report" not in data:

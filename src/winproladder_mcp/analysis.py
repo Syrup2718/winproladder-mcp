@@ -5,7 +5,10 @@ from typing import Any
 from .floating import float_source_reads, float_span
 from .ir import (
     PID,
+    AccumulativeTimer,
+    AnalogConversion,
     Arithmetic,
+    BitAccess,
     Bitwise,
     BreakLoop,
     Compare,
@@ -25,9 +28,13 @@ from .ir import (
     Network,
     NextLoop,
     PeripheralIO,
+    ProcessFunction,
     RegisterOr,
     RegisterStep,
+    SampleCall,
+    SampleFlow,
     SumWords,
+    TemperatureControl,
     Timer,
     UpDownCounter,
     Watchdog,
@@ -43,6 +50,20 @@ from .registers import register_span, word_references
 
 
 def describe(network: Network) -> str:
+    if isinstance(network.action, ProcessFunction):
+        return f"Native {network.action.type}: {network.action.model_dump(exclude_none=True)}"
+    if isinstance(
+        network.action,
+        (
+            AnalogConversion,
+            BitAccess,
+            SampleFlow,
+            SampleCall,
+            AccumulativeTimer,
+            TemperatureControl,
+        ),
+    ):
+        return f"Native {network.action.type}: {network.action.model_dump(exclude_none=True)}"
     if isinstance(network.action, IntegerFunction):
         return f"Integer {network.action.type}: {network.action.model_dump(exclude_none=True)}"
     if isinstance(network.action, (Watchdog, HighSpeedCounter, Divide48, SumWords, PID)):
@@ -204,6 +225,19 @@ def timer_settings(networks: list[tuple[int, Network | None]]) -> dict[str, Any]
         "scope": "Assumes destination T0..T49 use .01S (10 ms) time base; "
         "destination project configuration is not verified from this LDR.",
         "formula": "nominal_duration_ms = preset_ticks * time_base_ms",
+        "accumulative_timers": [
+            {
+                "network_index": index,
+                "cv": network.action.cv,
+                "pv_register": network.action.pv,
+                "time_base_ms": network.action.unit_ms,
+                "nominal_duration_ms": None,
+                "behavior": "EN=0 clears CV; EN=1/TIM=0 retains CV; EN=1/TIM=1 counts",
+                "runtime_verified": False,
+            }
+            for index, network in networks
+            if network is not None and isinstance(network.action, AccumulativeTimer)
+        ],
         "timers": [
             {
                 "network_index": index,
@@ -239,6 +273,8 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
                 IntegerFunction,
                 SumWords,
                 Watchdog,
+                AnalogConversion,
+                BitAccess,
                 Arithmetic,
                 RegisterStep,
                 Bitwise,
@@ -344,7 +380,44 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
             reads = (
                 contacts(parse_expression(network.action.enable)) | network.action.source_devices()
             )
+        if isinstance(network.action, (AnalogConversion, BitAccess)):
+            from .layout import expressions
+
+            reads = set().union(*(contacts(e) for e in expressions(network)))
+            if isinstance(network.action, AnalogConversion):
+                reads |= network.action.source_devices()
+            else:
+                reads.add(network.action.word)
+                if network.action.type == "bitrd":
+                    reads.add("M1919")
+        if isinstance(network.action, (AccumulativeTimer, TemperatureControl)):
+            from .layout import expressions
+
+            reads = set().union(*(contacts(e) for e in expressions(network)))
+            if isinstance(network.action, AccumulativeTimer):
+                reads |= {network.action.cv, network.action.pv}
+            else:
+                reads |= network.action.source_devices() | network.action.work_devices()
+                # Conservative references across the supplied FBs/FB manual editions.
+                reads |= {f"R{i}" for i in [4003, 4004, 4005, 4006, 4007, 4008, 4012, 4013]}
+        if isinstance(network.action, ProcessFunction):
+            from .layout import expressions
+
+            reads = set().union(*(contacts(e) for e in expressions(network)))
+            reads |= network.action.source_devices() | network.action.work_devices()
+            if network.action.type == "ramp":
+                reads |= {network.action.operand("timer"), network.action.operand("destination")}
         writes = {f"{c.device}{c.address}" for c in network_coils(network)}
+        if isinstance(network.action, ProcessFunction):
+            writes |= network.action.destination_devices()
+        if isinstance(network.action, AccumulativeTimer):
+            writes.add(network.action.cv)
+        elif isinstance(network.action, TemperatureControl):
+            writes |= network.action.destination_devices() | network.action.output_devices()
+        if isinstance(network.action, AnalogConversion):
+            writes |= network.action.destination_devices()
+        elif isinstance(network.action, BitAccess) and network.action.type == "bitwr":
+            writes.add(network.action.word)
         if isinstance(network.action, IntegerFunction):
             writes |= network.action.destination_devices()
         if isinstance(network.action, Divide48):
@@ -395,6 +468,14 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
         for i, n in networks
         if n is not None and isinstance(n.action, IntegerFunction) and n.action.type == "crc16"
     ]
+    process_uncertain = [
+        i
+        for i, n in networks
+        if n is not None and isinstance(n.action, ProcessFunction) and n.action.type == "ascwr"
+    ]
+    thermal_uncertain = [
+        i for i, n in networks if n is not None and isinstance(n.action, TemperatureControl)
+    ]
     return {
         "reference_uncertainties": [
             {
@@ -403,10 +484,32 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
                 "the supplied manual; spans conservatively use MD=0 rules",
             }
             for i in uncertain
+        ]
+        + [
+            {
+                "network": i,
+                "reason": "TPCTL temperature source requires PLC temperature "
+                "planning or runtime R4003/R4004; actual temperature registers unresolved",
+            }
+            for i in thermal_uncertain
+        ]
+        + [
+            {
+                "network": i,
+                "reason": "ASCWR MD=1 is reserved in manual 7-87; "
+                "ASCII file length/embedded operands unresolved. Only S start and Pt8 "
+                "conservative work span tracked, not a complete device-reference analysis",
+            }
+            for i in process_uncertain
         ],
         "devices": dict(sorted(references.items())),
-        "complete": not unknown and not uncertain,
+        "complete": not unknown
+        and not uncertain
+        and not thermal_uncertain
+        and not process_uncertain,
         "opaque_networks": unknown,
         "multiple_writers": {d: v["writes"] for d, v in references.items() if len(v["writes"]) > 1},
-        "note": "Decoded networks only. T/C block writes denote device state, not raw registers.",
+        "note": "Decoded structural references only, not control-flow reachability. "
+        "MLC/MEAN register lengths use maximum possible spans. "
+        "T/C block writes denote device state, not raw registers.",
     }

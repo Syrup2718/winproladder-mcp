@@ -30,7 +30,7 @@ FUN216～220 的 R bank 為 R0～3839、R5000～8071；這幾個指令的手冊 
 
 `float_operation.error` 使用普通 Y/M 線圈，ERR 標記為 6FFC。FLOG→M23 已取樣；其他有 ERR 的浮點算術／三角函數沿用相同結構，標為推導形式。I→F、F→I、FNEG、FABS 的 ERR 形式未開放；FCMP／FZCP 未因此新增 ERR。
 
-ERR 線圈參與元件讀寫分析、M 資源保留、I/O 契約與架構政策。無條件 FLOG 可以輸出 M23；改成 M0 啟用並輸出 M23 時，來源 IR、lowered IR 與 decoded bytes 都拒絕 M→M。SET／RESET／反相 ERR 線圈未實作。
+ERR 線圈參與元件讀寫分析、M 資源保留、I/O 契約與架構政策。無條件 FLOG 可以輸出 M23；目前政策允許 M0 啟用原生 FLOG 並輸出 M23，來源 IR、lowered IR 與 decoded bytes 均區分 function 結果與無意義的繼電器複製。SET／RESET／反相 ERR 線圈未實作。
 
 ## IMDIO 的 I/O 範圍
 

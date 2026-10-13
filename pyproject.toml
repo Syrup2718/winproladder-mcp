@@ -27,7 +27,7 @@ winproladder-mcp = "winproladder_mcp.server:main"
 winproladder-setup = "winproladder_mcp.setup:main"
 
 [tool.hatch.build.targets.sdist]
-exclude = ["/.codex/config.toml", "/artifacts", "/dist", "/.venv"]
+exclude = ["/.codex/config.toml", "/artifacts", "/dist", "/.venv", "/tmp", "/.coverage*", "/.mypy_cache", "/.pytest_cache", "/.ruff_cache"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/winproladder_mcp"]

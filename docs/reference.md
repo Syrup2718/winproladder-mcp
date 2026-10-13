@@ -21,7 +21,7 @@ SET/RST 與邊沿配方由布林網路實作，不代表原生指令編碼已支
 
 預設使用原生 T 計時，時間為 ticks × tick_ms（預設 100 ms），換算成 .01S preset；例如 ticks=30 是 3 秒、preset=300。時間須為 10 ms 倍數且不超過 327670 ms。不需要外部 X 時脈。
 
-普通 T 停用會清零。原生暫停保留需要 FUN87～89，手冊行為已確認但 `.ldr` 編碼尚未支援；提供 pause 而未提供 clock 時會明確拒絕產檔，不能新增 X 作替代。
+普通 T 停用會清零。原生暫停保留需要 FUN87～89，底層 `generate_ldr` 已支援暫存器 PV 形式，但尚未整合高階順序產生器；提供 pause 而未提供 clock 時會明確拒絕產檔，不能新增 X 作替代。
 
 只有需求明確指定外部脈波時，才可設定 clock 使用計数器模式：保留完整 tick，不保留不足一個 tick 的時間；高低狀態均須被掃描，暫停期間忽略脈波，恢復時不補算邊沿。不得因為欠缺原生保持計時就替使用者加此輸入。
 
@@ -69,7 +69,7 @@ Timer 的 `preset` 是時基刻度數，不是直接的毫秒值。在 `.01S` �
 
 ## 未支援範圍
 
-FUN11～14 已支援 16-bit、Sa 暫存器／Sb 非負常數的加減乘除。原生單一 X 邊沿亦可產檔，詳見 [算術及邊沿支援範圍](fun11-14-arithmetic.md)。FUN15／16、CMP、AND、DIFU／DIFD、MC／MCE 及 07P.UDCTR 的格式支援見 [原生 function 編碼](test8-test9-functions.md)，這些 action 尚無執行模擬。FUN35 XOR／36 XNR／37 ZNCMP／20 →BCD／21 →BIN 已加入，具體 operand 限制見 [test10](test10-functions.md)。MOV、間接定址、其他 Timer time base、原生保持型計時、通訊、定位及多數硬體專用指令尚未支援。FUN33 LCNV 的 Md/L 等變化為外推；詳見 [LCNV 支援範圍](fun33-lcnv.md)。未知原生指令保持 opaque，無損 export 不丟棄原始資料。完整支援狀態以 `get_capabilities` 為準。
+FUN11～14 已支援 16-bit、Sa 暫存器／Sb 非負常數的加減乘除。原生單一 X 邊沿亦可產檔，詳見 [算術及邊沿支援範圍](fun11-14-arithmetic.md)。FUN15／16、CMP、AND、DIFU／DIFD、MC／MCE 及 07P.UDCTR 的格式支援見 [原生 function 編碼](test8-test9-functions.md)，這些 action 尚無執行模擬。FUN35 XOR／36 XNR／37 ZNCMP／20 →BCD／21 →BIN 已加入，具體 operand 限制見 [test10](test10-functions.md)。MOV、間接定址、未列出的 Timer 形式、通訊、定位及多數硬體專用指令尚未支援。test19 已提供原生累積計時器編碼，但尚未整合到高階順序控制的暫停續跑。FUN33 LCNV 的 Md/L 等變化為外推；詳見 [LCNV 支援範圍](fun33-lcnv.md)。未知原生指令保持 opaque，無損 export 不丟棄原始資料。後續 test11～20 的支援範圍見 [完整功能表](../FEATURES.md)，並以 `get_capabilities` 回報目前介面。
 
 ## test11 新增
 

@@ -1,6 +1,6 @@
 # test17：整數運算與 CRC16
 
-原始樣本 `samples/test17.ldr` 為8網路、420 bytes；新增精確 `FBn-26MC-test17` 檔頭，保留4030 metadata。原始截圖在 `samples/screenshots/test17.png`。此次為未發版更新，不調整0.10.0版本或製作安裝包。
+原始樣本 `samples/test17.ldr` 為8網路、420 bytes；新增精確 `FBn-26MC-test17` 檔頭，保留4030 metadata。原始截圖在 `samples/screenshots/test17.png`。初次加入時未升版或打包；目前已納入0.11.0原始碼，最後安裝包仍為0.10.0。
 
 | FUNC | action.type | 目前形式與讀寫範圍 |
 | --- | --- | --- |

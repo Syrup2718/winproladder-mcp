@@ -4,7 +4,10 @@ from typing import Any
 
 from .ir import (
     PID,
+    AccumulativeTimer,
+    AnalogConversion,
     Arithmetic,
+    BitAccess,
     Coil,
     Compare,
     Counter,
@@ -12,6 +15,8 @@ from .ir import (
     Divide48,
     Ladder,
     Network,
+    ProcessFunction,
+    TemperatureControl,
     Timer,
     UpDownCounter,
     comparison_reads,
@@ -26,6 +31,21 @@ from .optimize import contact_count, simplify
 def expressions(network: Network) -> list[Expr]:
     if network.empty or network.edge is not None or network.comparison_chain:
         return []
+    if isinstance(network.action, ProcessFunction):
+        from .process_functions import CONTROLS
+
+        return [
+            parse_expression(getattr(network.action, name))
+            for name in CONTROLS[network.action.type]
+        ]
+    if isinstance(network.action, AccumulativeTimer):
+        return [parse_expression(network.action.timing), parse_expression(network.action.enable)]
+    if isinstance(network.action, TemperatureControl):
+        return [parse_expression(network.action.enable), parse_expression(network.action.heat_cool)]
+    if isinstance(network.action, AnalogConversion):
+        return [parse_expression(network.action.enable), parse_expression(network.action.selector)]
+    if isinstance(network.action, BitAccess) and network.action.input_bit is not None:
+        return [parse_expression(network.action.enable), parse_expression(network.action.input_bit)]
     if isinstance(network.action, PID):
         return [
             parse_expression(x)
@@ -77,11 +97,21 @@ def requires_lowering(expr: Expr) -> bool:
 
 
 def needs_lowering(network: Network, index: int, expr: Expr) -> bool:
+    if isinstance(network.action, ProcessFunction) and index > 0 and expr.op == "false":
+        return False
     if network.branch_encoding == "test9_or":
         return False
     if isinstance(network.action, UpDownCounter) and index in {1, 2} and expr.op == "false":
         return False
     if isinstance(network.action, PID) and index in {1, 2} and expr.op == "false":
+        return False
+    if (
+        isinstance(
+            network.action, (AnalogConversion, BitAccess, AccumulativeTimer, TemperatureControl)
+        )
+        and index == 1
+        and expr.op == "false"
+    ):
         return False
     # Counter CLR uses inverted polarity. Its sampled 7FE8 encodes the direct
     # CLR rail, not an OPEN contact drawn inside a Boolean rung.
@@ -194,6 +224,19 @@ def lower_ladder(ladder: Ladder, reserved: set[int] | None = None) -> tuple[Ladd
                     network.action.pulse, network.action.up, network.action.clear = map(
                         expression_text, fixed
                     )
+                elif isinstance(network.action, ProcessFunction):
+                    from .process_functions import CONTROLS
+
+                    for name, value in zip(CONTROLS[network.action.type], fixed, strict=True):
+                        setattr(network.action, name, expression_text(value))
+                elif isinstance(network.action, AccumulativeTimer):
+                    network.action.timing, network.action.enable = map(expression_text, fixed)
+                elif isinstance(network.action, TemperatureControl):
+                    network.action.enable, network.action.heat_cool = map(expression_text, fixed)
+                elif isinstance(network.action, AnalogConversion):
+                    network.action.enable, network.action.selector = map(expression_text, fixed)
+                elif isinstance(network.action, BitAccess) and network.action.input_bit is not None:
+                    network.action.enable, network.action.input_bit = map(expression_text, fixed)
                 elif isinstance(network.action, PID):
                     network.action.enable, network.action.bumpless, network.action.direction = map(
                         expression_text, fixed

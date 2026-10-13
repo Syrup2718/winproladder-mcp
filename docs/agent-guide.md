@@ -2,10 +2,7 @@
 
 ## 生成流程
 
-本工作區的 `.winproladder-policy.json` 啟用 `forbid_m_to_m`：禁止 M 接點驅動 M
-線圈，包含自保持、複製、SET/RESET、功能塊狀態輸出及編譯器自動產生的中繼 M。
-數值與步序應改以原生暫存器處理；無 M 輸入的比較指令可輸出 M 狀態，再控制
-Y、計時器或暫存器指令。不可改名或停用規則來繞過限制。
+本工作區啟用 `forbid_m_to_m=true`、`allow_function_m_to_m=true`。禁止無意義的 M→M 複製、冗餘中繼與自動 relay helpers；允許 M 控制原生 function，再由該 function 輸出 M 結果或狀態，包括計時器、計數器、比較、DIFU／DIFD 等。普通 M 複製不因位於 MC 區域或加註 function 名稱就取得例外；不得製造假 function 來包裝複製。數值與步序仍優先使用原生暫存器。舊政策檔未設定新旗標時保留嚴格模式。
 
 `get_capabilities`／`get_design_guide` 回傳工作區規則，`validate_ladder` 同時檢查
 原始及展開後的網路。產檔服務會再次檢查真正輸出的 bytes；修改、匯出也經過最後
@@ -50,7 +47,7 @@ Y、計時器或暫存器指令。不可改名或停用規則來繞過限制。
 
 `(Y0 OR X0) AND NOT X1 → Y0` 表示 X1=1 時停止，啟停同時成立時停止優先。若實體常閉停止按鈕在正常狀態讀入 1，必須使用符合該接線的條件，不能把實體 NC 與程式 NC 當作同一件事。
 
-高階工具的 `signal`／`output`、順序工具的 `start` 必須明確指定。選配控制省略時為 FALSE，不套用任何 X；原生計時預設 `clock=null`。沒有指定 timeout 就不加逾時條件。FUN87～89 的編碼缺口見 [計時器核對紀錄](timer-evidence.md)。
+高階工具的 `signal`／`output`、順序工具的 `start` 必須明確指定。選配控制省略時為 FALSE，不套用任何 X；原生計時預設 `clock=null`。沒有指定 timeout 就不加逾時條件。FUN87～89 的已實作形式與高階整合限制見 [計時器核對紀錄](timer-evidence.md)。
 
 同一掃描中 Y/M 隨網路順序更新。不要為縮短程式任意重排網路，或跨網路共用尚未檢查生命週期的暫存結果。
 

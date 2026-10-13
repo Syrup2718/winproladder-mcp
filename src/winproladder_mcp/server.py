@@ -190,7 +190,7 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
         acceptance: list[AcceptanceCase] | None = None,
     ) -> CallToolResult:
         """Generate ordered steps using native T timers, with no automatic X/Y additions.
-        Native retentive pause/resume is not yet encoded and is rejected explicitly.
+          Native retentive pause/resume is not integrated into this high-level generator.
         External pulse counting is only for requirements explicitly specifying a clock input.
         Return symbols and actual .ldr; not GUI or PLC verified.
         """

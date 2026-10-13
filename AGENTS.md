@@ -10,9 +10,13 @@
 
 ## Generation constraints
 
-- This workspace forbids M contacts driving M coils (including self-holds, copies,
-  SET/RESET destinations, block status outputs, and automatically lowered helpers).
-  The user explicitly requested this as a permanent architecture constraint.
+- This workspace forbids meaningless M-to-M relay copies, redundant intermediate
+  chains, self-holds/copy SET/RESET destinations, and automatically lowered relay
+  helpers. The user clarified that M inputs controlling a native function and
+  that function producing M results/status bits ARE allowed (including timers,
+  counters, comparisons, differential functions and other function blocks).
+  An ordinary relay rung does not gain this exemption by being inside MC or by
+  being labeled as a function. Do not synthesize dummy functions to disguise copies.
 - Read `.winproladder-policy.json`; never disable or weaken it to get a file out.
 - Use native registers for numeric values and sequence state. Unconditional
   comparisons may produce M status bits used by Y outputs or timer/register EN.

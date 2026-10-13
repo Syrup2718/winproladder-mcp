@@ -19,3 +19,11 @@
 `test_test16_functions.py` 涵蓋 DIV48／SUM／PID／WDT／HSC0 的精確重建、完整跨度、多腳位政策及未知形式拒絕。
 
 `test_test17_functions.py` 涵蓋整數運算、MEAN 動態 N、EXT 雙字組、DIV48 單輸入及 CRC16 引用不確定性。
+
+`test_test18_functions.py` 包含類比與位元存取、雙輸入政策、動態表格跨度及未解碼跳躍不得重定位的檢查。
+
+`test_test19_functions.py` 涵蓋積算型計時單位與CV、TPCTL完整跨度與WR獨占、雙輸入及狀態政策、全樣本拒絕和CALL僅解析邊界。
+
+`test_test20_functions.py`涵蓋三路輸入與狀態政策、RAMP時間／Tn、RAMP2 OR區與WR4、ASCWR未知範圍、表格L−1和CLR極性及完整樣本衝突。
+
+`test_example_scripts.py` 透過 subprocess 執行兩支範例腳本，覆蓋有／無專案政策的 I/O 契約與政策拒絕結果。`test_documentation.py` 檢查正式文件連結；完整本機輸出連結由 `scripts/audit_workspace.py` 額外檢查。

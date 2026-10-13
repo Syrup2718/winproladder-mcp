@@ -173,3 +173,32 @@ TEST17_PAYLOADS = {
     6: "4fe8f4b90a04",
     7: "4fe8f77500080bb80bbc",
 }
+
+
+TEST18_PAYLOADS = {
+    0: "4fe86811f55a000601000de8",
+    1: "ef31000000000000",
+    2: "4fe86812f55e011e0004286428740b8e402e",
+    3: "4fe8f78ca7fe188000000000",
+    4: "4fe8f4ba0a1400026ffcc100",
+    5: "4fe86814f544000f0a18",
+}
+
+
+TEST19_PAYLOADS = {
+    0: "4fe8f78d672e188000000000",
+    1: "f5900002",
+    2: "4fe86810fc410bfe058e6ffcc90a6ffdc90b",
+    3: "f491",
+    4: "4fe86005fc420bfa0bfc6ffcc1006ffdc118",
+    5: "4fe86812fc4353b21db06ffcc8266ffdc811",
+    6: "4fe86fe8f4540102010341ba41c00aca0ad00ad60adc0ae66ffdc826",
+}
+
+
+TEST20_PAYLOADS = {
+    0: "4fe860016002f103280028026ffcc1006ffec811",
+    1: "481068116002f81600000ac803b80aca40de40e06ffcc8746ffdc8756ffec10c",
+    2: "4fe8f47e00004014400040020a1801800a1e6ffcc826",
+    3: "4fe86fe87fe8f4060a000a1400070a64",
+}

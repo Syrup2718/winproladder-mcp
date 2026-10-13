@@ -65,7 +65,7 @@ Raw compiler 保留巢狀編碼以支援樣本往返；正式生成先經 [接�
 
 Timer 樣本支持 T1/T2/T3 與 preset 100/101/256/1000；Counter 支持 C1/C2/C3 與 preset 10/16/17。OR 直接暫存器支持 R0/R1/R2；高位址及其他 enable 組合仍需匯入驗證。BREAK 尾碼 A7FE 的獨立語意 UNKNOWN。
 
-不支援 R 間接定址、常數運算元、D/P 修飾或輸出旗標。FOR/NEXT 只實作單層。編碼界限及模擬限制見 [功能參考](reference.md)。
+上述通用形式不代表所有原生指令的限制；常數、D/P 修飾和輸出旗標須依個別指令 codec 判定，已支援項目見 [完整功能表](../FEATURES.md)。FOR/NEXT 只實作單層。編碼界限及模擬限制見 [功能參考](reference.md)。
 
 ## 證據與未知部分
 

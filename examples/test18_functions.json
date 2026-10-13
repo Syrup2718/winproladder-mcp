@@ -1,0 +1,136 @@
+{
+  "profile": "FBs-20MC",
+  "networks": [
+    {
+      "steps": [],
+      "coils": [],
+      "empty": false,
+      "comment": "",
+      "block": null,
+      "condition": null,
+      "edge": null,
+      "direct_rail": false,
+      "branch_encoding": "default",
+      "comparison_chain": [],
+      "action": {
+        "type": "adcnv",
+        "enable": "TRUE",
+        "selector": "M1",
+        "source": "R3840",
+        "count": 6,
+        "destination": "R500",
+        "polarity": 0,
+        "x_table": null,
+        "y_table": null,
+        "table_length": null,
+        "overflow": []
+      }
+    },
+    {
+      "steps": [],
+      "coils": [],
+      "empty": false,
+      "comment": "",
+      "block": null,
+      "condition": null,
+      "edge": null,
+      "direct_rail": false,
+      "branch_encoding": "default",
+      "comparison_chain": [],
+      "action": {
+        "type": "lbl",
+        "target": "1"
+      }
+    },
+    {
+      "steps": [],
+      "coils": [],
+      "empty": false,
+      "comment": "",
+      "block": null,
+      "condition": null,
+      "edge": null,
+      "direct_rail": false,
+      "branch_encoding": "default",
+      "comparison_chain": [],
+      "action": {
+        "type": "mlc",
+        "enable": "TRUE",
+        "selector": "M2",
+        "source": "R3855",
+        "count": 4,
+        "destination": "D23",
+        "polarity": null,
+        "x_table": "R5050",
+        "y_table": "R5058",
+        "table_length": "R199",
+        "overflow": []
+      }
+    },
+    {
+      "steps": [],
+      "coils": [],
+      "empty": false,
+      "comment": "",
+      "block": null,
+      "condition": null,
+      "edge": null,
+      "direct_rail": false,
+      "branch_encoding": "default",
+      "comparison_chain": [],
+      "action": {
+        "type": "jmp",
+        "target": "1"
+      }
+    },
+    {
+      "steps": [],
+      "coils": [],
+      "empty": false,
+      "comment": "",
+      "block": null,
+      "condition": null,
+      "edge": null,
+      "direct_rail": false,
+      "branch_encoding": "default",
+      "comparison_chain": [],
+      "action": {
+        "type": "bitrd",
+        "enable": "TRUE",
+        "word": "R10",
+        "bit": 2,
+        "input_bit": null,
+        "output": [
+          {
+            "device": "Y",
+            "address": 0,
+            "inverted": false,
+            "mode": "normal"
+          }
+        ],
+        "error": []
+      }
+    },
+    {
+      "steps": [],
+      "coils": [],
+      "empty": false,
+      "comment": "",
+      "block": null,
+      "condition": null,
+      "edge": null,
+      "direct_rail": false,
+      "branch_encoding": "default",
+      "comparison_chain": [],
+      "action": {
+        "type": "bitwr",
+        "enable": "TRUE",
+        "word": "R12",
+        "bit": 15,
+        "input_bit": "M4",
+        "output": [],
+        "error": []
+      }
+    }
+  ]
+}

@@ -22,10 +22,10 @@ tmp/                  本機研究暫存（不納入 Git）
 
 ```powershell
 uv sync --locked
-uv run pytest
+uv run python -m pytest
 uv run ruff check .
-uv run mypy
-uv run winproladder-setup check
+uv run python -m mypy src
+uv run python -m winproladder_mcp.setup check
 uv run python scripts/verify_release.py --root <新的驗證目錄>
 ```
 
@@ -88,3 +88,7 @@ uv run python scripts/generate_design_examples.py --root . --prefix custom
 `control_functions.py` 負責 test16 的 WDT、HSC0、DIV48、SUM、PID 編碼／解碼；IR 定義與範圍檢查保存在 `ir.py`，避免為可執行模型假裝支援硬體行為。
 
 `integer_functions.py` 負責 test17 整數運算編碼／解碼，CRC16 MD=1 的手冊差異由分析結果及能力說明明確揭露。
+
+`analog_functions.py`、`thermal_functions.py`、`process_functions.py` 分別集中 test18、test19、test20 編解碼。
+
+完整本機檔案盤點可執行 `uv run python scripts/audit_workspace.py --output tmp/workspace-audit-new.json`。JSON 報告只含路徑、大小、雜湊與檢查結果，不輸出連線設定內容；Git、環境依賴與快取只計數，不逐一審查第三方程式。文件中的 artifacts／dist／tmp 連結是本機證據，Git 原始碼副本不包含這些檔案。

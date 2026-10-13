@@ -11,7 +11,8 @@ def capabilities() -> dict[str, Any]:
     return {
         "version": __version__,
         "profile": "Exact sampled headers: FBs-20MC, FBs-24MA (test6), FBs-24MA-test7, "
-        "FBs-32MA-test11, FBs-40MA-test12, FBs-44MN-test13, FBs-60MC-test16, FBn-26MC-test17; "
+        "FBs-32MA-test11, FBs-40MA-test12, FBs-44MN-test13, FBs-60MC-test16, FBn-26MC-test17, "
+        "FBe-20MA-test19; "
         "the two 24MA variants retain differing unknown metadata",
         "transport": "stdio",
         "simulation": "Boolean or scan_ms T/C model; max 256 scans, not a PLC emulator",
@@ -48,6 +49,61 @@ def capabilities() -> dict[str, Any]:
             "compare_ldr: aligned record changes",
         ],
         "native_functions": {
+            "test20_functions": {
+                "release_status": "unreleased source update after 0.11.0; no new package",
+                "actions": "ascwr(94P MD=1), ramp(95), ramp2(98), reg_to_table(100)",
+                "ascwr": "enable/pause/abort; source S, work Pt8; active/error/done. "
+                "MD=1 is reserved in manual 7-87: encoding only, ASCII source extent "
+                "and runtime semantics unresolved; conservative Pt8 collision checks",
+                "ramp": "enable/pause/up; Tn requires configured 10 ms time base and "
+                "exclusive use; preset/lower/upper register operands; destination plus "
+                "exclusive destination+1 work word. M1974 changes PV meaning. "
+                "error/at_lower/at_upper status pins",
+                "ramp2": "maximum/rise_ms/fall_ms/target/destination/work register operands; "
+                "HR/OR/ROR/D0..3999, WR4 exclusive; accelerating/decelerating pins. "
+                "Register contents Om/Rt=0..65535, Ta/Td=0..65000 ms; no runtime value check",
+                "reg_to_table": "16-bit register source/destination/pointer, constant "
+                "length=2..2048 encoded as length-1; enable/increment/clear, done/error. "
+                "CLR can reset pointer independently of EN per manual; inverse CLR pin encoding",
+                "limits": "No constant data operands, arbitrary word banks, ASCWR MD=0, "
+                "unsampled D/P forms or execution simulation. Source test20 overlaps "
+                "RAMP2 WR R15..R18 with table R10..R17: full generation rejected",
+            },
+            "test19_functions": {
+                "release_status": "unreleased source update after 0.11.0; no new package",
+                "actions": "tpctl(86), accumulative_timer(87/88/89); call(67) decode-only",
+                "timer": "timing=TIM, enable=EN; unit_ms=10/100/1000; PV direct R/D count; "
+                "CV T0..255 or direct R/D including IR (instruction-specific manual 7-81). "
+                "TIM=0 retains CV while EN=1; EN=0 clears. done=TUP, not_done=NUP",
+                "tpctl": "EN, H/C, Yn, Sn=0..31, Zn=1..32, Sn+Zn<=32. "
+                "Yn spans Zn outputs; SV/OS/PR/IR/DR/OR each Zn words; WR9 exclusive. "
+                "error=ERR, alarm=ALM. Temperature source depends on PLC configuration",
+                "limits": "No constant PV, other timer word banks, TPCTL Md encoding, "
+                "D/P variants or CALL relocation. These are codec limits. No native runtime "
+                "simulation or high-level sequence integration. test19 N002/N005 are allowed "
+                "when allow_function_m_to_m=true; CALL remains generation-blocked "
+                "because its target metadata is unresolved and LBL/RTS are absent",
+                "manual_editions": "Advanced 7-79 allows 32 zones/D4095; older CH20 20-44 "
+                "shows 24 zones/D3071 and no Md, like sampled layout. H/C=1 heat, 0 cool "
+                "per 20-45. CPU/edition compatibility remains unverified",
+            },
+            "test18_functions": {
+                "release_status": "unreleased source update after 0.11.0; no new package",
+                "actions": "adcnv(32), mlc(34), bitrd(40), bitwr(41), lbl(65), jmp(66)",
+                "analog": "ADCNV sampled Pl=0, constant N=1..64; selector is F/T "
+                "(0=12-bit,1=14-bit). MLC constant Sl=1..64, register Tl=2..255 at runtime; "
+                "selector is X/Y (0=Tx to Ty,1=Ty to Tx); D bank ends at D3999",
+                "spans": "ADCNV and MLC S/D use count words; MLC Tx/Ty each track 255 "
+                "possible words because Tl is runtime. Includes WR collision checks",
+                "bits": "16-bit direct R/D word with constant bit=0..15. BITWR input_bit is INB; "
+                "BITRD output is OTB, disabled OTB depends on M1919. Normal status coils only",
+                "flow": "Only exact label 1 and JMP 1 record anchors. JMP target metadata "
+                "unresolved: generation permits only byte-exact complete test18 program; "
+                "no relocation, edits, different target, EN variants or profile changes",
+                "unsupported": "ADCNV Pl=1, register counts, MLC constant Tl, D/P/indirect "
+                "forms, general labels/jumps and runtime simulation are not encoded. "
+                "These are codec limits, not blanket PLC restrictions",
+            },
             "test17_functions": {
                 "release_status": "included in 0.11.0 source; package not built",
                 "actions": "mean(25), sqrt(26), neg(27), abs(28), ext(29), crc16(31); "

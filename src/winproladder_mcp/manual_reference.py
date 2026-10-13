@@ -16,13 +16,114 @@ RTC_FIELDS = {
 def manual_reference() -> dict[str, Any]:
     return {
         "sources": {
-            "advanced": "進階篇應用指令.pdf: 7-3..11, 7-83..86, 7-151..171, 7-66..73",
+            "advanced": "進階篇應用指令.pdf: 7-3..13, 7-19..24, 7-28..29, "
+            "7-59..61, 7-79..95, 7-151..171, 7-66..73",
+            "temperature": "CH20_FB-PLC溫度量測及溫度PID控制.pdf: 20-44..47 (older edition)",
             "basic": "基本應用指令.pdf: 7-2, 7-18..19, 7-26",
             "rtc": "CH16_萬年曆（RTC）.pdf: 16-1..2 (FB-PLC MA/MC with RTC)",  # noqa: RUF001
         },
         "rule": "Manual operand limits define PLC legality. Sample addresses are not maxima. "
         "LDR encoding support, CPU availability and manual editions are separate evidence.",
         "instruction_modes": {
+            "ASCWR": {
+                "pages": ["7-87"],
+                "MD": "0 ASCII/Printer via Port1; 1 reserved for specific purposes",
+                "work": "Pt uses 8 exclusive registers; file S ends at END, may embed operands",
+                "inputs": "EN rising-edge starts, PAU=1 pauses, ABT=1 aborts",
+                "codec": "Only sampled 94P MD=1. Do not apply MD=0 runtime semantics "
+                "to reserved MD=1; variable source span is unresolved",
+            },
+            "RAMP": {
+                "pages": ["7-88", "7-89"],
+                "Tn": "T0..255, must be configured for 10 ms time base and not reused",
+                "PV": "M1974=0 timer count in 10 ms units; M1974=1 increment per 10 ms",
+                "direction": "U/D=1 ramp up, 0 ramp down; sampled when EN rises; PAU pauses",
+                "limits": "SU must exceed SL at runtime; D+1 is an exclusive work register",
+                "codec": "Sampled non-P form and register PV/SL/SU; constants/P not encoded",
+            },
+            "RAMP2": {
+                "pages": ["7-90", "7-91", "7-92", "7-93"],
+                "values": "Om/Rt 0..65535; Ta/Td 0..65000 ms; Rt stable at least 2 scans",
+                "banks": "HR R0..3839, OR R3904..3967, ROR R5000..8071, D0..3999",
+                "work": "4 exclusive registers",
+                "EN": "0 immediately clears Rc and ACC/DEC; 1 tracks/clamps Rt toward Om",
+                "OS": "V4.60 or later; not verified on attached hardware",
+                "codec": "Register operands only. R3904 is sampled, other OR offsets inferred",
+            },
+            "REGISTER_TO_TABLE": {
+                "pages": ["7-94", "7-95"],
+                "length": "2..2048; pointer range 0..L-1, 16-bit pointer even in D form",
+                "order": "CLR resets Pr before transfer and also works independently of EN; "
+                "copy Rs to Td[Pr]; END if Pr=L-1, otherwise INC increments Pr",
+                "codec": "16-bit non-P, register Rs/Td/Pr, constant L. Constant data, "
+                "register length, D/P and indirect modes not yet serialized",
+            },
+            "ACCUMULATIVE_TIMER": {
+                "pages": ["7-81", "7-82"],
+                "units_ms": {"87": 10, "88": 100, "89": 1000},
+                "inputs": "EN=0 clears CV; EN=1/TIM=0 retains; EN=1/TIM=1 counts",
+                "PV": "constant 0..32767 or word; current codec implements direct R/D only",
+                "CV": "Manual permits T/C, word groups and register banks including IR; "
+                "codec currently implements T0..255 and direct R/D, including IR",
+                "outputs": "TUP done; NUP not done",
+            },
+            "TPCTL": {
+                "pages": ["7-79", "7-80", "20-44", "20-45", "20-46", "20-47"],
+                "zones": "Sn0..31, Zn1..32, Sn+Zn<=32; Yn and SV/OS/PR/IR/DR/OR span Zn",
+                "work": "9 exclusive words",
+                "Md": "0 modified minimum overshoot, 1 generic PID; absent from test19, "
+                "encoding unresolved, do not guess default",
+                "H/C": "Older CH20 20-45: 1 heating, 0 cooling",
+                "temperature_source": "7-80: planning table unless R4003=A55AH and "
+                "R4004=10000..13839 (R0..3839) or 20000..23999 (D0..3999)",
+                "edition_difference": "Older CH20 20-44: Sn0..23, Zn1..24, D0..3071, "
+                "FUN85 prerequisite; newer 7-79: 32 zones/D4095 and planning. "
+                "Do not transfer hardware prerequisites or defaults between editions",
+            },
+            "CALL": {
+                "pages": ["7-61"],
+                "semantics": "Calls labeled subroutine, returns via RTS; max 5 nested levels "
+                "including interrupts",
+                "encoding_boundary": "Exact test19 CALL1 anchor decoded; target metadata "
+                "unresolved, sample lacks LBL1/RTS; generation rejected",
+            },
+            "ADCNV": {
+                "pages": ["7-12", "7-13"],
+                "Pl": {"0": "unipolar", "1": "bipolar"},
+                "F/T": {"0": "12-bit", "1": "14-bit"},
+                "N_words": [1, 64],
+                "evidence": "Source IR column blank in page 7-12 operand table, but "
+                "page 7-13 example and test18 both use R3840; supported on that evidence",
+                "encoding_boundary": "Only Pl=0 and constant N sampled; Pl=1/register N "
+                "are manual-defined but not encoded yet",
+            },
+            "MLC": {
+                "pages": ["7-19", "7-20"],
+                "Sl": [1, 64],
+                "Tl": [2, 255],
+                "D_bank": [0, 3999],
+                "X/Y": {"0": "Tx to Ty", "1": "Ty to Tx"},
+                "OVR": "source below/above conversion table range",
+                "encoding_boundary": "Only constant Sl and register Tl sampled; "
+                "dynamic Tl conservatively tracks 255 possible words in each table",
+            },
+            "BITRD_BITWR": {
+                "pages": ["7-28", "7-29"],
+                "N_16bit": [0, 15],
+                "N_D_form": [0, 31],
+                "BITRD_EN0": "M1919=0 retains previous OTB; M1919=1 clears OTB",
+                "BITWR": "Replaces only selected bit with INB, other bits unchanged",
+                "encoding_boundary": "16-bit direct R/D and constant N currently encoded",
+            },
+            "LBL_JMP": {
+                "pages": ["7-59", "7-60"],
+                "names": "1..6 alphanumeric, unique; reserved "
+                "interrupt names are not ordinary labels",
+                "JMP": "Forward/backward within same main/subprogram region; backward "
+                "loops can exceed watchdog time",
+                "encoding_boundary": "Only exact test18 label/jump 1 pair. Target metadata "
+                "not decoded, so only complete unchanged sample generation allowed",
+            },
             "DIV48": {
                 "page": "7-3",
                 "unsigned_when": {"0": "signed", "1": "unsigned"},

@@ -814,6 +814,299 @@ class IntegerFunction(Model):
         return self
 
 
+class AnalogConversion(Model):
+    type: Literal["adcnv", "mlc"]
+    enable: str = "TRUE"
+    selector: str = "FALSE"
+    source: str
+    count: Annotated[int, Field(strict=True, ge=1, le=64)]
+    destination: str
+    polarity: Literal[0] | None = None
+    x_table: str | None = None
+    y_table: str | None = None
+    table_length: str | None = None
+    overflow: list[Coil] = Field(default_factory=list, max_length=32)
+
+    def span(self, name: str, count: int, writable: bool = False) -> set[str]:
+        result = register_span(name, count, writable=writable)
+        if self.type == "mlc" and name.startswith("D") and int(name[1:]) + count > 4000:
+            raise ValueError("MLC manual D bank ends at D3999, including full spans")
+        return result
+
+    def source_devices(self) -> set[str]:
+        result = self.span(self.source, self.count)
+        if self.type == "mlc":
+            assert self.x_table and self.y_table and self.table_length
+            result |= self.span(self.x_table, 255, True) | self.span(self.y_table, 255, True)
+            result |= self.span(self.table_length, 1, True)
+        return result
+
+    def destination_devices(self) -> set[str]:
+        return self.span(self.destination, self.count, True)
+
+    @model_validator(mode="after")
+    def check(self) -> "AnalogConversion":
+        if self.type == "adcnv":
+            if self.polarity != 0 or any(
+                [self.x_table, self.y_table, self.table_length, self.overflow]
+            ):
+                raise ValueError("ADCNV currently uses sampled Pl=0, no tables or status outputs")
+        elif self.polarity is not None or not all([self.x_table, self.y_table, self.table_length]):
+            raise ValueError("MLC requires Tx, Ty and register Tl, without ADCNV polarity")
+        self.source_devices()
+        self.destination_devices()
+        for c in self.overflow:
+            if c.mode != "normal" or c.inverted:
+                raise ValueError("MLC OVR requires normal coils")
+        parse_expression(self.enable)
+        parse_expression(self.selector)
+        return self
+
+
+class BitAccess(Model):
+    type: Literal["bitrd", "bitwr"]
+    enable: str = "TRUE"
+    word: str
+    bit: Annotated[int, Field(strict=True, ge=0, le=15)]
+    input_bit: str | None = None
+    output: list[Coil] = Field(default_factory=list, max_length=32)
+    error: list[Coil] = Field(default_factory=list, max_length=32)
+
+    @model_validator(mode="after")
+    def check(self) -> "BitAccess":
+        register_span(self.word, 1, writable=self.type == "bitwr")
+        if self.type == "bitwr":
+            if self.input_bit is None or self.output:
+                raise ValueError("BITWR requires INB, has no OTB")
+            parse_expression(self.input_bit)
+        elif self.input_bit is not None:
+            raise ValueError("BITRD has no INB")
+        for c in self.output + self.error:
+            if c.mode != "normal" or c.inverted:
+                raise ValueError("Bit access status outputs require normal coils")
+        parse_expression(self.enable)
+        return self
+
+
+class AccumulativeTimer(Model):
+    type: Literal["accumulative_timer"]
+    timing: str = "TRUE"
+    enable: str = "TRUE"
+    unit_ms: Literal[10, 100, 1000]
+    cv: str
+    pv: str
+    done: list[Coil] = Field(default_factory=list, max_length=32)
+    not_done: list[Coil] = Field(default_factory=list, max_length=32)
+
+    @model_validator(mode="after")
+    def check(self) -> "AccumulativeTimer":
+        # CV T words are instruction-specific; do not relax ordinary destinations.
+        if self.cv.startswith("T"):
+            encode_word(self.cv)
+        else:
+            # Manual 7-81 explicitly permits the IR bank for this instruction's CV.
+            register_span(self.cv, 1)
+        register_span(self.pv, 1)
+        parse_expression(self.timing)
+        parse_expression(self.enable)
+        for coil in self.done + self.not_done:
+            if coil.mode != "normal" or coil.inverted:
+                raise ValueError("Accumulative timer status outputs require normal coils")
+        return self
+
+
+class TemperatureControl(Model):
+    type: Literal["tpctl"]
+    enable: str = "TRUE"
+    heat_cool: str = "TRUE"
+    output: str
+    start: Annotated[int, Field(strict=True, ge=0, le=31)]
+    zones: Annotated[int, Field(strict=True, ge=1, le=32)]
+    setpoint: str
+    offset: str
+    proportional: str
+    integral: str
+    derivative: str
+    destination: str
+    work: str
+    error: list[Coil] = Field(default_factory=list, max_length=32)
+    alarm: list[Coil] = Field(default_factory=list, max_length=32)
+
+    def work_devices(self) -> set[str]:
+        return register_span(self.work, 9, writable=True)
+
+    def source_devices(self) -> set[str]:
+        return set().union(
+            *(
+                register_span(name, self.zones, writable=True)
+                for name in [
+                    self.setpoint,
+                    self.offset,
+                    self.proportional,
+                    self.integral,
+                    self.derivative,
+                ]
+            )
+        )
+
+    def output_devices(self) -> set[str]:
+        from .peripheral import bit_span
+
+        return bit_span(self.output, self.zones, "Y", maximum_start=255)
+
+    def destination_devices(self) -> set[str]:
+        return register_span(self.destination, self.zones, writable=True) | self.work_devices()
+
+    @model_validator(mode="after")
+    def check(self) -> "TemperatureControl":
+        if self.start + self.zones > 32:
+            raise ValueError("TPCTL Sn + Zn must not exceed 32 (manual 7-79)")
+        sources = self.source_devices()
+        dest = register_span(self.destination, self.zones, writable=True)
+        if self.work_devices() & (sources | dest):
+            raise ValueError("TPCTL exclusive WR overlaps its operands")
+        self.output_devices()
+        parse_expression(self.enable)
+        parse_expression(self.heat_cool)
+        for coil in self.error + self.alarm:
+            if coil.mode != "normal" or coil.inverted:
+                raise ValueError("TPCTL status outputs require normal coils")
+        return self
+
+
+class ProcessFunction(Model):
+    """Direct-register forms sampled in test20; not arbitrary instruction modes."""
+
+    type: Literal["ascwr", "ramp", "ramp2", "reg_to_table"]
+    enable: str = "TRUE"
+    pause: str = "FALSE"
+    abort: str = "FALSE"
+    up: str = "FALSE"
+    increment: str = "FALSE"
+    clear: str = "FALSE"
+    mode: Literal[1] | None = None
+    pulse: Literal[True] | None = None
+    source: str | None = None
+    work: str | None = None
+    preset: str | None = None
+    timer: str | None = None
+    lower: str | None = None
+    upper: str | None = None
+    destination: str | None = None
+    maximum: str | None = None
+    rise_ms: str | None = None
+    fall_ms: str | None = None
+    target: str | None = None
+    pointer: str | None = None
+    length: Annotated[int, Field(strict=True, ge=2, le=2048)] | None = None
+    active: list[Coil] = Field(default_factory=list, max_length=32)
+    error: list[Coil] = Field(default_factory=list, max_length=32)
+    done: list[Coil] = Field(default_factory=list, max_length=32)
+    at_lower: list[Coil] = Field(default_factory=list, max_length=32)
+    at_upper: list[Coil] = Field(default_factory=list, max_length=32)
+    accelerating: list[Coil] = Field(default_factory=list, max_length=32)
+    decelerating: list[Coil] = Field(default_factory=list, max_length=32)
+
+    def operand(self, name: str) -> str:
+        value = getattr(self, name)
+        if not isinstance(value, str):
+            raise ValueError(f"{self.type} requires register operand {name}")
+        return value
+
+    def work_devices(self) -> set[str]:
+        from .process_functions import ramp2_span
+
+        if self.type == "ascwr":
+            return register_span(self.operand("work"), 8)
+        if self.type == "ramp":
+            destination = self.operand("destination")
+            return register_span(destination, 2, writable=True) - {destination}
+        if self.type == "ramp2":
+            return ramp2_span(self.operand("work"), 4)
+        return set()
+
+    def source_devices(self) -> set[str]:
+        from .process_functions import FIELDS
+
+        if self.type == "ascwr":
+            return {self.operand("source")}  # File terminator/MD1 semantics not resolved.
+        if self.type == "ramp":
+            return {self.operand(n) for n in ["preset", "lower", "upper"]} | {"M1974"}
+        if self.type == "ramp2":
+            return {self.operand(n) for n in FIELDS[self.type] if n != "work"}
+        return {self.operand("source"), self.operand("pointer")}
+
+    def destination_devices(self) -> set[str]:
+        if self.type == "ascwr":
+            return self.work_devices()
+        if self.type == "ramp":
+            return self.work_devices() | {self.operand("timer"), self.operand("destination")}
+        if self.type == "ramp2":
+            return self.work_devices() | {self.operand("destination")}
+        assert self.length is not None
+        return register_span(self.operand("destination"), self.length, writable=True) | {
+            self.operand("pointer")
+        }
+
+    @model_validator(mode="after")
+    def check(self) -> "ProcessFunction":
+        from .process_functions import CONTROLS, FIELDS, STATUS, ramp2_span
+
+        required = FIELDS[self.type]
+        for name in set().union(*map(set, FIELDS.values())):
+            if name in required:
+                value = self.operand(name)
+                if name == "timer":
+                    if not value.startswith("T"):
+                        raise ValueError("RAMP Tn requires T0..255 with configured 10 ms time base")
+                    encode_word(value)
+                elif self.type == "ramp2":
+                    ramp2_span(value)
+                else:
+                    register_span(value, 1)
+            elif getattr(self, name) is not None:
+                raise ValueError(f"{self.type} has no {name} operand")
+        if self.type == "ascwr":
+            if self.mode != 1 or self.pulse is not True:
+                raise ValueError("ASCWR codec currently supports sampled 94P MD=1 only")
+        elif self.mode is not None or self.pulse is not None:
+            raise ValueError("Unencoded mode/pulse form for this function")
+        if (self.type == "reg_to_table") != (self.length is not None):
+            raise ValueError("Only reg_to_table requires constant length")
+        for name in set().union(*map(set, CONTROLS.values())):
+            if name in CONTROLS[self.type]:
+                parse_expression(getattr(self, name))
+            elif getattr(self, name) != "FALSE":
+                raise ValueError(f"{self.type} has no {name} control")
+        for name in set().union(*map(set, STATUS.values())):
+            group = getattr(self, name)
+            if name not in STATUS[self.type] and group:
+                raise ValueError(f"{self.type} has no {name} status")
+            for coil in group:
+                if coil.mode != "normal" or coil.inverted:
+                    raise ValueError("Process function status outputs require normal coils")
+        self.destination_devices()
+        if self.type == "reg_to_table":
+            register_span(self.operand("pointer"), 1, writable=True)
+        if self.work_devices() & self.source_devices():
+            raise ValueError("Exclusive function work area overlaps source operands")
+        return self
+
+
+class SampleCall(Model):
+    """Forensic anchor only: unresolved relocation bytes, generation rejected."""
+
+    type: Literal["call"]
+    target: Literal["1"] = "1"
+
+
+class SampleFlow(Model):
+    """Exact test18 label/jump pair, not a general relocated jump compiler."""
+
+    type: Literal["lbl", "jmp"]
+    target: Literal["1"] = "1"
+
+
 class Network(Model):
     """Left-associative logic steps, then coils. No implicit operator precedence."""
 
@@ -838,6 +1131,13 @@ class Network(Model):
             | RegisterStep
             | Bitwise
             | ExclusiveLogic
+            | AnalogConversion
+            | BitAccess
+            | SampleFlow
+            | AccumulativeTimer
+            | TemperatureControl
+            | SampleCall
+            | ProcessFunction
             | IntegerFunction
             | Watchdog
             | HighSpeedCounter
@@ -864,6 +1164,7 @@ class Network(Model):
 
 
 HeaderProfile = Literal[
+    "FBe-20MA-test19",
     "FBn-26MC-test17",
     "FBs-60MC-test16",
     "FBs-20MC",
@@ -895,6 +1196,20 @@ def comparison_reads(network: Network) -> set[str]:
 
 
 def network_coils(network: Network) -> list[Coil]:
+    if isinstance(network.action, ProcessFunction):
+        from .process_functions import STATUS
+
+        return network.coils + [
+            c for name in STATUS[network.action.type] for c in getattr(network.action, name)
+        ]
+    if isinstance(network.action, AccumulativeTimer):
+        return network.coils + network.action.done + network.action.not_done
+    if isinstance(network.action, TemperatureControl):
+        return network.coils + network.action.error + network.action.alarm
+    if isinstance(network.action, AnalogConversion):
+        return network.coils + network.action.overflow
+    if isinstance(network.action, BitAccess):
+        return network.coils + network.action.output + network.action.error
     if isinstance(network.action, IntegerFunction):
         return network.coils + network.action.zero + network.action.error
     if isinstance(network.action, PID):
@@ -1165,6 +1480,18 @@ def compile_network(network: Network) -> bytes:
                     + action.preset.to_bytes(2, "big")
                     + encode_register(action.cv)
                 )
+            if isinstance(action, ProcessFunction):
+                from .process_functions import compile_process
+
+                return compile_process(action)
+            if isinstance(action, (AccumulativeTimer, TemperatureControl, SampleCall)):
+                from .thermal_functions import compile_thermal
+
+                return compile_thermal(action)
+            if isinstance(action, (AnalogConversion, BitAccess, SampleFlow)):
+                from .analog_functions import compile_analog
+
+                return compile_analog(action)
             if isinstance(action, IntegerFunction):
                 from .integer_functions import compile_integer
 
@@ -1412,6 +1739,21 @@ def decode_status_coils(tail: bytes) -> list[list[Coil]]:
 
 
 def decode_network(payload: bytes) -> Network | None:
+    from .process_functions import decode_process
+
+    process = decode_process(payload)
+    if process is not None:
+        return process
+    from .thermal_functions import decode_thermal
+
+    thermal = decode_thermal(payload)
+    if thermal is not None:
+        return thermal
+    from .analog_functions import decode_analog
+
+    analog = decode_analog(payload)
+    if analog is not None:
+        return analog
     from .control_functions import decode_control
     from .integer_functions import decode_integer
 
@@ -1610,6 +1952,13 @@ def decode_network(payload: bytes) -> Network | None:
             | RegisterStep
             | Bitwise
             | ExclusiveLogic
+            | AnalogConversion
+            | BitAccess
+            | SampleFlow
+            | AccumulativeTimer
+            | TemperatureControl
+            | SampleCall
+            | ProcessFunction
             | IntegerFunction
             | Watchdog
             | HighSpeedCounter
@@ -2051,6 +2400,63 @@ def validation(ladder: Ladder) -> dict[str, object]:
                             "gui_import_verified": False,
                         }
                     )
+            if isinstance(network.action, (AnalogConversion, BitAccess, SampleFlow)):
+                from .instruction_catalog import TEST18_PAYLOADS
+
+                observed18 = next(
+                    (i for i, raw in TEST18_PAYLOADS.items() if payload.hex() == raw), None
+                )
+                instruction_evidence.append(
+                    {
+                        "network_index": index,
+                        "instruction": network.action.type,
+                        "status": "observed_export"
+                        if observed18 is not None
+                        else "inferred_variant",
+                        "source": f"test18.ldr N{observed18:03}"
+                        if observed18 is not None
+                        else "test18",
+                        "gui_import_verified": False,
+                    }
+                )
+            if isinstance(network.action, (AccumulativeTimer, TemperatureControl, SampleCall)):
+                from .instruction_catalog import TEST19_PAYLOADS
+
+                observed19 = next(
+                    (i for i, raw in TEST19_PAYLOADS.items() if payload.hex() == raw), None
+                )
+                instruction_evidence.append(
+                    {
+                        "network_index": index,
+                        "instruction": network.action.type,
+                        "status": "observed_export"
+                        if observed19 is not None
+                        else "inferred_variant",
+                        "source": f"test19.ldr N{observed19:03}"
+                        if observed19 is not None
+                        else "test19",
+                        "gui_import_verified": False,
+                    }
+                )
+            if isinstance(network.action, ProcessFunction):
+                from .instruction_catalog import TEST20_PAYLOADS
+
+                observed20 = next(
+                    (i for i, raw in TEST20_PAYLOADS.items() if payload.hex() == raw), None
+                )
+                instruction_evidence.append(
+                    {
+                        "network_index": index,
+                        "instruction": network.action.type,
+                        "status": "observed_export"
+                        if observed20 is not None
+                        else "inferred_variant",
+                        "source": f"test20.ldr N{observed20:03}"
+                        if observed20 is not None
+                        else "test20",
+                        "gui_import_verified": False,
+                    }
+                )
             observed14 = next(
                 (i for i, raw in TEST14_PAYLOADS.items() if payload.hex() == raw), None
             )
@@ -2225,16 +2631,41 @@ def validation(ladder: Ladder) -> dict[str, object]:
                 )
         except ValueError as error:
             errors.append(f"N{index:03}: {error}")
+    if any(isinstance(n.action, SampleCall) for n in ladder.networks):
+        errors.append(
+            "CALL 1 target metadata unresolved (manual 7-61); test19 has no "
+            "LBL 1 / RTS. Anchor is decode-only; generation is not supported"
+        )
+    flow = [n.action for n in ladder.networks if isinstance(n.action, SampleFlow)]
+    if flow:
+        from .instruction_catalog import TEST18_PAYLOADS
+
+        labels = [a.target for a in flow if a.type == "lbl"]
+        if len(labels) != len(set(labels)):
+            errors.append("Duplicate LBL target")
+        if any(a.type == "jmp" and a.target not in labels for a in flow):
+            errors.append("JMP target has no matching LBL")
+        if any(a.type == "jmp" for a in flow) and (
+            ladder.profile != "FBs-20MC"
+            or [p.replace(" ", "") for p in payloads] != list(TEST18_PAYLOADS.values())
+        ):
+            errors.append(
+                "JMP target metadata is unresolved: generation is limited to "
+                "the exact complete test18 export; no relocation or modified program"
+            )
     errors.extend(f"N{i:03}: FOR missing NEXT" for i in loops)
     errors.extend(f"N{i:03}: MC {number} missing MCE {number}" for number, i in masters.items())
     verified = payloads == ["41 00 a0 00 90 01 c1 00"] and not errors
     coils = [f"{c.device}{c.address}" for n in ladder.networks for c in network_coils(n)]
-    if any(isinstance(n.action, (PeripheralIO, PID)) for n in ladder.networks):
+    if any(
+        isinstance(n.action, (PeripheralIO, PID, TemperatureControl, ProcessFunction))
+        for n in ladder.networks
+    ):
         from .analysis import device_references
 
         refs15 = device_references(list(enumerate(ladder.networks)))["devices"]
         for i15, n15 in enumerate(ladder.networks):
-            if isinstance(n15.action, (PeripheralIO, PID)):
+            if isinstance(n15.action, (PeripheralIO, PID, TemperatureControl, ProcessFunction)):
                 for word15 in sorted(n15.action.work_devices()):
                     other15 = (set(refs15[word15]["reads"]) | set(refs15[word15]["writes"])) - {i15}
                     if other15:
@@ -2242,7 +2673,46 @@ def validation(ladder: Ladder) -> dict[str, object]:
                             f"N{i15:03}: exclusive WR {word15} also used by "
                             f"networks {sorted(other15)}"
                         )
+    if any(
+        isinstance(n.action, ProcessFunction) and n.action.type == "ramp" for n in ladder.networks
+    ):
+        from .analysis import device_references
+
+        ramp_refs = device_references(list(enumerate(ladder.networks)))["devices"]
+        for i20, n20 in enumerate(ladder.networks):
+            if isinstance(n20.action, ProcessFunction) and n20.action.type == "ramp":
+                timer20 = n20.action.operand("timer")
+                other20 = (set(ramp_refs[timer20]["reads"]) | set(ramp_refs[timer20]["writes"])) - {
+                    i20
+                }
+                if other20:
+                    errors.append(
+                        f"N{i20:03}: exclusive RAMP Tn {timer20} also used by {sorted(other20)}"
+                    )
     warnings = [] if verified else ["Composition has not been verified by WinProLadder import."]
+    if any(
+        isinstance(n.action, (AnalogConversion, BitAccess, SampleFlow)) for n in ladder.networks
+    ):
+        warnings.append(
+            "test18: MLC register Tl tracks 255 possible table words; "
+            "BITRD disabled OTB behavior depends on M1919. No runtime simulation. "
+            "JMP only preserves the exact sample; unconditional backward jump "
+            "can prevent scan completion and trigger watchdog. No GUI/PLC verification."
+        )
+    if any(isinstance(n.action, (AccumulativeTimer, TemperatureControl)) for n in ladder.networks):
+        warnings.append(
+            "test19: timer unit_ms is the native time base (10/100/1000 ms); "
+            "PV is a register count, TIM pauses, EN=0 clears. TPCTL temperature "
+            "source depends on PLC planning/R4003/R4004; Md encoding unresolved. "
+            "No built-in runtime simulation or GUI/PLC verification."
+        )
+    if any(isinstance(n.action, ProcessFunction) for n in ladder.networks):
+        warnings.append(
+            "test20: ASCWR 94P MD=1 is reserved in manual 7-87; runtime and "
+            "ASCII file spans unresolved. RAMP requires a 10 ms configured Tn "
+            "and depends on M1974. RAMP2 times are ms, D bank ends D3999. "
+            "No new function runtime simulation, GUI or PLC verification."
+        )
     if any(isinstance(n.action, IntegerFunction) for n in ladder.networks):
         warnings.append(
             "test17: MEAN register N tracks all 256 potentially read words; "

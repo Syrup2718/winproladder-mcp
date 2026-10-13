@@ -38,7 +38,7 @@
 
 WR 與來源／目的地重疊會拒絕，也會檢查 WR 被其他網路讀寫的衝突。樣本的 Y5/Y6 被 HKEY 與 DSW 共同寫入，分析會保留多重寫入提示；這是格式樣本，不擅自搬動位址來改成另一份控制程式。
 
-KL 隱含輸出與明接的 KPR／NKP／FKP／DN／ERR 全部納入 M 資源保留及 M→M 政策。因此 TKEY 即使沒有明接 KPR，只要 EN 使用 M 接點而 KL 寫 M，也會被拒絕。來源、lowered 與 decoded 三層均檢查。
+KL 隱含輸出與明接的 KPR／NKP／FKP／DN／ERR 全部納入 M 資源保留及 M→M 政策。目前政策允許 EN 使用 M 接點、KL 寫入 M 的原生 TKEY；禁止的仍是無意義的繼電器複製。來源、lowered 與 decoded 三層均檢查。
 
 ## 新位址與編碼
 

@@ -1,6 +1,6 @@
 # 原始 WinProLadder 樣本
 
-共18個檔案、124筆網路記錄。保留原始 bytes、檔名與截圖，重建結果另存於 `artifacts/`，不可覆寫本目錄樣本。
+共19個檔案、130筆網路記錄。保留原始 bytes、檔名與截圖，重建結果另存於 `artifacts/`，不可覆寫本目錄樣本。
 
 | 檔案 | bytes | records | 內容 |
 | --- | ---: | ---: | --- |
@@ -22,5 +22,8 @@
 | [test15.ldr](test15.ldr) | 391 | 5 | FUN76～80、KL／WR／連續 I/O、R3999／V |
 | [test16.ldr](test16.ldr) | 423 | 7 | DIV48、SUM、PID、WDT、HSC0 讀寫 |
 | [test17.ldr](test17.ldr) | 420 | 8 | 整數25～29／31、DIV48新形式 |
+| [test18.ldr](test18.ldr) | 400 | 6 | 類比轉換、位元存取、LBL／JMP |
+| [test19.ldr](test19.ldr) | 439 | 7 | CALL、FOR/NEXT、積算計時87～89、TPCTL；function的M→M已允許；CALL僅解析 |
+| [test20.ldr](test20.ldr) | 396 | 4 | ASCWR、RAMP、RAMP2、R→T；R15～R17工作區衝突 |
 
 原始雜湊由 `tests/test_sample_integrity.py` 固定；樣本可解碼不等於符合目前生成政策，也不代表已做 GUI 或 PLC 驗證。完整邊界見 [驗證依據](../docs/verification.md)。截圖保存在 `screenshots/`。
