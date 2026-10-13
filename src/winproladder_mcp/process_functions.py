@@ -1,4 +1,4 @@
-"""Sampled ASCWR, RAMP, RAMP2 and register-to-table encodings (test20)."""
+"""Sampled ASCWR, RAMP, RAMP2 and register-to-table encodings (test20/21)."""
 
 from typing import TYPE_CHECKING
 
@@ -6,7 +6,6 @@ from .logic import (
     compile_expression,
     decode_expression,
     expression_text,
-    negate,
     parse_expression,
 )
 from .registers import decode_register, decode_word, encode_register, encode_word, register_span
@@ -19,19 +18,40 @@ FIELDS = {
     "ramp": ("preset", "timer", "lower", "upper", "destination"),
     "ramp2": ("maximum", "rise_ms", "fall_ms", "target", "destination", "work"),
     "reg_to_table": ("source", "destination", "pointer"),
+    "table_to_reg": ("source", "pointer", "destination"),
+    "table_to_table": ("source", "destination", "pointer"),
+    "block_table_move": ("source", "destination"),
+    "table_swap": ("source", "destination"),
 }
 CONTROLS = {
     "ascwr": ("enable", "pause", "abort"),
     "ramp": ("enable", "pause", "up"),
     "ramp2": ("enable",),
     "reg_to_table": ("enable", "increment", "clear"),
+    "table_to_reg": ("enable", "increment", "clear"),
+    "table_to_table": ("enable", "increment", "clear"),
+    "block_table_move": ("enable",),
+    "table_swap": ("enable",),
 }
-CODES = {"ascwr": "f103", "ramp": "f816", "ramp2": "f47e", "reg_to_table": "f406"}
+CODES = {
+    "ascwr": "f103",
+    "ramp": "f816",
+    "ramp2": "f47e",
+    "reg_to_table": "f406",
+    "table_to_reg": "f408",
+    "table_to_table": "f40a",
+    "block_table_move": "f4ce",
+    "table_swap": "f4c2",
+}
 STATUS = {
     "ascwr": ("active", "error", "done"),
     "ramp": ("error", "at_lower", "at_upper"),
     "ramp2": ("accelerating", "decelerating"),
     "reg_to_table": ("done", "error"),
+    "table_to_reg": ("done", "error"),
+    "table_to_table": ("done", "error"),
+    "block_table_move": (),
+    "table_swap": (),
 }
 
 
@@ -69,14 +89,22 @@ def compile_process(action: "ProcessFunction") -> bytes:
     raw = b""
     for index, name in enumerate(CONTROLS[action.type]):
         expr = parse_expression(getattr(action, name))
-        # CLR uses the sampled inverse-polarity pin representation.
-        if action.type == "reg_to_table" and name == "clear":
-            expr = negate(expr)
         raw += compile_expression(expr, nested=index > 0)
     raw += bytes.fromhex(CODES[action.type])
     if action.type in {"ramp", "ramp2"}:
         raw += b"\x00\x00"  # Reserved/sample form selector: never infer other modes.
-    if action.type == "reg_to_table":
+    if action.type == "table_to_reg":
+        assert action.length is not None
+        raw += encode_register(action.operand("source"))
+        raw += (action.length - 1).to_bytes(2, "big")
+        raw += encode_register(action.operand("pointer"))
+        raw += encode_register(action.operand("destination"))
+    elif action.type in {"block_table_move", "table_swap"}:
+        assert action.length is not None
+        raw += encode_register(action.operand("source"))
+        raw += encode_register(action.operand("destination"))
+        raw += (action.length - 1).to_bytes(2, "big")
+    elif action.type in {"reg_to_table", "table_to_table"}:
         assert action.length is not None
         raw += encode_register(action.operand("source"))
         raw += encode_register(action.operand("destination"))
@@ -122,7 +150,7 @@ def decode_process(payload: bytes) -> "Network | None":
         try:
             controls = list(
                 (expression_text(decode_expression(payload[:i])),)
-                if kind == "ramp2"
+                if len(CONTROLS[kind]) == 1
                 else decode_three(payload[:i])
             )
             fields: dict[str, object] = dict(zip(CONTROLS[kind], controls, strict=True))
@@ -132,13 +160,27 @@ def decode_process(payload: bytes) -> "Network | None":
                 if tail[:2] != b"\x00\x00":
                     continue
                 tail = tail[2:]
-            if kind == "reg_to_table":
+            if kind == "table_to_reg":
+                fields.update(
+                    source=decode_register(tail[:2]),
+                    length=int.from_bytes(tail[2:4], "big") + 1,
+                    pointer=decode_register(tail[4:6]),
+                    destination=decode_register(tail[6:8]),
+                )
+                size = 8
+            elif kind in {"block_table_move", "table_swap"}:
+                fields.update(
+                    source=decode_register(tail[:2]),
+                    destination=decode_register(tail[2:4]),
+                    length=int.from_bytes(tail[4:6], "big") + 1,
+                )
+                size = 6
+            elif kind in {"reg_to_table", "table_to_table"}:
                 fields.update(
                     source=decode_register(tail[:2]),
                     destination=decode_register(tail[2:4]),
                     length=int.from_bytes(tail[4:6], "big") + 1,
                     pointer=decode_register(tail[6:8]),
-                    clear=expression_text(negate(parse_expression(controls[2]))),
                 )
                 size = 8
             else:

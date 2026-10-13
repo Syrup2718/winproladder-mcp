@@ -13,6 +13,10 @@ def design_guide() -> dict[str, Any]:
             "default_policy": "Physical signal/output required; no automatic X/Y assignment.",
         },
         "workflow": [
+            "test21: table_to_reg/table_to_table take source, destination, length, pointer; "
+            "block_table_move/table_swap omit pointer. L 2..2048 for 101/102, 2..256 for "
+            "103/104. clear uses ordinary polarity (test21 X5 anchor). Native M control "
+            "and M status allowed; no implicit helper relays or runtime model.",
             "test20: ascwr only sampled 94P MD=1, which manual reserves; do not claim "
             "runtime semantics or complete ASCII source references. ramp uses configured "
             "10 ms Tn and M1974-dependent PV; reserve Tn and destination+1. ramp2 times "

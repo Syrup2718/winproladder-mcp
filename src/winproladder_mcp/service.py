@@ -31,6 +31,7 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
     header[128:134] = b"FB-RES"
     header[144:156] = b"WinProladder"
     if profile not in {
+        "FBe-40MC-test21",
         "FBe-20MA-test19",
         "FBn-26MC-test17",
         "FBs-60MC-test16",
@@ -44,6 +45,7 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
         raise ValueError("Unsupported header profile")
     header[160:168] = (
         {
+            "FBe-40MC-test21": "FBe-40MC",
             "FBe-20MA-test19": "FBe-20MA",
             "FBn-26MC-test17": "FBn-26MC",
             "FBs-60MC-test16": "FBs-60MC",
@@ -59,7 +61,7 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
         header[176:178] = bytes.fromhex("1040")
     if profile in {"FBs-44MN-test13", "FBs-60MC-test16"}:
         header[176:178] = b"@@"
-    if profile == "FBn-26MC-test17":
+    if profile in {"FBn-26MC-test17", "FBe-40MC-test21"}:
         header[176:178] = bytes.fromhex("4030")
     if profile == "FBe-20MA-test19":
         header[176:178] = bytes.fromhex("1030")
@@ -68,6 +70,8 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
 
 
 def header_profile(header: bytes) -> HeaderProfile | None:
+    if header == default_header("FBe-40MC-test21"):
+        return "FBe-40MC-test21"
     if header == default_header("FBe-20MA-test19"):
         return "FBe-20MA-test19"
     if header == default_header("FBn-26MC-test17"):
