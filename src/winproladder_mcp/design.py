@@ -13,6 +13,27 @@ def design_guide() -> dict[str, Any]:
             "default_policy": "Physical signal/output required; no automatic X/Y assignment.",
         },
         "workflow": [
+            "test20: ascwr only sampled 94P MD=1, which manual reserves; do not claim "
+            "runtime semantics or complete ASCII source references. ramp uses configured "
+            "10 ms Tn and M1974-dependent PV; reserve Tn and destination+1. ramp2 times "
+            "are ms and WR spans 4 words. reg_to_table length is 2..2048, CLR independently "
+            "resets Pr; check full table span. Never silently move user operands to avoid "
+            "WR conflicts; test20 R15..R17 overlap means generate separate candidates.",
+            "test19: accumulative_timer uses timing=TIM, enable=EN, unit_ms=10/100/1000, "
+            "cv=T/R/D and pv=R/D register. TIM pauses; EN=0 clears. No constant PV codec "
+            "or high-level sequence integration/runtime simulation. tpctl uses output=Yn, "
+            "start=Sn, zones=Zn, heat_cool=H/C; verify all Zn outputs and parameter words, "
+            "9 exclusive WR words. Md and actual temperature source unresolved. "
+            "CALL is decode-only; never generate unresolved target anchors. "
+            "Honor allow_function_m_to_m: meaningful function M results are permitted; "
+            "plain relay copies and lowered helper chains remain prohibited.",
+            "test18: adcnv selector=F/T (0=12-bit,1=14-bit), sampled polarity=0. "
+            "mlc selector=X/Y, x_table/y_table, table_length register, count constant. "
+            "Check 255 possible table words and MLC D3999 endpoint. bitrd/bitwr use "
+            "word/bit=0..15; input_bit=INB for writes, output=OTB for reads. "
+            "lbl/jmp only preserve complete exact test18; JMP metadata unresolved, "
+            "no arbitrary relocation or control-flow simulation. Backward unconditional "
+            "sample jump can prevent scan completion. Do not invent X/Y or helper chains.",
             "test17: integer mean/sqrt/neg/abs/ext/crc16. MEAN count is a register, "
             "not its numeric address: reserve/check 256 possible source words. "
             "EXT writes 2 words. CRC16 MD=1 is reserved in the supplied manual; "
@@ -73,7 +94,8 @@ def design_guide() -> dict[str, Any]:
             "Only isolated X rising/falling contacts; model starts from initial/FALSE.",
             "For independent controls use generate_system_ldr to allocate internal M/T/C only.",
             "Copy user-specified X/Y into mandatory io_contract; never add missing hardware. "
-            "Use native T for timed sequences. Retentive FUN87/88/89 encoding is unavailable.",
+            "Use native T for timed sequences. Retentive FUN87/88/89 register-PV codec "
+            "is available only through low-level IR.",
             "For common controls use generate_control_ldr and its resolved defaults. "
             "For custom logic use generate_ldr. Do not claim any draft is ready for machinery.",
             "Interpret the user's natural-language requirements into the ladder schema below.",
@@ -89,7 +111,8 @@ def design_guide() -> dict[str, Any]:
         "sequence_generation": {
             "tool": "generate_sequence_ldr",
             "policy": "Generate a candidate with assumptions, not a deployment-ready safety claim.",
-            "pause": "Native retentive timing rejected: missing FUN87/88/89 LDR encoding. "
+            "pause": "High-level native pause rejected: FUN87/88/89 codec not integrated "
+            "into sequences. "
             "Explicit external pulse counting is supported only if requested by the user.",
             "example_spec": {
                 "requirement": "Fill, mix, drain using native T timers",
@@ -157,9 +180,11 @@ def design_guide() -> dict[str, Any]:
             "register functions except 16-bit direct-register OR and FUN33 LCNV",
             "nested loops, register-valued FOR counts, pulse BREAK, 32-bit/indirect OR",
             "LCNV pulse/indirect forms and register-valued L; LCNV runtime simulation",
-            "native SET/RST and edge opcodes (Boolean control recipes implement their behavior)",
-            "other time bases",
-            "accumulative timers FUN87/88/89: manual behavior known; no export encoding evidence",
+            "general edge-contact combinations beyond the encoded native forms",
+            "ordinary-T time bases outside modeled T0..49; "
+            "use native accumulative_timer for its encoded units",
+            "accumulative timers: constant PV and high-level sequence integration "
+            "remain unsupported",
             "PLC communication",
         ],
         "lcnv_generation": {

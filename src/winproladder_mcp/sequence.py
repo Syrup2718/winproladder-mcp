@@ -43,8 +43,9 @@ def sequence_ladder(spec: SequenceSpec) -> tuple[Ladder, dict[str, Any]]:
     if native and simplify(parse_expression(spec.pause)).op != "false":
         raise ValueError(
             "Native pause/resume requires accumulative timer FUN87/88/89. "
-            "Manual CH09 pages 9-65/66 confirms EN/TIM behavior, but its LDR encoding "
-            "is not yet supported. Ordinary T resets when EN is false. "
+            "Low-level generate_ldr now supports sampled register-PV forms, but the "
+            "high-level sequence generator does not integrate them. Ordinary T resets "
+            "when EN is false. "
             "No external X input will be added; no file written."
         )
     if native:

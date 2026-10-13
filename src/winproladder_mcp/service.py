@@ -31,6 +31,7 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
     header[128:134] = b"FB-RES"
     header[144:156] = b"WinProladder"
     if profile not in {
+        "FBe-20MA-test19",
         "FBn-26MC-test17",
         "FBs-60MC-test16",
         "FBs-20MC",
@@ -43,6 +44,7 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
         raise ValueError("Unsupported header profile")
     header[160:168] = (
         {
+            "FBe-20MA-test19": "FBe-20MA",
             "FBn-26MC-test17": "FBn-26MC",
             "FBs-60MC-test16": "FBs-60MC",
             "FBs-24MA-test7": "FBs-24MA",
@@ -59,11 +61,15 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
         header[176:178] = b"@@"
     if profile == "FBn-26MC-test17":
         header[176:178] = bytes.fromhex("4030")
+    if profile == "FBe-20MA-test19":
+        header[176:178] = bytes.fromhex("1030")
     header[192:194] = b"H\x01"
     return bytes(header)
 
 
 def header_profile(header: bytes) -> HeaderProfile | None:
+    if header == default_header("FBe-20MA-test19"):
+        return "FBe-20MA-test19"
     if header == default_header("FBn-26MC-test17"):
         return "FBn-26MC-test17"
     if header == default_header("FBs-60MC-test16"):
@@ -252,7 +258,10 @@ class Service:
             ],
             "references": references,
             "timer_settings": result["timer_settings"],
-            "warnings": ["Analysis is incomplete: opaque networks may contain additional devices."]
+            "warnings": [
+                "Analysis is incomplete: opaque networks or unresolved runtime references "
+                "may contain additional devices; see reference_uncertainties."
+            ]
             if not references["complete"]
             else [],
         }
@@ -485,7 +494,11 @@ class Service:
         if any(n is not None and n.action is not None for n in decoded):
             if any(n is None for n in decoded):
                 raise ValueError("Cannot validate loop edits with opaque networks")
-            check = validation(Ladder(networks=[n for n in decoded if n is not None]))
+            profile = header_profile(document.header)
+            assert profile is not None  # Rejected before any edit when the header is unknown.
+            check = validation(
+                Ladder(profile=profile, networks=[n for n in decoded if n is not None])
+            )
             if not check["valid"]:
                 raise ValueError(str(check["errors"]))
         return {

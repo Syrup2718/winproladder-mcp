@@ -1,3 +1,4 @@
 {
-  "forbid_m_to_m": true
+  "forbid_m_to_m": true,
+  "allow_function_m_to_m": true
 }
