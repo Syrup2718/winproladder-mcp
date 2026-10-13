@@ -73,6 +73,10 @@
 | 95 | RAMP 緩升降 | `ramp` | Tn須10 ms且獨占、暫存器PV／SL／SU、D+1獨占；EN／PAU／U/D與三狀態 |
 | 98 | RAMP2 追蹤緩升降 | `ramp2` | 暫存器Om／Ta／Td／Rt／Rc、WR4；OR區與D0..3999，Ta／Td內容為ms |
 | 100 | R→T 暫存器到表格 | `reg_to_table` | 16-bit非P；暫存器Rs／Td／Pr、L=2..2048；EN／INC／CLR、END／ERR |
+| 101 | T→R 表格到暫存器 | `table_to_reg` | Ts／L／Pr／Rd；L=2..2048；EN／INC／CLR、END／ERR |
+| 102 | T→T 表格逐筆搬移 | `table_to_table` | Ts／Td／L／Pr；L=2..2048；EN／INC／CLR、END／ERR |
+| 103 | BT_M 整表搬移 | `block_table_move` | Ts／Td／L；L=2..256；EN |
+| 104 | T_SWP 整表互換 | `table_swap` | source=Ta、destination=Tb、L=2..256；兩表皆可寫 |
 | 170 | = 相等比較接點 | `comparison_chain` / `eq` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
 | 171 | > 大於比較接點 | `comparison_chain` / `gt` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
 | 172 | < 小於比較接點 | `comparison_chain` / `lt` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
@@ -202,12 +206,12 @@
 | 獨立離線核對 | 原始樣本 bytes、CRC、逐 byte 往返、I/O 引用、政策、負數與邊界檢查；不等同 PLC 行為 |
 | MCP 內建模擬 | 布林接點／線圈、SET／RESET、單一 X 邊沿；指定 scan_ms 時支援有限的非保持 T/C 掃描模型 |
 | MCP 真實呼叫 | 已測試 stdio 連線、需求產檔、資源下載與 SHA-256 核對 |
-| WinProLadder GUI | 僅部分歷史檔案有人工匯入紀錄；test8～test20 新生成檔未因此自動取得 GUI 驗證 |
+| WinProLadder GUI | 僅部分歷史檔案有人工匯入紀錄；test8～test21 新生成檔未因此自動取得 GUI 驗證 |
 | 實體 PLC | 未執行實機驗證 |
 
 內建模擬每次最多 256 scans；有時間模型時 scan_ms 為 1..60000 ms。T 時間模型限預設 `.01S` 的 T0..49 及支援的 preset 範圍，不模擬 PLC 非同步時脈相位。數值比較接點、原生 action、暫存器運算、MC/MCE、DIFU/DIFD、UDCTR 與迴圈均未提供執行模型。
 
-v0.10.0 打包時為 **443 項通過**；0.11.0升版時為 **663 項通過**，目前含test20的原始碼測試結果見 [test20驗證紀錄](docs/test20-functions.md)。原始樣本目前 **21 份、141 networks** 可語意解碼與重建。這是現有樣本覆蓋，不代表所有程式都符合政策或所有指令變體皆有效。test11 的比較接點與浮點指令同樣區分離線、MCP 模擬、GUI 與實機驗證。
+v0.10.0 打包時為 **443 項通過**；0.11.0升版時為 **663 項通過**，目前含test21的原始碼測試結果見 [test21驗證紀錄](docs/test21-functions.md)。原始樣本目前 **22 份、146 networks** 可語意解碼與重建。這是現有樣本覆蓋，不代表所有程式都符合政策或所有指令變體皆有效。test11 的比較接點與浮點指令同樣區分離線、MCP 模擬、GUI 與實機驗證。
 
 ## 8. 仍未支援
 
@@ -239,4 +243,4 @@ Agent 應先核對需求 I/O 與目前功能，再選擇生成工具，最後交
 
 功能與欄位若有後續變更，以實際連線 MCP 回傳的 `get_capabilities`、`get_design_guide` 及工作區政策為準。
 
-最新未發版指令與限制見 [test20](docs/test20-functions.md)。
+最新未發版指令與限制見 [test21](docs/test21-functions.md)。

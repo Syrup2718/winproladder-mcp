@@ -26,3 +26,7 @@
 - MCP stdio 原樣產檔400 bytes相同，另附不含跳躍的資料處理試檔。701項測試通過；沒有新指令執行模型、GUI或PLC驗證。
 
 形式、手冊頁碼與限制見 [test18文件](test18-functions.md)。
+
+## test21
+
+加入 FUN101～104 的16-bit非P、直接R/D與常數L編碼；保留EN／INC／CLR與END／ERR。修正先前test20 CLR一律反相的推論，原始bytes不變。新增FBe-40MC精確檔頭、完整表格資源範圍、測試及文件；不升版、不打包。詳見[test21](test21-functions.md)。

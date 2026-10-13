@@ -12,7 +12,7 @@ def capabilities() -> dict[str, Any]:
         "version": __version__,
         "profile": "Exact sampled headers: FBs-20MC, FBs-24MA (test6), FBs-24MA-test7, "
         "FBs-32MA-test11, FBs-40MA-test12, FBs-44MN-test13, FBs-60MC-test16, FBn-26MC-test17, "
-        "FBe-20MA-test19; "
+        "FBe-20MA-test19, FBe-40MC-test21; "
         "the two 24MA variants retain differing unknown metadata",
         "transport": "stdio",
         "simulation": "Boolean or scan_ms T/C model; max 256 scans, not a PLC emulator",
@@ -49,6 +49,22 @@ def capabilities() -> dict[str, Any]:
             "compare_ldr: aligned record changes",
         ],
         "native_functions": {
+            "test21_functions": {
+                "actions": "table_to_reg(101), table_to_table(102), block_table_move(103), "
+                "table_swap(104)",
+                "operands": "source/destination direct R/D, constant length; pointer on "
+                "101/102 only. "
+                "101/102 L=2..2048; 103/104 L=2..256, stored as L-1",
+                "pins": "101/102 enable/increment/clear, done/error; 103/104 enable only. "
+                "CLR is ordinary Boolean polarity, acts independently of EN per manual",
+                "spans": "Full source/destination tables tracked; 101 writes one word; "
+                "104 reads and writes both tables, both must be writable",
+                "limits": "16-bit non-P sampled forms; D/P, register length, indirect addressing "
+                "and other word banks have no encoding here. No execution simulation or "
+                "GUI/PLC validation",
+                "manual": "7-96..99; 7-96 printed table places K=2..2048 on Pr instead of L, "
+                "constant L supported by GUI sample and manual example",
+            },
             "test20_functions": {
                 "release_status": "unreleased source update after 0.11.0; no new package",
                 "actions": "ascwr(94P MD=1), ramp(95), ramp2(98), reg_to_table(100)",
@@ -64,7 +80,8 @@ def capabilities() -> dict[str, Any]:
                 "Register contents Om/Rt=0..65535, Ta/Td=0..65000 ms; no runtime value check",
                 "reg_to_table": "16-bit register source/destination/pointer, constant "
                 "length=2..2048 encoded as length-1; enable/increment/clear, done/error. "
-                "CLR can reset pointer independently of EN per manual; inverse CLR pin encoding",
+                "CLR can reset pointer independently of EN per manual; ordinary Boolean CLR "
+                "polarity; test21 corrects the earlier inversion assumption",
                 "limits": "No constant data operands, arbitrary word banks, ASCWR MD=0, "
                 "unsampled D/P forms or execution simulation. Source test20 overlaps "
                 "RAMP2 WR R15..R18 with table R10..R17: full generation rejected",

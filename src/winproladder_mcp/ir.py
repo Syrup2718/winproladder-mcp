@@ -975,9 +975,18 @@ class TemperatureControl(Model):
 
 
 class ProcessFunction(Model):
-    """Direct-register forms sampled in test20; not arbitrary instruction modes."""
+    """Direct-register forms sampled in test20/21; not arbitrary instruction modes."""
 
-    type: Literal["ascwr", "ramp", "ramp2", "reg_to_table"]
+    type: Literal[
+        "ascwr",
+        "ramp",
+        "ramp2",
+        "reg_to_table",
+        "table_to_reg",
+        "table_to_table",
+        "block_table_move",
+        "table_swap",
+    ]
     enable: str = "TRUE"
     pause: str = "FALSE"
     abort: str = "FALSE"
@@ -1034,6 +1043,14 @@ class ProcessFunction(Model):
             return {self.operand(n) for n in ["preset", "lower", "upper"]} | {"M1974"}
         if self.type == "ramp2":
             return {self.operand(n) for n in FIELDS[self.type] if n != "work"}
+        if self.type in {"table_to_reg", "table_to_table", "block_table_move", "table_swap"}:
+            assert self.length is not None
+            words = register_span(self.operand("source"), self.length)
+            if self.type == "table_swap":
+                words |= register_span(self.operand("destination"), self.length)
+            elif self.type in {"table_to_reg", "table_to_table"}:
+                words.add(self.operand("pointer"))
+            return words
         return {self.operand("source"), self.operand("pointer")}
 
     def destination_devices(self) -> set[str]:
@@ -1044,9 +1061,13 @@ class ProcessFunction(Model):
         if self.type == "ramp2":
             return self.work_devices() | {self.operand("destination")}
         assert self.length is not None
-        return register_span(self.operand("destination"), self.length, writable=True) | {
-            self.operand("pointer")
-        }
+        count = 1 if self.type == "table_to_reg" else self.length
+        words = register_span(self.operand("destination"), count, writable=True)
+        if self.type == "table_swap":
+            words |= register_span(self.operand("source"), self.length, writable=True)
+        elif self.type not in {"block_table_move"}:
+            words |= register_span(self.operand("pointer"), 1, writable=True)
+        return words
 
     @model_validator(mode="after")
     def check(self) -> "ProcessFunction":
@@ -1071,8 +1092,17 @@ class ProcessFunction(Model):
                 raise ValueError("ASCWR codec currently supports sampled 94P MD=1 only")
         elif self.mode is not None or self.pulse is not None:
             raise ValueError("Unencoded mode/pulse form for this function")
-        if (self.type == "reg_to_table") != (self.length is not None):
-            raise ValueError("Only reg_to_table requires constant length")
+        if (
+            self.type
+            in {"reg_to_table", "table_to_reg", "table_to_table", "block_table_move", "table_swap"}
+        ) != (self.length is not None):
+            raise ValueError("Table functions require constant length; other functions have none")
+        if (
+            self.type in {"block_table_move", "table_swap"}
+            and self.length is not None
+            and self.length > 256
+        ):
+            raise ValueError("BT_M/T_SWP length must be 2..256 (manual 7-98..99)")
         for name in set().union(*map(set, CONTROLS.values())):
             if name in CONTROLS[self.type]:
                 parse_expression(getattr(self, name))
@@ -1086,6 +1116,7 @@ class ProcessFunction(Model):
                 if coil.mode != "normal" or coil.inverted:
                     raise ValueError("Process function status outputs require normal coils")
         self.destination_devices()
+        self.source_devices()
         if self.type == "reg_to_table":
             register_span(self.operand("pointer"), 1, writable=True)
         if self.work_devices() & self.source_devices():
@@ -1164,6 +1195,7 @@ class Network(Model):
 
 
 HeaderProfile = Literal[
+    "FBe-40MC-test21",
     "FBe-20MA-test19",
     "FBn-26MC-test17",
     "FBs-60MC-test16",
@@ -2439,11 +2471,17 @@ def validation(ladder: Ladder) -> dict[str, object]:
                     }
                 )
             if isinstance(network.action, ProcessFunction):
-                from .instruction_catalog import TEST20_PAYLOADS
+                from .instruction_catalog import TEST20_PAYLOADS, TEST21_PAYLOADS
 
-                observed20 = next(
-                    (i for i, raw in TEST20_PAYLOADS.items() if payload.hex() == raw), None
-                )
+                table21 = network.action.type in {
+                    "table_to_reg",
+                    "table_to_table",
+                    "block_table_move",
+                    "table_swap",
+                }
+                anchors = TEST21_PAYLOADS if table21 else TEST20_PAYLOADS
+                evidence_name = "test21" if table21 else "test20"
+                observed20 = next((i for i, raw in anchors.items() if payload.hex() == raw), None)
                 instruction_evidence.append(
                     {
                         "network_index": index,
@@ -2451,9 +2489,9 @@ def validation(ladder: Ladder) -> dict[str, object]:
                         "status": "observed_export"
                         if observed20 is not None
                         else "inferred_variant",
-                        "source": f"test20.ldr N{observed20:03}"
+                        "source": f"{evidence_name}.ldr N{observed20:03}"
                         if observed20 is not None
-                        else "test20",
+                        else evidence_name,
                         "gui_import_verified": False,
                     }
                 )
@@ -2706,12 +2744,25 @@ def validation(ladder: Ladder) -> dict[str, object]:
             "source depends on PLC planning/R4003/R4004; Md encoding unresolved. "
             "No built-in runtime simulation or GUI/PLC verification."
         )
-    if any(isinstance(n.action, ProcessFunction) for n in ladder.networks):
+    if any(
+        isinstance(n.action, ProcessFunction)
+        and n.action.type in {"ascwr", "ramp", "ramp2", "reg_to_table"}
+        for n in ladder.networks
+    ):
         warnings.append(
             "test20: ASCWR 94P MD=1 is reserved in manual 7-87; runtime and "
             "ASCII file spans unresolved. RAMP requires a 10 ms configured Tn "
             "and depends on M1974. RAMP2 times are ms, D bank ends D3999. "
             "No new function runtime simulation, GUI or PLC verification."
+        )
+    if any(
+        isinstance(n.action, ProcessFunction)
+        and n.action.type in {"table_to_reg", "table_to_table", "block_table_move", "table_swap"}
+        for n in ladder.networks
+    ):
+        warnings.append(
+            "test21: sampled 16-bit non-P table functions, constant L, direct R/D operands. "
+            "No built-in execution simulation, GUI import or PLC verification."
         )
     if any(isinstance(n.action, IntegerFunction) for n in ladder.networks):
         warnings.append(

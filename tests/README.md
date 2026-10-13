@@ -27,3 +27,5 @@
 `test_test20_functions.py`涵蓋三路輸入與狀態政策、RAMP時間／Tn、RAMP2 OR區與WR4、ASCWR未知範圍、表格L−1和CLR極性及完整樣本衝突。
 
 `test_example_scripts.py` 透過 subprocess 執行兩支範例腳本，覆蓋有／無專案政策的 I/O 契約與政策拒絕結果。`test_documentation.py` 檢查正式文件連結；完整本機輸出連結由 `scripts/audit_workspace.py` 額外檢查。
+
+`test_test21_functions.py` 覆蓋 FUN101～104 完整原樣生成、CLR 正反接點與常數、整表讀寫、M 政策、邊界與未編碼形式拒絕。

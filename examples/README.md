@@ -21,3 +21,5 @@ Timer/Counter 檔案用於重現樣本，不是直接可用的製程設計。一
 - [test19 IR](test19_functions.json)：完整解析樣本，function的M→M已允許，僅解析CALL仍使全檔不能直接生成；[可生成子集與限制](../docs/test19-functions.md)。
 
 - [test20 IR](test20_functions.json)：完整解析樣本，RAMP2工作區與表格重疊；請分開生成，[詳細說明](../docs/test20-functions.md)。
+
+- [test21 原始樣本 IR](test21_functions.json)：FUN101～104，保留 X0／X5 與 M3／M4；CLR 使用一般極性。

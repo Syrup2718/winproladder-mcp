@@ -27,3 +27,5 @@
 | [test20.ldr](test20.ldr) | 396 | 4 | ASCWR、RAMP、RAMP2、R→T；R15～R17工作區衝突 |
 
 原始雜湊由 `tests/test_sample_integrity.py` 固定；樣本可解碼不等於符合目前生成政策，也不代表已做 GUI 或 PLC 驗證。完整邊界見 [驗證依據](../docs/verification.md)。截圖保存在 `screenshots/`。
+
+- [test21.ldr](test21.ldr)：5網路，FBe-40MC；T→R、T→T、BT_M、T_SWP。[截圖](screenshots/test21.png)。

@@ -160,8 +160,8 @@ def test_all_sample_decoding_coverage() -> None:
             if decoded is not None:
                 assert compile_network(decoded) == record.payload
                 count += 1
-    # Thirteen exports; decoding does not imply structural/policy validity.
-    assert count == 141
+    # Sample exports; decoding does not imply structural/policy validity.
+    assert count == 146
 
 
 def test_flat_chains_keep_node_limit_without_consuming_branch_depth() -> None:

@@ -173,9 +173,9 @@ def test_ramp_timer_and_work_cannot_be_reused():
 
 def test_table_clear_polarity_is_separate_from_increment():
     n = sample().networks[3]
-    assert n.action.clear == "TRUE" and n.action.increment == "TRUE"
+    assert n.action.clear == "FALSE" and n.action.increment == "TRUE"
     assert compile_network(n).hex().startswith("4fe86fe87fe8")
-    n.action.clear = "FALSE"
+    n.action.clear = "TRUE"
     raw = compile_network(n)
     assert raw.hex().startswith("4fe86fe86fe8")
-    assert decode_network(raw).action.clear == "FALSE"
+    assert decode_network(raw).action.clear == "TRUE"

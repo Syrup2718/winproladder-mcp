@@ -46,3 +46,5 @@
 首次安裝請見 [專案首頁](../README.md)。目前參數以 `get_capabilities`、`get_design_guide` 回傳的 schema 為準。
 
 - [2026-10-13 全資料夾檢查與整理](folder-audit-2026-10-13.md)
+
+- [test21：FUN101～104 表格搬移與互換](test21-functions.md)

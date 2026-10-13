@@ -190,7 +190,7 @@
         "abort": "FALSE",
         "up": "FALSE",
         "increment": "TRUE",
-        "clear": "TRUE",
+        "clear": "FALSE",
         "mode": null,
         "pulse": null,
         "source": "R0",
@@ -215,5 +215,6 @@
         "decelerating": []
       }
     }
-  ]
+  ],
+  "symbols": {}
 }

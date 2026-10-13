@@ -17,7 +17,7 @@ def manual_reference() -> dict[str, Any]:
     return {
         "sources": {
             "advanced": "進階篇應用指令.pdf: 7-3..13, 7-19..24, 7-28..29, "
-            "7-59..61, 7-79..95, 7-151..171, 7-66..73",
+            "7-59..61, 7-79..99, 7-151..171, 7-66..73",
             "temperature": "CH20_FB-PLC溫度量測及溫度PID控制.pdf: 20-44..47 (older edition)",
             "basic": "基本應用指令.pdf: 7-2, 7-18..19, 7-26",
             "rtc": "CH16_萬年曆（RTC）.pdf: 16-1..2 (FB-PLC MA/MC with RTC)",  # noqa: RUF001
@@ -25,6 +25,20 @@ def manual_reference() -> dict[str, Any]:
         "rule": "Manual operand limits define PLC legality. Sample addresses are not maxima. "
         "LDR encoding support, CPU availability and manual editions are separate evidence.",
         "instruction_modes": {
+            "TABLE_TRANSFERS": {
+                "pages": ["7-96", "7-97", "7-98", "7-99"],
+                "length": "101/102: 2..2048; 103/104: 2..256",
+                "101_102": "CLR clears Pr before transfer, independent of EN. "
+                "Then Ts[Pr] -> Rd (101) or Td[Pr] (102). END when Pr=L-1; "
+                "otherwise INC increments Pr. Invalid Pr sets ERR",
+                "103": "Whole source table copied to destination in one execution",
+                "104": "Both tables exchanged in one execution; both must be writable",
+                "codec": "16-bit non-P, constant L, direct R/D banks only. Manual allows "
+                "additional D/P, register-length and indirect forms; those encodings remain "
+                "unresolved",
+                "evidence": "test21 N002 CLR X5 uses normal contact 6005; "
+                "7FE8 denotes FALSE, not inverted physical CLR. Corrects test20 interpretation",
+            },
             "ASCWR": {
                 "pages": ["7-87"],
                 "MD": "0 ASCII/Printer via Port1; 1 reserved for specific purposes",
