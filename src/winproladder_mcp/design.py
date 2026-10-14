@@ -13,6 +13,29 @@ def design_guide() -> dict[str, Any]:
             "default_policy": "Physical signal/output required; no automatic X/Y assignment.",
         },
         "workflow": [
+            "test25: bit_move/nibble_move/byte_move use source_index and destination_index; "
+            "only the selected portion changes. word_exchange reads/writes source and "
+            "destination; byte_swap is in-place. nibble_unite/distribute use constant count "
+            "1..4. byte_unite uses length_register, not constant length; N counts bytes, "
+            "up to 256 source words and 128 destination words. WX0/WY0 contracts include "
+            "all 16 physical bits. Never invent addresses to make a sample pass.",
+            "test24: toggle_bit uses trigger and bit_destination (native rising-edge TOGG). "
+            "move_word/move_inverse use source/destination/enable; WY8 touches all Y8..Y23. "
+            "table_sort uses ascending; zone_write and matrix_bit_count use ones; "
+            "matrix_bit_shift uses input_bit and left, matrix_bit_rotate uses left. "
+            "L counts words; matrix_bit_count writes one word. Z-WR length=N, 1..511. "
+            "Preserve original addresses and in-place operations; never add physical IO.",
+            "test23: matrix_and/or/xor/xnr take source, source_b, destination, length. "
+            "matrix_invert takes source, destination, length_register (not constant length). "
+            "MCMP/MBRD/MBWR pointers count bits 0..16*L-1 while length counts words. "
+            "MBWR input_bit, increment and clear are independent of enable. MINV static "
+            "references conservatively cover 256 possible words. No M helpers or extra X/Y.",
+            "test22: FUN105..112 direct-register 16-bit non-P table operations. "
+            "105/107 use value for constant Rs; 108/110/111/112 use input_word. "
+            "112 bit_destination writes L consecutive Y/M, source reads 2*L limits; "
+            "include all physical outputs in the explicit contract, never add an extra X/Y. "
+            "QUEUE/STACK Pr ranges 0..L. Keep source=destination for requested in-place "
+            "shift/rotate. No synthetic M helpers or native execution model.",
             "test21: table_to_reg/table_to_table take source, destination, length, pointer; "
             "block_table_move/table_swap omit pointer. L 2..2048 for 101/102, 2..256 for "
             "103/104. clear uses ordinary polarity (test21 X5 anchor). Native M control "
