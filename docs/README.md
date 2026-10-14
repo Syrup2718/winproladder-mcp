@@ -48,3 +48,11 @@
 - [2026-10-13 全資料夾檢查與整理](folder-audit-2026-10-13.md)
 
 - [test21：FUN101～104 表格搬移與互換](test21-functions.md)
+
+- [test22：FUN105～112 搜尋、表格、QUEUE／STACK及BKCMP](test22-functions.md)
+
+- [test23：FUN120～127 矩陣運算與位元讀寫](test23-functions.md)
+
+- [test24：MOV／MOV/／TOGG、SORT／Z-WR、矩陣位元操作](test24-functions.md)
+
+- [test25：FUN42～49 搬移、交換及資料結合／分配](test25-functions.md)

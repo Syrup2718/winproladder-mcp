@@ -12,7 +12,7 @@ def capabilities() -> dict[str, Any]:
         "version": __version__,
         "profile": "Exact sampled headers: FBs-20MC, FBs-24MA (test6), FBs-24MA-test7, "
         "FBs-32MA-test11, FBs-40MA-test12, FBs-44MN-test13, FBs-60MC-test16, FBn-26MC-test17, "
-        "FBe-20MA-test19, FBe-40MC-test21; "
+        "FBe-20MA-test19, FBe-40MC-test21, FB-28MA-test22, HB1-32M-test23; "
         "the two 24MA variants retain differing unknown metadata",
         "transport": "stdio",
         "simulation": "Boolean or scan_ms T/C model; max 256 scans, not a PLC emulator",
@@ -49,6 +49,72 @@ def capabilities() -> dict[str, Any]:
             "compare_ldr: aligned record changes",
         ],
         "native_functions": {
+            "test25_functions": {
+                "actions": "bit_move(42), nibble_move(43), byte_move(44), word_exchange(45), "
+                "byte_swap(46), nibble_unite(47), nibble_distribute(48), byte_unite(49)",
+                "operands": "source=S/Da, destination=D/Db, enable=EN. "
+                "42..44 source_index=Ns and destination_index=Nd (0..15/3/1 respectively); "
+                "47/48 count=N constant 1..4; 49 length_register=N (runtime 1..256 bytes)",
+                "status": "error on 42/43/44/47/48; no status on 45/46/49",
+                "footprints": "42..44 preserve other destination bits; XCHG reads/writes both "
+                "operands. UNIT reads N words, writes 1 and clears unused nibbles; DIST reads "
+                "1 word, writes N zero-extended nibbles. BUNIT conservatively reads 256 source "
+                "words, length register and 128 destination words; writes up to 128 words. "
+                "Odd-N unused destination byte unspecified in supplied manual",
+                "limits": "Sampled 16-bit non-P direct word forms. Multiword spans R/D only; "
+                "single words use existing R/D/T/WX0/WY0 codec (destinations R/D/WY0). "
+                "BUNIT HR/ROR/DR only. Dynamic Ns/Nd, constant BUNIT N, dynamic UNIT/DIST N, "
+                "additional banks, D/P and indirect encodings unresolved; no runtime simulation",
+            },
+            "test24_functions": {
+                "actions": "move_word(08), move_inverse(09), toggle_bit(10), table_sort(113), "
+                "zone_write(114), matrix_bit_shift(128), matrix_bit_rotate(129), "
+                "matrix_bit_count(130)",
+                "length": "SORT 2..127 words; Z-WR N 1..511 words (literal encoded N); "
+                "matrix 2..256 words (16*L bits). MBCNT writes only one result word",
+                "controls": "TOGG trigger=TGU (rising edge); SORT enable/ascending=A/D; "
+                "Z-WR and MBCNT enable/ones=1/0; MBSHF enable/input_bit/left=L/R; "
+                "MBROT enable/left. MOV/MOV/ enable",
+                "status": "SORT/Z-WR error; MBSHF/MBROT output=OTB; MBCNT zero=D=0",
+                "limits": "Sampled 16-bit non-P direct operands, constant length; "
+                "MOV word-source only (no constants), R/D and existing T/WX0/WY0 plus exact WY8. "
+                "MOV uses basic manual D0..3071; MOV/ IR R3840..3847. Other word banks, "
+                "dynamic lengths, D/P and indirect encoding remain unresolved. "
+                "TOGG Y0..255/M0..999; other legal bit families not yet encoded. "
+                "WY8 writes Y8..Y23, all must be in IO contract. No native runtime simulation",
+            },
+            "test23_functions": {
+                "actions": "matrix_and(120), matrix_or(121), matrix_xor(122), matrix_xnr(123), "
+                "matrix_invert(124), matrix_compare(125), matrix_bit_read(126), "
+                "matrix_bit_write(127)",
+                "operands": "source=Ma/Ms, source_b=Mb, destination=Md, pointer=Pr. "
+                "MINV uses length_register (sample R1); other sampled forms use constant length",
+                "length": "L=2..256 words, bit pointer=0..16*L-1. MINV dynamic L tracks "
+                "all 256 possible words for static resource safety, not the runtime value",
+                "controls": "MCMP enable/from_head/different; MBRD enable/increment/clear; "
+                "MBWR enable/input_bit/increment/clear (four separate inputs)",
+                "status": "MCMP found/done/error; MBRD output/done/error; MBWR done/error",
+                "limits": "Non-P sampled forms and direct R/D banks. MINV constant L and "
+                "other functions register L encodings unresolved; no native runtime simulation. "
+                "Same source/destination permitted; dynamic spans may conservatively reject "
+                "near-bank endpoints even if a particular runtime L would fit",
+            },
+            "test22_functions": {
+                "actions": "register_table_search(105), table_compare(106), table_fill(107), "
+                "table_shift(108), table_rotate(109), queue(110), stack(111), block_compare(112)",
+                "form": "16-bit non-P, direct R/D operands, constant length. "
+                "105/107 currently constant value Rs only (-32768..32767); signed variants "
+                "inferred",
+                "length": "105..111: 2..256; 112: 1..256; stored L-1",
+                "inputs": "enable; 105/106 from_head=FHD, different=D/S; "
+                "108/109 left=L/R; 110/111 push=I/O",
+                "status": "105/106 found/done/error; 110/111 empty_flag/full/error; 112 error",
+                "spans": "110/111 pointer range 0..L, QU/ST contains exactly L words. "
+                "112 source is 2*L lower/upper words, bit_destination writes L Y/M bits "
+                "(Y0..255/M0..999); reads M1975. Full I/O contract required",
+                "limits": "No D/P, indirect, dynamic L, other word-bank encodings or native "
+                "execution simulation. Manual 7-100..109 allows more than this sampled codec",
+            },
             "test21_functions": {
                 "actions": "table_to_reg(101), table_to_table(102), block_table_move(103), "
                 "table_swap(104)",

@@ -16,15 +16,103 @@ RTC_FIELDS = {
 def manual_reference() -> dict[str, Any]:
     return {
         "sources": {
-            "advanced": "進階篇應用指令.pdf: 7-3..13, 7-19..24, 7-28..29, "
-            "7-59..61, 7-79..99, 7-151..171, 7-66..73",
+            "advanced": "進階篇應用指令.pdf: 7-3..13, 7-19..24, 7-28..37, "
+            "7-59..61, 7-79..124, 7-151..171, 7-66..73",
             "temperature": "CH20_FB-PLC溫度量測及溫度PID控制.pdf: 20-44..47 (older edition)",
-            "basic": "基本應用指令.pdf: 7-2, 7-18..19, 7-26",
+            "basic": "基本應用指令.pdf: 7-2, 7-18..19, 7-23..26",
             "rtc": "CH16_萬年曆（RTC）.pdf: 16-1..2 (FB-PLC MA/MC with RTC)",  # noqa: RUF001
         },
         "rule": "Manual operand limits define PLC legality. Sample addresses are not maxima. "
         "LDR encoding support, CPU availability and manual editions are separate evidence.",
         "instruction_modes": {
+            "PACKING_FUNCTIONS": {
+                "pages": "7-30..37",
+                "42_44": "Move selected bit/nibble/byte only; preserve other destination bits. "
+                "16-bit Ns/Nd ranges 0..15, 0..3, 0..1; D variants double the ranges but are "
+                "not encoded. Invalid index sets ERR and skips instruction",
+                "45_46": "XCHG exchanges both operands; SWAP exchanges two bytes in one word",
+                "47_48": "N=1..4 nibbles. UNIT takes low nibble from N consecutive words into "
+                "one word low-to-high and clears unused nibbles. DIST distributes low-to-high "
+                "into N words, each with upper 12 bits zero",
+                "49": "N=1..256 bytes. Pack low bytes from N source words into ceil(N/2) "
+                "destination words; manual diagram puts first source byte in HIGH byte, "
+                "second in LOW byte. Odd-N unused byte is not specified. No ERR output",
+                "codec": "test25 non-P direct forms: 42..44 constant indices; 47/48 constant N; "
+                "49 register N. BUNIT conservatively tracks maximum footprint and destination "
+                "reads for unspecified odd-byte preservation; not a runtime prediction",
+            },
+            "TEST24_TRANSFER_MATRIX": {
+                "pages": "Basic 7-23..25; advanced 7-111..112, 7-122..124",
+                "MOV": "EN transfers one word; MOV/ bitwise inverts before writing. "
+                "WY8 spans Y8..Y23. Basic manual D max 3071, MOV/ IR max R3847; "
+                "newer advanced bank tables do not settle these MOV forms",
+                "TOGG": "Each TG 0-to-1 transition toggles destination; continuous high TG "
+                "does NOT toggle every scan. Codec currently supports Y0..255/M0..999",
+                "SORT": "L=2..127; A/D=1 ascending, 0 descending; ERR on bad L. "
+                "Sample 16-bit constant L; D/P and register L legal but not yet encoded",
+                "Z_WR": "N=1..511; 1/0=1 fills ones, 0 clears. Native N stored literally. "
+                "Manual supports bit/word regions, dynamic N and D/P; codec direct R/D words only",
+                "MBSHF_MBROT": "L=2..256 words (16*L bits). L/R=1 left, 0 right. "
+                "MBSHF inserts INB, emits outgoing OTB; MBROT reinserts outgoing OTB. "
+                "Same source and destination permitted",
+                "MBCNT": "Count ones if 1/0=1, zeroes otherwise across 16*L bits; "
+                "write count into ONE destination word, D=0 reports zero count",
+                "codec": "test24 observed forms; additional operands, dynamic L/P/indirect "
+                "remain encoding gaps, not illegal PLC modes",
+            },
+            "MATRIX_FUNCTIONS": {
+                "pages": [
+                    "7-113",
+                    "7-114",
+                    "7-115",
+                    "7-116",
+                    "7-117",
+                    "7-118",
+                    "7-119",
+                    "7-120",
+                    "7-121",
+                ],
+                "length": "2..256 16-bit words; matrix contains 16*L bits",
+                "120_124": "Pairwise AND/OR/XOR/XNR or invert each bit into destination; "
+                "in-place destination allowed. L can be constant or permitted register",
+                "125": "FHD=1 or Pr=16*L-1 starts at zero; otherwise Pr+1. D/S=1 unequal, "
+                "0 equal. FND on match, END at last bit; invalid pointer sets ERR",
+                "126_127": "CLR first resets pointer, independently of EN. "
+                "Read selected bit to OTB or write INB; END if Pr=16*L-1, "
+                "otherwise increment only when INC=1. Pointer range 0..16*L-1",
+                "codec": "Sampled non-P direct R/D only. MINV register L supported; "
+                "other sampled functions constant L. Alternate L forms, P and indirect "
+                "forms remain unencoded. Static MINV references cover worst-case 256 words",
+            },
+            "TABLE_SEARCH_STORAGE": {
+                "pages": [
+                    "7-100",
+                    "7-101",
+                    "7-102",
+                    "7-103",
+                    "7-104",
+                    "7-105",
+                    "7-106",
+                    "7-107",
+                    "7-108",
+                    "7-109",
+                ],
+                "length": "105..111: 2..256; BKCMP 112: 1..256 groups",
+                "105_106": "FHD=1 or Pr=L-1 starts at index 0; otherwise starts Pr+1. "
+                "D/S=1 seeks unequal, 0 equal. FND marks match; END marks last index; "
+                "ERR for Pr outside 0..L-1",
+                "107": "Fill L destination words with Rs",
+                "108_109": "L/R=1 left, 0 right. Shift fills IW and writes displaced OW; "
+                "rotate wraps the displaced element. Source and destination may be identical",
+                "110_111": "QUEUE FIFO, STACK LIFO. I/O=1 push, 0 pop; Pr=0 empty, Pr=L full. "
+                "First storage element is QU/ST base, not base+1. ERR outside 0..L",
+                "112": "Compare Rs with L pairs at Ts[2*i] lower / Ts[2*i+1] upper. "
+                "Write L consecutive result bits. M1975=0: upper<lower gives ERR and false; "
+                "M1975=1 permits wrapping intervals. Result range Y0..255/M0..999/S0..999",
+                "codec": "Sampled non-P 16-bit; constant Rs on 105/107, register IW/Rs "
+                "on 108/110/111/112; direct R/D, constant L, Y/M results. "
+                "Other legal manual operands and D/P/indirect encodings remain unresolved",
+            },
             "TABLE_TRANSFERS": {
                 "pages": ["7-96", "7-97", "7-98", "7-99"],
                 "length": "101/102: 2..2048; 103/104: 2..256",

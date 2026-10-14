@@ -29,3 +29,11 @@
 `test_example_scripts.py` 透過 subprocess 執行兩支範例腳本，覆蓋有／無專案政策的 I/O 契約與政策拒絕結果。`test_documentation.py` 檢查正式文件連結；完整本機輸出連結由 `scripts/audit_workspace.py` 額外檢查。
 
 `test_test21_functions.py` 覆蓋 FUN101～104 完整原樣生成、CLR 正反接點與常數、整表讀寫、M 政策、邊界與未編碼形式拒絕。
+
+`test_test22_functions.py`涵蓋FUN105～112、常數與L邊界、完整表格與BKCMP隱含輸出、三層政策、I/O漏列拒絕、未知模式及原樣重建。
+
+`test_test23_functions.py`涵蓋FUN120～127、完整矩陣範圍、MINV動態L、四路腳位分離與布林式、三層M政策、原地運算、邊界及未知形式。
+
+`test_test24_functions.py`涵蓋八個FUNC原始bytes、每路控制及狀態、長度邊界、WY8整段I/O、TOGG讀寫、M政策及模擬拒絕。
+
+`test_test25_functions.py`涵蓋FUN42～49原始bytes、位置與count界線、保留部分word的讀寫、交換雙端、BUNIT動態跨度、完整word契約及狀態M政策。

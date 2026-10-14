@@ -31,6 +31,8 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
     header[128:134] = b"FB-RES"
     header[144:156] = b"WinProladder"
     if profile not in {
+        "HB1-32M-test23",
+        "FB-28MA-test22",
         "FBe-40MC-test21",
         "FBe-20MA-test19",
         "FBn-26MC-test17",
@@ -44,17 +46,23 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
     }:
         raise ValueError("Unsupported header profile")
     header[160:168] = (
-        {
-            "FBe-40MC-test21": "FBe-40MC",
-            "FBe-20MA-test19": "FBe-20MA",
-            "FBn-26MC-test17": "FBn-26MC",
-            "FBs-60MC-test16": "FBs-60MC",
-            "FBs-24MA-test7": "FBs-24MA",
-            "FBs-32MA-test11": "FBs-32MA",
-            "FBs-40MA-test12": "FBs-40MA",
-            "FBs-44MN-test13": "FBs-44MN",
-        }.get(profile, profile)
-    ).encode("ascii")
+        (
+            {
+                "HB1-32M-test23": "HB1-32M",
+                "FB-28MA-test22": "FB-28MA",
+                "FBe-40MC-test21": "FBe-40MC",
+                "FBe-20MA-test19": "FBe-20MA",
+                "FBn-26MC-test17": "FBn-26MC",
+                "FBs-60MC-test16": "FBs-60MC",
+                "FBs-24MA-test7": "FBs-24MA",
+                "FBs-32MA-test11": "FBs-32MA",
+                "FBs-40MA-test12": "FBs-40MA",
+                "FBs-44MN-test13": "FBs-44MN",
+            }.get(profile, profile)
+        )
+        .encode("ascii")
+        .ljust(8, b"\x00")
+    )
     # Preserve exact sampled metadata, including unknown profile-specific fields.
     header[176:178] = b"@@" if profile == "FBs-20MC" else bytes.fromhex("1045")
     if profile in {"FBs-24MA-test7", "FBs-32MA-test11", "FBs-40MA-test12"}:
@@ -65,11 +73,19 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
         header[176:178] = bytes.fromhex("4030")
     if profile == "FBe-20MA-test19":
         header[176:178] = bytes.fromhex("1030")
+    if profile == "FB-28MA-test22":
+        header[176:178] = bytes.fromhex("1020")
+    if profile == "HB1-32M-test23":
+        header[176:178] = bytes.fromhex("1055")
     header[192:194] = b"H\x01"
     return bytes(header)
 
 
 def header_profile(header: bytes) -> HeaderProfile | None:
+    if header == default_header("HB1-32M-test23"):
+        return "HB1-32M-test23"
+    if header == default_header("FB-28MA-test22"):
+        return "FB-28MA-test22"
     if header == default_header("FBe-40MC-test21"):
         return "FBe-40MC-test21"
     if header == default_header("FBe-20MA-test19"):

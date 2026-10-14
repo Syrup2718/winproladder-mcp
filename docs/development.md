@@ -92,3 +92,11 @@ uv run python scripts/generate_design_examples.py --root . --prefix custom
 `analog_functions.py`、`thermal_functions.py`、`process_functions.py` 分別集中 test18、test19、test20 編解碼。
 
 完整本機檔案盤點可執行 `uv run python scripts/audit_workspace.py --output tmp/workspace-audit-new.json`。JSON 報告只含路徑、大小、雜湊與檢查結果，不輸出連線設定內容；Git、環境依賴與快取只計數，不逐一審查第三方程式。文件中的 artifacts／dist／tmp 連結是本機證據，Git 原始碼副本不包含這些檔案。
+
+`table_functions.py`集中test22的FUN105～112運算元編解碼與完整資源範圍，由共用ProcessFunction控制及狀態處理接入。
+
+`matrix_functions.py`集中test23的FUN120～127 operand編解碼和矩陣範圍；共用ProcessFunction增加四路輸入解碼。
+
+`transfer_functions.py`集中test24的MOV／TOGG、SORT／Z-WR、矩陣位元指令；WY8輸出span與Z-WR直接N編碼在此獨立處理。
+
+`packing_functions.py`集中FUN42～49的operand順序、count／index檢查、部分word讀寫與BUNIT動態跨度。

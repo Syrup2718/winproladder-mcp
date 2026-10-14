@@ -30,3 +30,19 @@
 ## test21
 
 加入 FUN101～104 的16-bit非P、直接R/D與常數L編碼；保留EN／INC／CLR與END／ERR。修正先前test20 CLR一律反相的推論，原始bytes不變。新增FBe-40MC精確檔頭、完整表格資源範圍、測試及文件；不升版、不打包。詳見[test21](test21-functions.md)。
+
+## test22（2026-10-14）
+
+加入FUN105～112樣本形式、FB-28MA精確檔頭、完整表格資源及BKCMP連續輸出檢查。QUEUE／STACK指標語意與M1975記錄於手冊參照。不升版、不打包；詳見[test22](test22-functions.md)。
+
+## test23（2026-10-14）
+
+加入FUN120～127、HB1-32M精確檔頭及四路控制編解碼。MINV支援暫存器L並保守追蹤256-word範圍；其他樣本矩陣指令支援常數L，指標以bit計。維持版本、不打包，詳見[test23](test23-functions.md)。
+
+## test24（2026-10-14）
+
+加入 FUN08／09／10、113／114、128～130 的樣本形式、逐腳位控制與狀態編解碼。Z-WR N直接編碼，MBCNT只寫單word，WY8追蹤Y8～Y23全部輸出，TOGG追蹤目的讀寫。版本維持0.11.0，未打包；詳見[test24](test24-functions.md)。
+
+## test25（2026-10-14）
+
+新增FUN42～49樣本編碼與參數化支援，區分部分目的保留、UNIT／DIST補零及BUNIT暫存器N。靜態分析納入雙端交換、最大動態跨度及完整word I/O契約。未升版、未打包；見[test25](test25-functions.md)。

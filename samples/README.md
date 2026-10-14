@@ -29,3 +29,11 @@
 原始雜湊由 `tests/test_sample_integrity.py` 固定；樣本可解碼不等於符合目前生成政策，也不代表已做 GUI 或 PLC 驗證。完整邊界見 [驗證依據](../docs/verification.md)。截圖保存在 `screenshots/`。
 
 - [test21.ldr](test21.ldr)：5網路，FBe-40MC；T→R、T→T、BT_M、T_SWP。[截圖](screenshots/test21.png)。
+
+- [test22.ldr](test22.ldr)：481 bytes、8個function加1個空白網路，FB-28MA；[截圖](screenshots/test22.png)。
+
+- [test23.ldr](test23.ldr)：460 bytes、8網路，HB1-32M；[截圖](screenshots/test23.png)。
+
+- [test24.ldr](test24.ldr)：436 bytes、8網路，FBs-40MA；[截圖](screenshots/test24.png)。
+
+- [test25.ldr](test25.ldr)：430 bytes、8網路，FBs-44MN；[截圖](screenshots/test25.png)。

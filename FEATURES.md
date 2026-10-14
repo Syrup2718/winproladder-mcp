@@ -1,6 +1,6 @@
 # WinProLadder MCP 現有功能總覽
 
-版本：**v0.11.0**。整理日期：**2026-10-13**。
+版本：**v0.11.0**。整理日期：**2026-10-14**。
 
 本文件描述**目前原始碼**。最後安裝包為 v0.10.0，差異記錄於[0.11.0版本紀錄](docs/release-0.11.0.md)；本次未打包。原生指令按 FUNC 編號排列，能力與限制以此表及 MCP schema 為準。
 
@@ -21,6 +21,9 @@
 | 04 | DIFU 上升沿微分 | `difu` | trigger 條件、Y/M 目的位址 |
 | 05 | DIFD 下降沿微分 | `difd` | trigger 條件、Y/M 目的位址 |
 | 07P | UDCTR 加減計數 | `udctr` | PLS、U/D、CLR；PV 為 0..32767 常數，CV 為可寫 R/D；不支援 CUP 接線 |
+| 08 | MOV 搬移 | `move_word` | 16-bit word 來源，R/D、既有 T/WX0/WY0 與精確 WY8；不含常數來源、D/P |
+| 09 | MOV/ 倒相搬移 | `move_inverse` | 同上；WY8 寫入 Y8～Y23 全部16點 |
+| 10 | TOGG 交替開關 | `toggle_bit` | trigger 上升沿翻轉 bit_destination，Y0～255／M0～999 |
 | 11 | ＋ 加法 | `arithmetic` / `add` | 16-bit；Sa 為 R/D，Sb 為 0..32767 常數，D 為可寫 R/D |
 | 12 | − 減法 | `arithmetic` / `sub` | 同上 |
 | 13 | × 乘法 | `arithmetic` / `mul` | 同上；目的地佔兩個連續 word |
@@ -50,6 +53,14 @@
 | 37 | ZNCMP 區間比較 | `zone_compare` | R/D 來源；上下限為 -32768..32767 常數；區間內／高於上限／低於下限接普通線圈 |
 | 40 | BITRD 讀取位元 | `bitrd` | R/D word、bit=0..15、OTB／ERR；EN=0受M1919影響 |
 | 41 | BITWR 寫入位元 | `bitwr` | R/D word、bit=0..15、EN／INB、ERR；其他bits保持 |
+| 42 | BITMV 位元搬移 | `bit_move` | source／destination、source_index／destination_index=0～15；enable、error；保留目的其他bits |
+| 43 | NBMV 位數搬移 | `nibble_move` | 同上；位置0～3 |
+| 44 | BYMV 位元組搬移 | `byte_move` | 同上；位置0～1 |
+| 45 | XCHG 資料互換 | `word_exchange` | source=Da、destination=Db；enable；兩端均讀寫 |
+| 46 | SWAP 高低byte交換 | `byte_swap` | destination；enable；原地讀寫 |
+| 47 | UNIT 位數結合 | `nibble_unite` | source、count=1～4、destination；enable、error；讀N words寫1 word |
+| 48 | DIST 位數分配 | `nibble_distribute` | source、count=1～4、destination；enable、error；讀1 word寫N words |
+| 49 | BUNIT 位元組結合 | `byte_unite` | source、length_register=N、destination；enable；動態N 1～256 bytes，最大256來源／128目的words |
 | 65 | LBL 標籤 | `lbl` | 精確標籤1記錄，尚未支援任意名稱 |
 | 66 | JMP 跳躍 | `jmp` | 僅完整test18原樣重建；目標欄位未解碼，不支援重定位或改動程式 |
 | 67 | CALL 副程式呼叫 | `call` | 僅解析 test19 精確記錄；目標重定位未解碼，禁止生成 |
@@ -77,6 +88,27 @@
 | 102 | T→T 表格逐筆搬移 | `table_to_table` | Ts／Td／L／Pr；L=2..2048；EN／INC／CLR、END／ERR |
 | 103 | BT_M 整表搬移 | `block_table_move` | Ts／Td／L；L=2..256；EN |
 | 104 | T_SWP 整表互換 | `table_swap` | source=Ta、destination=Tb、L=2..256；兩表皆可寫 |
+| 105 | R-T_S 暫存器對表格搜尋 | `register_table_search` | 常數Rs、Ts／L／Pr；FHD／D/S、FND／END／ERR |
+| 106 | T-T_C 表格比較 | `table_compare` | Ta／Tb／L／Pr；FHD／D/S、FND／END／ERR |
+| 107 | T_FIL 表格填入 | `table_fill` | 常數Rs、Td／L；EN |
+| 108 | T_SHF 表格位移 | `table_shift` | 暫存器IW／Ts／Td／L／OW；L/R，支援原地 |
+| 109 | T_ROT 表格旋轉 | `table_rotate` | Ts／Td／L；L/R，支援原地 |
+| 110 | QUEUE 先進先出 | `queue` | IW／QU／L／Pr／OW；I/O、EPT／FUL／ERR |
+| 111 | STACK 後進先出 | `stack` | IW／ST／L／Pr／OW；I/O、EPT／FUL／ERR |
+| 112 | BKCMP 區塊比較 | `block_compare` | Rs／Ts／L／D；讀2L個限值，寫L個Y/M結果；ERR／M1975 |
+| 113 | SORT 大小排序 | `table_sort` | source、destination、length=2～127；enable／ascending，error |
+| 114 | Z-WR 區域寫入 | `zone_write` | R/D destination、length=N=1～511；enable／ones，error；N直接編碼 |
+| 120 | MAND 矩陣AND | `matrix_and` | Ma／Mb／Md、L=2..256 words；EN |
+| 121 | MOR 矩陣OR | `matrix_or` | 同上 |
+| 122 | MXOR 矩陣XOR | `matrix_xor` | 同上 |
+| 123 | MXNR 矩陣XNR | `matrix_xnr` | 同上 |
+| 124 | MINV 矩陣反相 | `matrix_invert` | Ms／Md、暫存器L；按256 words追蹤可能範圍 |
+| 125 | MCMP 矩陣比較 | `matrix_compare` | Ma／Mb／L／Pr；FHD／D/S、FND／END／ERR |
+| 126 | MBRD 矩陣位元讀取 | `matrix_bit_read` | Ms／L／Pr；INC／CLR、OTB／END／ERR |
+| 127 | MBWR 矩陣位元寫入 | `matrix_bit_write` | Md／L／Pr；EN／INB／INC／CLR、END／ERR |
+| 128 | MBSHF 矩陣位元位移 | `matrix_bit_shift` | source、destination、length=2～256 words；enable／input_bit／left，output |
+| 129 | MBROT 矩陣位元旋轉 | `matrix_bit_rotate` | source、destination、length=2～256 words；enable／left，output |
+| 130 | MBCNT 矩陣位元計數 | `matrix_bit_count` | source、length=2～256 words，destination只寫1 word；enable／ones，zero |
 | 170 | = 相等比較接點 | `comparison_chain` / `eq` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
 | 171 | > 大於比較接點 | `comparison_chain` / `gt` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
 | 172 | < 小於比較接點 | `comparison_chain` / `lt` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
@@ -206,12 +238,12 @@
 | 獨立離線核對 | 原始樣本 bytes、CRC、逐 byte 往返、I/O 引用、政策、負數與邊界檢查；不等同 PLC 行為 |
 | MCP 內建模擬 | 布林接點／線圈、SET／RESET、單一 X 邊沿；指定 scan_ms 時支援有限的非保持 T/C 掃描模型 |
 | MCP 真實呼叫 | 已測試 stdio 連線、需求產檔、資源下載與 SHA-256 核對 |
-| WinProLadder GUI | 僅部分歷史檔案有人工匯入紀錄；test8～test21 新生成檔未因此自動取得 GUI 驗證 |
+| WinProLadder GUI | 僅部分歷史檔案有人工匯入紀錄；test8～test25 新生成檔未因此自動取得 GUI 驗證 |
 | 實體 PLC | 未執行實機驗證 |
 
 內建模擬每次最多 256 scans；有時間模型時 scan_ms 為 1..60000 ms。T 時間模型限預設 `.01S` 的 T0..49 及支援的 preset 範圍，不模擬 PLC 非同步時脈相位。數值比較接點、原生 action、暫存器運算、MC/MCE、DIFU/DIFD、UDCTR 與迴圈均未提供執行模型。
 
-v0.10.0 打包時為 **443 項通過**；0.11.0升版時為 **663 項通過**，目前含test21的原始碼測試結果見 [test21驗證紀錄](docs/test21-functions.md)。原始樣本目前 **22 份、146 networks** 可語意解碼與重建。這是現有樣本覆蓋，不代表所有程式都符合政策或所有指令變體皆有效。test11 的比較接點與浮點指令同樣區分離線、MCP 模擬、GUI 與實機驗證。
+v0.10.0 打包時為 **443 項通過**；0.11.0升版時為 **663 項通過**，目前含test25的原始碼測試結果見 [test25驗證紀錄](docs/test25-functions.md)。原始樣本目前 **26 份、179 networks** 可語意解碼與重建。這是現有樣本覆蓋，不代表所有程式都符合政策或所有指令變體皆有效。test11 的比較接點與浮點指令同樣區分離線、MCP 模擬、GUI 與實機驗證。
 
 ## 8. 仍未支援
 
@@ -243,4 +275,8 @@ Agent 應先核對需求 I/O 與目前功能，再選擇生成工具，最後交
 
 功能與欄位若有後續變更，以實際連線 MCP 回傳的 `get_capabilities`、`get_design_guide` 及工作區政策為準。
 
-最新未發版指令與限制見 [test21](docs/test21-functions.md)。
+最新未發版指令與限制見 [test25](docs/test25-functions.md)。
+
+- [test24：FUN08／09／10、113／114、128～130](docs/test24-functions.md)：樣本形式、WY8完整輸出契約與手冊差異。
+
+- [test25：FUN42～49](docs/test25-functions.md)：部分word搬移、互換、UNIT／DIST及BUNIT動態N。

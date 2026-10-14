@@ -23,3 +23,11 @@ Timer/Counter 檔案用於重現樣本，不是直接可用的製程設計。一
 - [test20 IR](test20_functions.json)：完整解析樣本，RAMP2工作區與表格重疊；請分開生成，[詳細說明](../docs/test20-functions.md)。
 
 - [test21 原始樣本 IR](test21_functions.json)：FUN101～104，保留 X0／X5 與 M3／M4；CLR 使用一般極性。
+
+- [test22原始樣本IR](test22_functions.json)：FUN105～112；BKCMP需要完整Y5～Y14契約。
+
+- [test23原始樣本IR](test23_functions.json)：矩陣運算、MINV暫存器L、四路MBWR。
+
+- [test24 原始樣本 IR](test24_functions.json)：MOV／MOV/／TOGG、SORT／Z-WR、矩陣位元操作；WY8契約須包含Y8～Y23。
+
+- [test25原始IR](test25_functions.json)：FUN42～49；BUNIT使用length_register，WX0／WY0契約包含全部16點。

@@ -96,3 +96,11 @@ MCP stdio 重建、下載後400 bytes與原檔完全相同；701項測試通過�
 ## test20 未發版驗證
 
 MCP stdio已生成並讀回原N000～N002、N003兩份候選檔，payload與原樣本一致。完整樣本R15～R17工作區衝突被正確拒絕；function的M→M通過。沒有新指令執行模型、GUI或實體PLC驗證；見[test20](test20-functions.md)。
+
+## test24 未發版驗證
+
+以原始GUI匯出作編碼依據，八網路的參數、三路控制、狀態接線、完整暫存器跨度與WY8契約接受離線驗證。新指令無獨立執行模型、內建模擬、GUI或PLC驗證；詳細結果見[test24](test24-functions.md)。
+
+## test25 未發版驗證
+
+八個網路以使用者GUI匯出作獨立編碼依據，驗證直接operand、count／index、動態N最大跨度與整word I/O契約；執行模型、內建模擬、GUI匯入與實機未驗證，詳見[test25](test25-functions.md)。

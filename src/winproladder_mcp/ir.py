@@ -978,6 +978,30 @@ class ProcessFunction(Model):
     """Direct-register forms sampled in test20/21; not arbitrary instruction modes."""
 
     type: Literal[
+        "bit_move",
+        "nibble_move",
+        "byte_move",
+        "word_exchange",
+        "byte_swap",
+        "nibble_unite",
+        "nibble_distribute",
+        "byte_unite",
+        "move_word",
+        "move_inverse",
+        "toggle_bit",
+        "table_sort",
+        "zone_write",
+        "matrix_bit_shift",
+        "matrix_bit_rotate",
+        "matrix_bit_count",
+        "matrix_and",
+        "matrix_or",
+        "matrix_xor",
+        "matrix_xnr",
+        "matrix_invert",
+        "matrix_compare",
+        "matrix_bit_read",
+        "matrix_bit_write",
         "ascwr",
         "ramp",
         "ramp2",
@@ -986,13 +1010,43 @@ class ProcessFunction(Model):
         "table_to_table",
         "block_table_move",
         "table_swap",
+        "register_table_search",
+        "table_compare",
+        "table_fill",
+        "table_shift",
+        "table_rotate",
+        "queue",
+        "stack",
+        "block_compare",
     ]
+    source_index: Annotated[int, Field(strict=True, ge=0, le=15)] | None = None
+    destination_index: Annotated[int, Field(strict=True, ge=0, le=15)] | None = None
+    count: Annotated[int, Field(strict=True, ge=1, le=4)] | None = None
+    trigger: str = "FALSE"
+    ascending: str = "FALSE"
+    ones: str = "FALSE"
+    zero: list[Coil] = Field(default_factory=list, max_length=32)
+    input_bit: str = "FALSE"
+    source_b: str | None = None
+    length_register: str | None = None
+    output: list[Coil] = Field(default_factory=list, max_length=32)
     enable: str = "TRUE"
     pause: str = "FALSE"
     abort: str = "FALSE"
     up: str = "FALSE"
     increment: str = "FALSE"
     clear: str = "FALSE"
+    from_head: str = "FALSE"
+    different: str = "FALSE"
+    left: str = "FALSE"
+    push: str = "FALSE"
+    value: Annotated[int, Field(strict=True, ge=-32768, le=32767)] | None = None
+    input_word: str | None = None
+    output_word: str | None = None
+    bit_destination: str | None = None
+    found: list[Coil] = Field(default_factory=list, max_length=32)
+    empty_flag: list[Coil] = Field(default_factory=list, max_length=32)
+    full: list[Coil] = Field(default_factory=list, max_length=32)
     mode: Literal[1] | None = None
     pulse: Literal[True] | None = None
     source: str | None = None
@@ -1007,7 +1061,7 @@ class ProcessFunction(Model):
     fall_ms: str | None = None
     target: str | None = None
     pointer: str | None = None
-    length: Annotated[int, Field(strict=True, ge=2, le=2048)] | None = None
+    length: Annotated[int, Field(strict=True, ge=1, le=2048)] | None = None
     active: list[Coil] = Field(default_factory=list, max_length=32)
     error: list[Coil] = Field(default_factory=list, max_length=32)
     done: list[Coil] = Field(default_factory=list, max_length=32)
@@ -1035,8 +1089,18 @@ class ProcessFunction(Model):
         return set()
 
     def source_devices(self) -> set[str]:
+        from . import matrix_functions, packing_functions, transfer_functions
         from .process_functions import FIELDS
+        from .table_functions import CODES, references
 
+        if self.type in packing_functions.CODES:
+            return packing_functions.references(self)[0]
+        if self.type in transfer_functions.CODES:
+            return transfer_functions.references(self)[0]
+        if self.type in matrix_functions.CODES:
+            return matrix_functions.references(self)[0]
+        if self.type in CODES:
+            return references(self)[0]
         if self.type == "ascwr":
             return {self.operand("source")}  # File terminator/MD1 semantics not resolved.
         if self.type == "ramp":
@@ -1054,6 +1118,17 @@ class ProcessFunction(Model):
         return {self.operand("source"), self.operand("pointer")}
 
     def destination_devices(self) -> set[str]:
+        from . import matrix_functions, packing_functions, transfer_functions
+        from .table_functions import CODES, references
+
+        if self.type in packing_functions.CODES:
+            return packing_functions.references(self)[1]
+        if self.type in transfer_functions.CODES:
+            return transfer_functions.references(self)[1]
+        if self.type in matrix_functions.CODES:
+            return matrix_functions.references(self)[1]
+        if self.type in CODES:
+            return references(self)[1]
         if self.type == "ascwr":
             return self.work_devices()
         if self.type == "ramp":
@@ -1071,13 +1146,23 @@ class ProcessFunction(Model):
 
     @model_validator(mode="after")
     def check(self) -> "ProcessFunction":
+        from . import packing_functions, transfer_functions
+        from .matrix_functions import CODES as MATRIX_CODES
         from .process_functions import CONTROLS, FIELDS, STATUS, ramp2_span
+        from .table_functions import CODES, output_bits
 
+        packing_functions.check_parameters(self)
         required = FIELDS[self.type]
         for name in set().union(*map(set, FIELDS.values())):
             if name in required:
                 value = self.operand(name)
-                if name == "timer":
+                if self.type in packing_functions.CODES:
+                    packing_functions.operand_check(self.type, name, value)
+                elif self.type in transfer_functions.CODES:
+                    transfer_functions.operand_check(self.type, name, value)
+                elif name == "bit_destination":
+                    output_bits(value, self.length or 1)
+                elif name == "timer":
                     if not value.startswith("T"):
                         raise ValueError("RAMP Tn requires T0..255 with configured 10 ms time base")
                     encode_word(value)
@@ -1094,7 +1179,12 @@ class ProcessFunction(Model):
             raise ValueError("Unencoded mode/pulse form for this function")
         if (
             self.type
-            in {"reg_to_table", "table_to_reg", "table_to_table", "block_table_move", "table_swap"}
+            in (
+                {"reg_to_table", "table_to_reg", "table_to_table", "block_table_move", "table_swap"}
+                | set(CODES)
+                | (set(MATRIX_CODES) - {"matrix_invert"})
+                | set(transfer_functions.LENGTHS)
+            )
         ) != (self.length is not None):
             raise ValueError("Table functions require constant length; other functions have none")
         if (
@@ -1103,10 +1193,25 @@ class ProcessFunction(Model):
             and self.length > 256
         ):
             raise ValueError("BT_M/T_SWP length must be 2..256 (manual 7-98..99)")
+        if self.length is not None:
+            if self.type in transfer_functions.LENGTHS:
+                low, high = transfer_functions.LENGTHS[self.type]
+                if not low <= self.length <= high:
+                    raise ValueError(f"{self.type} length must be {low}..{high}")
+            if self.type not in {"block_compare", "zone_write"} and self.length < 2:
+                raise ValueError("Table length must be at least 2")
+            if self.type in (set(CODES) | set(MATRIX_CODES)) and self.length > 256:
+                raise ValueError(
+                    "FUN105..112/120..127 length maximum is 256 (manual 7-100..109, 7-114..121)"
+                )
+        if (self.type in {"register_table_search", "table_fill"}) != (self.value is not None):
+            raise ValueError(
+                "Only sampled FUN105/107 require constant value; register Rs not encoded"
+            )
         for name in set().union(*map(set, CONTROLS.values())):
             if name in CONTROLS[self.type]:
                 parse_expression(getattr(self, name))
-            elif getattr(self, name) != "FALSE":
+            elif getattr(self, name) != ("TRUE" if name == "enable" else "FALSE"):
                 raise ValueError(f"{self.type} has no {name} control")
         for name in set().union(*map(set, STATUS.values())):
             group = getattr(self, name)
@@ -1195,6 +1300,8 @@ class Network(Model):
 
 
 HeaderProfile = Literal[
+    "HB1-32M-test23",
+    "FB-28MA-test22",
     "FBe-40MC-test21",
     "FBe-20MA-test19",
     "FBn-26MC-test17",
@@ -1231,9 +1338,16 @@ def network_coils(network: Network) -> list[Coil]:
     if isinstance(network.action, ProcessFunction):
         from .process_functions import STATUS
 
-        return network.coils + [
-            c for name in STATUS[network.action.type] for c in getattr(network.action, name)
+        implicit = [
+            Coil(device="Y" if name.startswith("Y") else "M", address=int(name[1:]))
+            for name in sorted(network.action.destination_devices())
+            if name.startswith(("Y", "M")) and name[1:].isdigit()
         ]
+        return (
+            network.coils
+            + implicit
+            + [c for name in STATUS[network.action.type] for c in getattr(network.action, name)]
+        )
     if isinstance(network.action, AccumulativeTimer):
         return network.coils + network.action.done + network.action.not_done
     if isinstance(network.action, TemperatureControl):
@@ -2471,7 +2585,18 @@ def validation(ladder: Ladder) -> dict[str, object]:
                     }
                 )
             if isinstance(network.action, ProcessFunction):
-                from .instruction_catalog import TEST20_PAYLOADS, TEST21_PAYLOADS
+                from .instruction_catalog import (
+                    TEST20_PAYLOADS,
+                    TEST21_PAYLOADS,
+                    TEST22_PAYLOADS,
+                    TEST23_PAYLOADS,
+                    TEST24_PAYLOADS,
+                    TEST25_PAYLOADS,
+                )
+                from .matrix_functions import CODES as MATRIX_CODES
+                from .packing_functions import CODES as PACKING_CODES
+                from .table_functions import CODES as TABLE22_CODES
+                from .transfer_functions import CODES as TRANSFER_CODES
 
                 table21 = network.action.type in {
                     "table_to_reg",
@@ -2481,6 +2606,18 @@ def validation(ladder: Ladder) -> dict[str, object]:
                 }
                 anchors = TEST21_PAYLOADS if table21 else TEST20_PAYLOADS
                 evidence_name = "test21" if table21 else "test20"
+                if network.action.type in TABLE22_CODES:
+                    anchors = TEST22_PAYLOADS
+                    evidence_name = "test22"
+                if network.action.type in MATRIX_CODES:
+                    anchors = TEST23_PAYLOADS
+                    evidence_name = "test23"
+                if network.action.type in TRANSFER_CODES:
+                    anchors = TEST24_PAYLOADS
+                    evidence_name = "test24"
+                if network.action.type in PACKING_CODES:
+                    anchors = TEST25_PAYLOADS
+                    evidence_name = "test25"
                 observed20 = next((i for i, raw in anchors.items() if payload.hex() == raw), None)
                 instruction_evidence.append(
                     {
@@ -2763,6 +2900,53 @@ def validation(ladder: Ladder) -> dict[str, object]:
         warnings.append(
             "test21: sampled 16-bit non-P table functions, constant L, direct R/D operands. "
             "No built-in execution simulation, GUI import or PLC verification."
+        )
+    from .table_functions import CODES as TABLE22_CODES
+
+    if any(
+        isinstance(n.action, ProcessFunction) and n.action.type in TABLE22_CODES
+        for n in ladder.networks
+    ):
+        warnings.append(
+            "test22: direct-register 16-bit non-P encodings, constant Rs only for 105/107. "
+            "BKCMP reads 2*L limit words and M1975; writes L result bits. "
+            "No native runtime simulation or GUI/PLC verification."
+        )
+    from .packing_functions import CODES as PACKING_CODES
+
+    if any(
+        isinstance(n.action, ProcessFunction) and n.action.type in PACKING_CODES
+        for n in ladder.networks
+    ):
+        warnings.append(
+            "test25: 16-bit non-P packing forms. BUNIT N is runtime bytes (1..256); "
+            "static footprint covers 256 source and 128 destination words, including "
+            "conservative destination reads for unspecified odd-N trailing byte behavior. "
+            "UNIT/DIST clear unused nibbles; partial moves preserve other bits. "
+            "No native runtime simulation, GUI import or PLC verification."
+        )
+    from .transfer_functions import CODES as TRANSFER_CODES
+
+    if any(
+        isinstance(n.action, ProcessFunction) and n.action.type in TRANSFER_CODES
+        for n in ladder.networks
+    ):
+        warnings.append(
+            "test24: sampled 16-bit non-P forms and constant lengths. TOGG uses rising edges. "
+            "Matrix L counts words; MBCNT writes one word. Z-WR N is literal, 1..511. "
+            "WY8 writes Y8..Y23. No built-in execution model, GUI or PLC verification."
+        )
+    from .matrix_functions import CODES as MATRIX_CODES
+
+    if any(
+        isinstance(n.action, ProcessFunction) and n.action.type in MATRIX_CODES
+        for n in ladder.networks
+    ):
+        warnings.append(
+            "test23: matrix L counts words; bit pointer ranges 0..16*L-1. "
+            "MINV register L uses conservative 256-word possible spans; "
+            "actual length is a runtime value and is not evaluated. "
+            "Sampled non-P forms only; no native execution, GUI or PLC verification."
         )
     if any(isinstance(n.action, IntegerFunction) for n in ladder.networks):
         warnings.append(
