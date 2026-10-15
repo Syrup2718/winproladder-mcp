@@ -56,3 +56,7 @@
 - [test24：MOV／MOV/／TOGG、SORT／Z-WR、矩陣位元操作](test24-functions.md)
 
 - [test25：FUN42～49 搬移、交換及資料結合／分配](test25-functions.md)
+
+- [test26：FUN50～57 分配、移位、旋轉、格雷碼、解碼](test26-functions.md)
+
+- [test27：FUN06及58～64 編碼、顯示、ASCII與時間轉換](test27-functions.md)

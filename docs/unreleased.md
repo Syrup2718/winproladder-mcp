@@ -46,3 +46,11 @@
 ## test25（2026-10-14）
 
 新增FUN42～49樣本編碼與參數化支援，區分部分目的保留、UNIT／DIST補零及BUNIT暫存器N。靜態分析納入雙端交換、最大動態跨度及完整word I/O契約。未升版、未打包；見[test25](test25-functions.md)。
+
+## test26（2026-10-15）
+
+新增FUN50～57樣本編碼及參數化產檔。BDIST使用byte單位動態N；移位分開EN／INB，追蹤原地讀寫；DECOD按2^NL結果寬度與來源跨word／bank末端截取規則分析。未升版、未打包；見[test26](test26-functions.md)。
+
+## test27（2026-10-15）
+
+加入FUN06、58～64樣本形式及FBs-40MC精確檔頭，支援BSHF四路控制、完整時間／ASCII範圍與目的保留依賴。ASC僅ABCDEF字串編碼已確認，其他字串明確拒絕。未升版、未打包；見[test27](test27-functions.md)。

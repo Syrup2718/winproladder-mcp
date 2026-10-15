@@ -37,3 +37,7 @@
 - [test24.ldr](test24.ldr)：436 bytes、8網路，FBs-40MA；[截圖](screenshots/test24.png)。
 
 - [test25.ldr](test25.ldr)：430 bytes、8網路，FBs-44MN；[截圖](screenshots/test25.png)。
+
+- [test26.ldr](test26.ldr)：440 bytes、8網路，FBs-60MC；[截圖](screenshots/test26.png)。
+
+- [test27.ldr](test27.ldr)：450 bytes、8網路，FBs-40MC；[截圖](screenshots/test27.png)。

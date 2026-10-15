@@ -100,3 +100,7 @@ uv run python scripts/generate_design_examples.py --root . --prefix custom
 `transfer_functions.py`集中test24的MOV／TOGG、SORT／Z-WR、矩陣位元指令；WY8輸出span與Z-WR直接N編碼在此獨立處理。
 
 `packing_functions.py`集中FUN42～49的operand順序、count／index檢查、部分word讀寫與BUNIT動態跨度。
+
+`shift_functions.py`集中FUN50～57：BDIST動態byte跨度、移位／旋轉N形式、Gray單word與DECOD跨word／bank末端截取分析。
+
+`conversion_functions.py`集中FUN06及58～64：ENCOD跨word、顯示／ASCII保留資料、時間多word轉換及精確ASC字串區塊。

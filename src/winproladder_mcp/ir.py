@@ -978,6 +978,22 @@ class ProcessFunction(Model):
     """Direct-register forms sampled in test20/21; not arbitrary instruction modes."""
 
     type: Literal[
+        "encode_bits",
+        "to_seven_segment",
+        "ascii_literal",
+        "hms_to_seconds",
+        "seconds_to_hms",
+        "ascii_to_hex",
+        "hex_to_ascii",
+        "bit_shift",
+        "byte_distribute",
+        "shift_left",
+        "shift_right",
+        "rotate_left",
+        "rotate_right",
+        "binary_to_gray",
+        "gray_to_binary",
+        "decode_bits",
         "bit_move",
         "nibble_move",
         "byte_move",
@@ -1021,7 +1037,11 @@ class ProcessFunction(Model):
     ]
     source_index: Annotated[int, Field(strict=True, ge=0, le=15)] | None = None
     destination_index: Annotated[int, Field(strict=True, ge=0, le=15)] | None = None
-    count: Annotated[int, Field(strict=True, ge=1, le=4)] | None = None
+    count: Annotated[int, Field(strict=True, ge=0, le=511)] | None = None
+    text: str | None = None
+    high_priority: str = "FALSE"
+    overflow: list[Coil] = Field(default_factory=list, max_length=32)
+    bit_length: Annotated[int, Field(strict=True, ge=1, le=8)] | None = None
     trigger: str = "FALSE"
     ascending: str = "FALSE"
     ones: str = "FALSE"
@@ -1089,10 +1109,20 @@ class ProcessFunction(Model):
         return set()
 
     def source_devices(self) -> set[str]:
-        from . import matrix_functions, packing_functions, transfer_functions
+        from . import (
+            conversion_functions,
+            matrix_functions,
+            packing_functions,
+            shift_functions,
+            transfer_functions,
+        )
         from .process_functions import FIELDS
         from .table_functions import CODES, references
 
+        if self.type in conversion_functions.CODES:
+            return conversion_functions.references(self)[0]
+        if self.type in shift_functions.CODES:
+            return shift_functions.references(self)[0]
         if self.type in packing_functions.CODES:
             return packing_functions.references(self)[0]
         if self.type in transfer_functions.CODES:
@@ -1118,9 +1148,19 @@ class ProcessFunction(Model):
         return {self.operand("source"), self.operand("pointer")}
 
     def destination_devices(self) -> set[str]:
-        from . import matrix_functions, packing_functions, transfer_functions
+        from . import (
+            conversion_functions,
+            matrix_functions,
+            packing_functions,
+            shift_functions,
+            transfer_functions,
+        )
         from .table_functions import CODES, references
 
+        if self.type in conversion_functions.CODES:
+            return conversion_functions.references(self)[1]
+        if self.type in shift_functions.CODES:
+            return shift_functions.references(self)[1]
         if self.type in packing_functions.CODES:
             return packing_functions.references(self)[1]
         if self.type in transfer_functions.CODES:
@@ -1146,17 +1186,30 @@ class ProcessFunction(Model):
 
     @model_validator(mode="after")
     def check(self) -> "ProcessFunction":
-        from . import packing_functions, transfer_functions
+        from . import conversion_functions, packing_functions, shift_functions, transfer_functions
         from .matrix_functions import CODES as MATRIX_CODES
         from .process_functions import CONTROLS, FIELDS, STATUS, ramp2_span
         from .table_functions import CODES, output_bits
 
-        packing_functions.check_parameters(self)
+        if self.type not in conversion_functions.CODES and self.text is not None:
+            raise ValueError(f"{self.type} has no literal text")
+        if self.type in conversion_functions.CODES:
+            conversion_functions.check_parameters(self)
+        elif self.type in shift_functions.CODES:
+            shift_functions.check_parameters(self)
+        else:
+            packing_functions.check_parameters(self)
+            if self.bit_length is not None:
+                raise ValueError(f"{self.type} has no bit_length")
         required = FIELDS[self.type]
         for name in set().union(*map(set, FIELDS.values())):
             if name in required:
                 value = self.operand(name)
-                if self.type in packing_functions.CODES:
+                if self.type in conversion_functions.CODES:
+                    conversion_functions.operand_check(self.type, name, value)
+                elif self.type in shift_functions.CODES:
+                    shift_functions.operand_check(self.type, name, value)
+                elif self.type in packing_functions.CODES:
                     packing_functions.operand_check(self.type, name, value)
                 elif self.type in transfer_functions.CODES:
                     transfer_functions.operand_check(self.type, name, value)
@@ -1300,6 +1353,7 @@ class Network(Model):
 
 
 HeaderProfile = Literal[
+    "FBs-40MC-test27",
     "HB1-32M-test23",
     "FB-28MA-test22",
     "FBe-40MC-test21",
@@ -2585,6 +2639,7 @@ def validation(ladder: Ladder) -> dict[str, object]:
                     }
                 )
             if isinstance(network.action, ProcessFunction):
+                from .conversion_functions import CODES as CONVERSION_CODES
                 from .instruction_catalog import (
                     TEST20_PAYLOADS,
                     TEST21_PAYLOADS,
@@ -2592,9 +2647,12 @@ def validation(ladder: Ladder) -> dict[str, object]:
                     TEST23_PAYLOADS,
                     TEST24_PAYLOADS,
                     TEST25_PAYLOADS,
+                    TEST26_PAYLOADS,
+                    TEST27_PAYLOADS,
                 )
                 from .matrix_functions import CODES as MATRIX_CODES
                 from .packing_functions import CODES as PACKING_CODES
+                from .shift_functions import CODES as SHIFT_CODES
                 from .table_functions import CODES as TABLE22_CODES
                 from .transfer_functions import CODES as TRANSFER_CODES
 
@@ -2618,6 +2676,12 @@ def validation(ladder: Ladder) -> dict[str, object]:
                 if network.action.type in PACKING_CODES:
                     anchors = TEST25_PAYLOADS
                     evidence_name = "test25"
+                if network.action.type in SHIFT_CODES:
+                    anchors = TEST26_PAYLOADS
+                    evidence_name = "test26"
+                if network.action.type in CONVERSION_CODES:
+                    anchors = TEST27_PAYLOADS
+                    evidence_name = "test27"
                 observed20 = next((i for i, raw in anchors.items() if payload.hex() == raw), None)
                 instruction_evidence.append(
                     {
@@ -2911,6 +2975,32 @@ def validation(ladder: Ladder) -> dict[str, object]:
             "test22: direct-register 16-bit non-P encodings, constant Rs only for 105/107. "
             "BKCMP reads 2*L limit words and M1975; writes L result bits. "
             "No native runtime simulation or GUI/PLC verification."
+        )
+    from .conversion_functions import CODES as CONVERSION_CODES
+
+    if any(
+        isinstance(n.action, ProcessFunction) and n.action.type in CONVERSION_CODES
+        for n in ladder.networks
+    ):
+        warnings.append(
+            "test27: ENCOD NL counts points; 7SG N means N+1 digits. "
+            "ASC supports exact ABCDEF literal only. SEC/HMS use seconds, minutes, hours "
+            "word order. HEX/ASCII and odd-digit 7SG preserve unused destination portions. "
+            "BSHF CLR overrides EN; no independent or built-in execution model, "
+            "GUI or PLC verification."
+        )
+    from .shift_functions import CODES as SHIFT_CODES
+
+    if any(
+        isinstance(n.action, ProcessFunction) and n.action.type in SHIFT_CODES
+        for n in ladder.networks
+    ):
+        warnings.append(
+            "test26: sampled 16-bit non-P shift/Gray/DECOD forms. "
+            "BDIST N counts bytes; conservative max 128 source / 256 destination words. "
+            "DECOD NL counts source bits, output 2^NL bits; source crosses B15 and clips "
+            "at operand bank end. Unused output bits for NL<4 are not runtime-modeled. "
+            "No native runtime simulation, GUI import or PLC verification."
         )
     from .packing_functions import CODES as PACKING_CODES
 

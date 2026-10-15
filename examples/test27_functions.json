@@ -1,0 +1,77 @@
+{
+  "profile": "FBs-40MC-test27",
+  "networks": [
+    {
+      "action": {
+        "type": "encode_bits",
+        "source_index": 9,
+        "count": 36,
+        "high_priority": "TRUE",
+        "enable": "X1",
+        "source": "R0",
+        "destination": "WY0"
+      }
+    },
+    {
+      "action": {
+        "type": "to_seven_segment",
+        "count": 0,
+        "enable": "M5",
+        "source": "R0",
+        "destination": "R100"
+      }
+    },
+    {
+      "action": {
+        "type": "ascii_literal",
+        "text": "ABCDEF",
+        "enable": "(M8 AND M9)",
+        "destination": "R200"
+      }
+    },
+    {
+      "action": {
+        "type": "hms_to_seconds",
+        "enable": "X5",
+        "source": "R20",
+        "destination": "R50"
+      }
+    },
+    {
+      "action": {
+        "type": "seconds_to_hms",
+        "enable": "((X0 OR X6) AND M1)",
+        "source": "R5000",
+        "destination": "R5100"
+      }
+    },
+    {
+      "action": {
+        "type": "ascii_to_hex",
+        "count": 3,
+        "enable": "M10",
+        "source": "R1000",
+        "destination": "R1100"
+      }
+    },
+    {
+      "action": {
+        "type": "hex_to_ascii",
+        "count": 1,
+        "enable": "M300",
+        "source": "R1200",
+        "destination": "R1400"
+      }
+    },
+    {
+      "action": {
+        "type": "bit_shift",
+        "input_bit": "X12",
+        "enable": "X11",
+        "clear": "X14",
+        "left": "X13",
+        "destination": "R110"
+      }
+    }
+  ]
+}

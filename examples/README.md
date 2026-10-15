@@ -31,3 +31,7 @@ Timer/Counter 檔案用於重現樣本，不是直接可用的製程設計。一
 - [test24 原始樣本 IR](test24_functions.json)：MOV／MOV/／TOGG、SORT／Z-WR、矩陣位元操作；WY8契約須包含Y8～Y23。
 
 - [test25原始IR](test25_functions.json)：FUN42～49；BUNIT使用length_register，WX0／WY0契約包含全部16點。
+
+- [test26原始IR](test26_functions.json)：FUN50～57；移位N分count／length_register，DECOD採source_index與bit_length。
+
+- [test27原始IR](test27_functions.json)：FUN06與58～64；ENCOD count為掃描點數，7SG count=N代表N+1位；ASC限ABCDEF。

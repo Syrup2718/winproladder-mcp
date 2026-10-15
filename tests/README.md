@@ -37,3 +37,7 @@
 `test_test24_functions.py`涵蓋八個FUNC原始bytes、每路控制及狀態、長度邊界、WY8整段I/O、TOGG讀寫、M政策及模擬拒絕。
 
 `test_test25_functions.py`涵蓋FUN42～49原始bytes、位置與count界線、保留部分word的讀寫、交換雙端、BUNIT動態跨度、完整word契約及狀態M政策。
+
+`test_test26_functions.py`涵蓋FUN50～57原始bytes、控制與狀態分離、原地讀寫、動態BDIST、DECOD寬度與跨word截取、I/O契約及政策。
+
+`test_test27_functions.py`涵蓋FUN06及58～64原始bytes、四路BSHF、保留目的資料、時間跨度、字串拒絕與新檔頭。

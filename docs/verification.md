@@ -104,3 +104,11 @@ MCP stdio已生成並讀回原N000～N002、N003兩份候選檔，payload與原�
 ## test25 未發版驗證
 
 八個網路以使用者GUI匯出作獨立編碼依據，驗證直接operand、count／index、動態N最大跨度與整word I/O契約；執行模型、內建模擬、GUI匯入與實機未驗證，詳見[test25](test25-functions.md)。
+
+## test26 未發版驗證
+
+以使用者原始GUI匯出作獨立編碼依據，驗證8網路、完整跨度、DECOD跨word、N形式與EN／INB／OTB／ERR接線；執行模型、內建模擬、GUI匯入與實機未驗證。詳細結果見[test26](test26-functions.md)。
+
+## test27 未發版驗證
+
+八個網路以原始GUI匯出作bytes依據，驗證控制／狀態、完整跨度、ENCOD末端截取、目的資料保留及精確ABCDEF區塊；沒有執行模型、內建模擬、GUI／實機驗證，詳見[test27](test27-functions.md)。

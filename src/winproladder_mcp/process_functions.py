@@ -2,7 +2,14 @@
 
 from typing import TYPE_CHECKING
 
-from . import matrix_functions, packing_functions, table_functions, transfer_functions
+from . import (
+    conversion_functions,
+    matrix_functions,
+    packing_functions,
+    shift_functions,
+    table_functions,
+    transfer_functions,
+)
 from .logic import (
     compile_expression,
     decode_expression,
@@ -15,6 +22,8 @@ if TYPE_CHECKING:
     from .ir import Network, ProcessFunction
 
 FIELDS = {
+    **conversion_functions.FIELDS,
+    **shift_functions.FIELDS,
     **packing_functions.FIELDS,
     **transfer_functions.FIELDS,
     **matrix_functions.FIELDS,
@@ -29,6 +38,8 @@ FIELDS = {
     "table_swap": ("source", "destination"),
 }
 CONTROLS = {
+    **conversion_functions.CONTROLS,
+    **shift_functions.CONTROLS,
     **packing_functions.CONTROLS,
     **transfer_functions.CONTROLS,
     **matrix_functions.CONTROLS,
@@ -43,6 +54,8 @@ CONTROLS = {
     "table_swap": ("enable",),
 }
 CODES = {
+    **conversion_functions.CODES,
+    **shift_functions.CODES,
     **packing_functions.CODES,
     **transfer_functions.CODES,
     **matrix_functions.CODES,
@@ -57,6 +70,8 @@ CODES = {
     "table_swap": "f4c2",
 }
 STATUS = {
+    **conversion_functions.STATUS,
+    **shift_functions.STATUS,
     **packing_functions.STATUS,
     **transfer_functions.STATUS,
     **matrix_functions.STATUS,
@@ -110,7 +125,11 @@ def compile_process(action: "ProcessFunction") -> bytes:
     raw += bytes.fromhex(CODES[action.type])
     if action.type in {"ramp", "ramp2"}:
         raw += b"\x00\x00"  # Reserved/sample form selector: never infer other modes.
-    if action.type in packing_functions.CODES:
+    if action.type in conversion_functions.CODES:
+        raw += conversion_functions.compile_operands(action)
+    elif action.type in shift_functions.CODES:
+        raw += shift_functions.compile_operands(action)
+    elif action.type in packing_functions.CODES:
         raw += packing_functions.compile_operands(action)
     elif action.type in transfer_functions.CODES:
         raw += transfer_functions.compile_operands(action)
@@ -205,7 +224,13 @@ def decode_process(payload: bytes) -> "Network | None":
                 if tail[:2] != b"\x00\x00":
                     continue
                 tail = tail[2:]
-            if kind in packing_functions.CODES:
+            if kind in conversion_functions.CODES:
+                operands, size = conversion_functions.decode_operands(kind, tail)
+                fields.update(operands)
+            elif kind in shift_functions.CODES:
+                operands, size = shift_functions.decode_operands(kind, tail)
+                fields.update(operands)
+            elif kind in packing_functions.CODES:
                 operands, size = packing_functions.decode_operands(kind, tail)
                 fields.update(operands)
             elif kind in transfer_functions.CODES:

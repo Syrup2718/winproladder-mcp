@@ -16,15 +16,60 @@ RTC_FIELDS = {
 def manual_reference() -> dict[str, Any]:
     return {
         "sources": {
-            "advanced": "進階篇應用指令.pdf: 7-3..13, 7-19..24, 7-28..37, "
+            "advanced": "進階篇應用指令.pdf: 7-3..13, 7-19..24, 7-28..57, "
             "7-59..61, 7-79..124, 7-151..171, 7-66..73",
             "temperature": "CH20_FB-PLC溫度量測及溫度PID控制.pdf: 20-44..47 (older edition)",
-            "basic": "基本應用指令.pdf: 7-2, 7-18..19, 7-23..26",
+            "basic": "基本應用指令.pdf: 7-2, 7-18..20, 7-23..26",
             "rtc": "CH16_萬年曆（RTC）.pdf: 16-1..2 (FB-PLC MA/MC with RTC)",  # noqa: RUF001
         },
         "rule": "Manual operand limits define PLC legality. Sample addresses are not maxima. "
         "LDR encoding support, CPU availability and manual editions are separate evidence.",
         "instruction_modes": {
+            "ENCOD_ASCII_TIME_BSHF": {
+                "pages": "Basic 7-20; advanced 7-46..57",
+                "06": "CLR=1 clears D and OTB regardless of EN/INB/LR. Otherwise EN "
+                "shifts one bit; LR=1 left, 0 right, fills INB, displaced bit to OTB",
+                "58": "Ns=0..15, NL=2..256 points. Scan high-to-low when H/L=1, "
+                "low-to-high otherwise; store relative index in low byte, high byte zero. "
+                "All source bits zero: D=0 flag, instruction not executed. Source crosses "
+                "words and clips at operand bank end; up to 17 source words for nonzero Ns",
+                "59": "N=0..3 means N+1 nibbles converted to bytes low-first. "
+                "Odd digit count preserves last high byte. Segment mapping a=B6..g=B0, B7=0",
+                "60": "Manual 1..12 English/numeric characters, two per word, first in low "
+                "byte. Codec only exact ABCDEF block; other strings remain unresolved. "
+                "Manual 7-51 example draws ERR, but GUI sample has no output; no ERR encoded",
+                "61_62": "HMS storage order seconds/minutes/hours, signed 16-bit each. "
+                "SEC result signed 32-bit; HMS source signed 32-bit, three-word result. "
+                "HMS seconds range -117968399..117964799, overflow skips execution. "
+                "Sample HMS has reserved 0000 selector; alternative forms not inferred",
+                "63_64": "N=1..511 ASCII digits/nibbles. HEX consumes N low-byte ASCII "
+                "words (0-9/A-F), writes ceil(N/4) words, preserving unused nibbles. "
+                "ASCII reads ceil(N/4) words, writes N low bytes, preserving all high bytes. "
+                "Manual examples show most-significant selected nibble first",
+            },
+            "SHIFT_GRAY_DECODE": {
+                "pages": "7-38..45",
+                "BDIST": "N=1..256 bytes. Read ceil(N/2) words, high byte first; "
+                "write N words with high byte zero. Page 7-38 prose says N source registers, "
+                "but N unit and N=9 figure explicitly use 5 source and 9 destination words",
+                "51_54": "16-bit N=1..16, D variants 1..32. Repeat shift/rotate N times, "
+                "OTB is the final displaced bit; invalid N sets ERR and skips execution. "
+                "Shifts fill INB each step; rotation wraps. Sample constant N on 51/54, "
+                "register N on 52/53; alternate N forms not yet encoded",
+                "55_56": "Binary to Gray / Gray to binary. Sample non-D direct word forms. "
+                "Manual wording about less-than-16 versus at-least-16 conversion bits is "
+                "ambiguous; no new bit-count parameter or doubleword mode is inferred",
+                "DECOD": "Ns=0..15, NL=1..8 source bits, output 2^NL points (1..16 words). "
+                "Page 7-45 table prints NL 2..256, inconsistent with the definition and "
+                "behavior specifying NL 1..8; codec follows definition and GUI sample. "
+                "Source extends across B15 into next word, "
+                "clipping at highest operand-bank bit. Sample Ns=3, NL=5 writes two words. "
+                "Unused bits of a destination word for NL<4 are not explicitly specified; "
+                "conservative destination read/write references are retained",
+                "codec": "test26 sampled 16-bit non-P, direct operands. "
+                "BDIST dynamic N tracks maximum possible range; DECOD constant Ns/NL only. "
+                "These are encoding/analysis boundaries, not prohibitions of legal PLC forms",
+            },
             "PACKING_FUNCTIONS": {
                 "pages": "7-30..37",
                 "42_44": "Move selected bit/nibble/byte only; preserve other destination bits. "

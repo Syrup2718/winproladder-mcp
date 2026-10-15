@@ -49,6 +49,44 @@ def capabilities() -> dict[str, Any]:
             "compare_ldr: aligned record changes",
         ],
         "native_functions": {
+            "test27_functions": {
+                "actions": "bit_shift(06), encode_bits(58), to_seven_segment(59), "
+                "ascii_literal(60), hms_to_seconds(61), seconds_to_hms(62), "
+                "ascii_to_hex(63), hex_to_ascii(64)",
+                "operands": "source/destination; ENCOD source_index=Ns 0..15, count=NL 2..256; "
+                "7SG count=N 0..3 (N+1 digits). HEX/ASCII count=1..511. "
+                "ASC text currently exact ABCDEF only; arbitrary literal encoding unresolved",
+                "controls_status": "ENCOD enable/high_priority, zero/error; 7SG enable/error; "
+                "SEC enable/zero; HMS enable/zero/overflow; HEX enable/error; "
+                "ASCII and ASC enable only. BSHF enable/input_bit/left/clear and output=OTB",
+                "footprints": "ENCOD ceil((Ns+NL)/16) source words, clipped at bank end, "
+                "one result word. 7SG N+1 bytes, preserves unused high byte. SEC reads "
+                "seconds/minutes/hours (3 words), writes signed seconds (2 words); HMS reverse. "
+                "HEX N source words -> ceil(N/4) words preserving unused nibbles. "
+                "ASCII ceil(N/4) source words -> N words preserving each high byte. "
+                "BSHF CLR overrides other controls, including EN",
+                "limits": "Sampled non-P direct forms; constant counts, exact ASC ABCDEF. "
+                "Other operand forms, strings, D/P/indirect encodings unresolved. "
+                "Multiword conversions R/D only; BSHF D follows basic-manual max D3071. "
+                "No runtime simulation; new FBs-40MC-test27 header",
+            },
+            "test26_functions": {
+                "actions": "byte_distribute(50), shift_left(51), shift_right(52), rotate_left(53), "
+                "rotate_right(54), binary_to_gray(55), gray_to_binary(56), decode_bits(57)",
+                "operands": "source, destination; SHFL/ROTR use count=1..16, SHFR/ROTL use "
+                "length_register=N. BDIST uses length_register=N (1..256 bytes at runtime). "
+                "DECOD source_index=Ns 0..15, bit_length=NL 1..8",
+                "controls_status": "All enable=EN; SHFL/SHFR input_bit=INB. "
+                "51..54 output=OTB/error=ERR; DECOD error; no other status outputs",
+                "footprints": "BDIST max 128 source and 256 destination words, high byte first, "
+                "zero-extended outputs. Shift/rotate read-modify-write one word. "
+                "DECOD reads across B15 into next source word, clips at operand bank end, "
+                "writes max(1,2^NL/16) words; not NL words",
+                "limits": "Observed 16-bit non-P forms only. Alternative N forms, dynamic "
+                "DECOD Ns/NL, constants as sources, additional word banks and D/P/indirect "
+                "encodings remain unresolved. Multiword destinations R/D only. "
+                "No native runtime simulation. Dynamic BDIST spans conservatively use max N",
+            },
             "test25_functions": {
                 "actions": "bit_move(42), nibble_move(43), byte_move(44), word_exchange(45), "
                 "byte_swap(46), nibble_unite(47), nibble_distribute(48), byte_unite(49)",
