@@ -1,5 +1,9 @@
 # 全資料夾檢查與整理（2026-10-13）
 
+> 歷史維護紀錄：以下檔案數及本機路徑反映當時工作目錄，不是 clone 後的必要內容。
+
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 ## 範圍
 
 整理前盤點15,221個一般檔案。正式原始碼、測試、腳本、文件、樣本及交付檔進行內容／結構檢查；Git、Python環境與快取只計數，不宣稱審查所有第三方套件內容。未知 LDR 指令仍由既有無損解析器保留。
@@ -17,7 +21,7 @@
 
 test16～20、version-0.11.0 研究及兩支一次性 extend 腳本歸入 tmp/research-history，共21個檔案搬移前後 SHA-256 相同。歷史腳本保留原文，不作為目前執行入口。
 
-可重建的工具快取、Python bytecode 與舊 coverage 已辨識，但刪除命令被自動審核以 blocked by policy 拒絕，未執行刪除；這些檔案仍在原位，未繞過限制。原始樣本、截圖、測試基準、交付 LDR、歷史報告、安裝包、連線設定及政策保留。內容相同的樣本與交付檔有不同證據用途，因此未以雜湊相同為由刪除。虛擬環境維持原路徑，避免破壞其絕對路徑。
+此輪盤點保留工具快取、Python bytecode 與舊 coverage，未執行清除。原始樣本、截圖、測試基準、交付 LDR、歷史報告、安裝包、連線設定及政策保留。內容相同的樣本與交付檔有不同證據用途，因此未以雜湊相同為由刪除。虛擬環境維持原路徑，避免破壞其絕對路徑。
 
 ## 驗證與邊界
 
@@ -25,8 +29,8 @@ test16～20、version-0.11.0 研究及兩支一次性 extend 腳本歸入 tmp/re
 
 這次為資料夾及離線軟體檢查，不是 WinProLadder GUI 或實體 PLC 驗證。既有 CALL 位移編碼、高階原生計時暫停續跑及部分指令執行模型仍有明確限制，詳見[功能總覽](../FEATURES.md)。
 
-本機證據：[整理前盤點](../tmp/organization-2026-10-13/before.json)、[移動雜湊](../tmp/organization-2026-10-13/moves.json)。報告不輸出設定檔或秘密內容。
+本機證據：整理前盤點（本機產物：`tmp/organization-2026-10-13/before.json`）、移動雜湊（本機產物：`tmp/organization-2026-10-13/moves.json`）。報告不輸出設定檔或秘密內容。
 
 完成核對：223個受保護檔案的 SHA-256 未變更；115個 LDR 通過容器／CRC 檢查；內容結構錯誤0、失效文件連結0。這不代表所有歷史輸出符合目前政策或已經 PLC 執行驗證。
 
-[整理後盤點](../tmp/organization-2026-10-13/after.json)、[完成核對](../tmp/organization-2026-10-13/verification.json)。
+整理後盤點（本機產物：`tmp/organization-2026-10-13/after.json`）、完成核對（本機產物：`tmp/organization-2026-10-13/verification.json`）。

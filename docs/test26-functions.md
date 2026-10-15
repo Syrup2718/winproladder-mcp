@@ -1,5 +1,9 @@
 # test26：FUN50～57 分配、移位、旋轉、格雷碼與解碼
 
+> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
+
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 2026-10-15 原始碼更新，維持 0.11.0，不製作安裝包。
 
 來源：[原始檔](../samples/test26.ldr)、[截圖](../samples/screenshots/test26.png)、[IR 範例](../examples/test26_functions.json)。原檔440 bytes、8網路，沿用FBs-60MC-test16檔頭。
@@ -41,7 +45,7 @@ BDIST三個operand依手冊限HR／ROR／DR；單word其他功能沿用R/D、T�
 
 ## 驗證
 
-[MCP重建檔](../artifacts/test26_mcp_roundtrip.ldr)、[驗證報告](../artifacts/test26_verification.json)。測試以原始GUI匯出bytes為獨立編碼依據，涵蓋8個網路、每路控制、兩種狀態接線、完整資源跨度、N界線、DECOD跨word／bank末端截取、I/O與三層政策。
+MCP重建檔（本機產物：`artifacts/test26_mcp_roundtrip.ldr`）、驗證報告（本機產物：`artifacts/test26_verification.json`）。測試以原始GUI匯出bytes為獨立編碼依據，涵蓋8個網路、每路控制、兩種狀態接線、完整資源跨度、N界線、DECOD跨word／bank末端截取、I/O與三層政策。
 
 未新增獨立PLC執行模型；MCP內建模擬明確拒絕這些新增指令。尚未對新生成檔進行WinProLadder GUI匯入或實體PLC驗證。
 

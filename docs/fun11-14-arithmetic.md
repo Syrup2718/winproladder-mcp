@@ -1,5 +1,9 @@
 # FUN11～14、原生邊沿與後續推理
 
+> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
+
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 ## 已接入 MCP
 
 `read_ldr`、`generate_ldr`、`analyze_ldr`、`modify_network` 現在可處理 `test7.ldr` 的全部五個網路。原檔 SHA-256 為 `cb7085f33a059f0eda2034ae9a18974249a49617b879b224cce0ab28057aed3c`。重建時保留五個網路、X0、Y1 及原有 R/D，不增加 X/Y 或 M。

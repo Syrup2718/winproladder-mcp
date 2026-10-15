@@ -1,8 +1,12 @@
 # 原始 WinProLadder 樣本
 
-共19個檔案、130筆網路記錄。保留原始 bytes、檔名與截圖，重建結果另存於 `artifacts/`，不可覆寫本目錄樣本。
+[首頁](../README.md) · [文件索引](../docs/README.md)
 
-| 檔案 | bytes | records | 內容 |
+共 **28 份原始匯出、195 個網路記錄**。此目錄用於格式研究與回歸測試，保留原始檔名、bytes 與截圖；生成結果另存於本機 `artifacts/`。
+
+樣本可解析不代表整份可生成：例如 test9 有未配對 MC、test19 含僅解析 CALL、test20 有工作區衝突。原始資料不因生成政策而改寫。
+
+| 檔案 | bytes | 網路 | 內容 |
 | --- | ---: | ---: | --- |
 | [w1.ldr](w1.ldr) | 277 | 1 | 單接點、Y coil |
 | [test.ldr](test.ldr) | 404 | 8 | 串並聯、多 coil、Timer、空網路 |
@@ -25,19 +29,12 @@
 | [test18.ldr](test18.ldr) | 400 | 6 | 類比轉換、位元存取、LBL／JMP |
 | [test19.ldr](test19.ldr) | 439 | 7 | CALL、FOR/NEXT、積算計時87～89、TPCTL；function的M→M已允許；CALL僅解析 |
 | [test20.ldr](test20.ldr) | 396 | 4 | ASCWR、RAMP、RAMP2、R→T；R15～R17工作區衝突 |
+| [test21.ldr](test21.ldr) | 389 | 5 | FUN101～104 表格搬移與互換 |
+| [test22.ldr](test22.ldr) | 481 | 9 | FUN105～112 表格、QUEUE／STACK、BKCMP；含空網路 |
+| [test23.ldr](test23.ldr) | 460 | 8 | FUN120～127 矩陣運算及位元讀寫 |
+| [test24.ldr](test24.ldr) | 436 | 8 | MOV／MOV/／TOGG、SORT／Z-WR、矩陣位元操作 |
+| [test25.ldr](test25.ldr) | 430 | 8 | FUN42～49 搬移、交換、結合與分配 |
+| [test26.ldr](test26.ldr) | 440 | 8 | FUN50～57 分配、移位、旋轉、格雷碼、解碼 |
+| [test27.ldr](test27.ldr) | 450 | 8 | FUN06、58～64 編碼、顯示、ASCII與時間轉換 |
 
-原始雜湊由 `tests/test_sample_integrity.py` 固定；樣本可解碼不等於符合目前生成政策，也不代表已做 GUI 或 PLC 驗證。完整邊界見 [驗證依據](../docs/verification.md)。截圖保存在 `screenshots/`。
-
-- [test21.ldr](test21.ldr)：5網路，FBe-40MC；T→R、T→T、BT_M、T_SWP。[截圖](screenshots/test21.png)。
-
-- [test22.ldr](test22.ldr)：481 bytes、8個function加1個空白網路，FB-28MA；[截圖](screenshots/test22.png)。
-
-- [test23.ldr](test23.ldr)：460 bytes、8網路，HB1-32M；[截圖](screenshots/test23.png)。
-
-- [test24.ldr](test24.ldr)：436 bytes、8網路，FBs-40MA；[截圖](screenshots/test24.png)。
-
-- [test25.ldr](test25.ldr)：430 bytes、8網路，FBs-44MN；[截圖](screenshots/test25.png)。
-
-- [test26.ldr](test26.ldr)：440 bytes、8網路，FBs-60MC；[截圖](screenshots/test26.png)。
-
-- [test27.ldr](test27.ldr)：450 bytes、8網路，FBs-40MC；[截圖](screenshots/test27.png)。
+雜湊由 [test_sample_integrity.py](../tests/test_sample_integrity.py) 固定。截圖保存在 `screenshots/`，指令與截圖對照入口見[文件索引](../docs/README.md)。各項 GUI 與實體 PLC 驗證狀態見[驗證範圍](../docs/verification.md)。

@@ -1,8 +1,12 @@
 # test14：FLOG、FPOW、反三角函數、ERR 與 IMDIO
 
+> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
+
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 2026-10-08 未發版原始碼更新；版本保持 0.10.0，未製作安裝包。
 
-來源為 `samples/test14.ldr`、`samples/screenshots/test14.png`，及本機 `C:/Fatek/FBe進階篇/進階篇應用指令.pdf` 第 7-66、7-167～171 頁。原檔 404 bytes、6 網路，SHA-256：`5155c779d0a8bf2bf3fc6511ccd8287de95e266a75ba2dee07cb8caba92489b9`。檔頭與已取樣 `FBs-44MN-test13` 相同。
+來源為 `samples/test14.ldr`、`samples/screenshots/test14.png`，及本機 《進階篇應用指令.pdf》 第 7-66、7-167～171 頁。原檔 404 bytes、6 網路，SHA-256：`5155c779d0a8bf2bf3fc6511ccd8287de95e266a75ba2dee07cb8caba92489b9`。檔頭與已取樣 `FBs-44MN-test13` 相同。
 
 | FUNC | IR | 行為 |
 | --- | --- | --- |

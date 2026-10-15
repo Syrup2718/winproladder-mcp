@@ -1,5 +1,9 @@
 # test24：MOV、MOV/、TOGG、SORT、Z-WR、矩陣位元功能
 
+> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
+
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 2026-10-14 原始碼更新，維持 0.11.0，不製作安裝包。
 
 來源：[原始檔](../samples/test24.ldr)、[截圖](../samples/screenshots/test24.png)、[IR 範例](../examples/test24_functions.json)。原檔 436 bytes、8 網路，沿用已知 FBs-40MA-test12 檔頭。原始 SHA-256：`01690fde5c181da0ad3b1eb1958fec73264d25dfbadc887e78dec4b1f78b95b9`。
@@ -40,7 +44,7 @@ TOGG 會讀取並寫回目的位元；原生 function 的 M 控制與 M 結果�
 
 ## 驗證邊界
 
-[MCP 重建檔](../artifacts/test24_mcp_roundtrip.ldr)、[驗證報告](../artifacts/test24_verification.json)。測試使用原始 GUI 匯出 bytes 作獨立編碼依據，另測每路控制、狀態輸出、完整跨度、長度上下限、I/O 缺漏及錯誤形式拒絕。
+MCP 重建檔（本機產物：`artifacts/test24_mcp_roundtrip.ldr`）、驗證報告（本機產物：`artifacts/test24_verification.json`）。測試使用原始 GUI 匯出 bytes 作獨立編碼依據，另測每路控制、狀態輸出、完整跨度、長度上下限、I/O 缺漏及錯誤形式拒絕。
 
 這是編碼與靜態檢查；沒有新增獨立 PLC 執行模型，MCP 內建模擬明確拒絕這些新指令。未進行新生成檔的 WinProLadder GUI 匯入或實體 PLC 驗證。
 

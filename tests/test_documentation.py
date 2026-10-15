@@ -4,6 +4,7 @@ import asyncio
 import json
 import re
 from pathlib import Path
+from urllib.parse import unquote
 
 from winproladder_mcp.ir import Ladder
 from winproladder_mcp.layout import safe_ladder
@@ -23,17 +24,27 @@ def test_documentation_local_links_exist():
         for target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", text):
             if "://" in target or target.startswith("#"):
                 continue
-            path = document.parent / target.split("#", 1)[0]
+            path = document.parent / unquote(target.split("#", 1)[0])
             resolved = path.resolve()
-            if (
-                resolved.is_relative_to(ROOT)
-                and resolved.relative_to(ROOT).parts[0] in {"artifacts", "dist", "tmp"}
-                and not path.exists()
-            ):
-                # Published source excludes local artifacts/packages/research evidence.
-                # audit_workspace checks those links when auditing the complete local folder.
-                continue
+            assert resolved.is_relative_to(ROOT), (
+                f"{document.name}: link leaves repository: {target}"
+            )
+            relative = resolved.relative_to(ROOT)
+            assert not relative.parts or relative.parts[0] not in {
+                "artifacts",
+                "dist",
+                "tmp",
+                ".venv",
+                ".codex",
+            }, f"{document.name}: published link depends on local files: {target}"
             assert path.exists(), f"{document.name}: broken link {target}"
+
+
+def test_documentation_index_covers_every_topic():
+    index = (ROOT / "docs/README.md").read_text(encoding="utf-8")
+    for document in (ROOT / "docs").glob("*.md"):
+        if document.name != "README.md":
+            assert f"({document.name})" in index, f"Unindexed document: {document.name}"
 
 
 def test_agent_tool_table_matches_server(tmp_path):

@@ -1,5 +1,7 @@
 # 功能與參數
 
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 ## 控制配方
 
 `generate_control_ldr` 支援：
@@ -69,7 +71,7 @@ Timer 的 `preset` 是時基刻度數，不是直接的毫秒值。在 `.01S` �
 
 ## 未支援範圍
 
-FUN11～14 已支援 16-bit、Sa 暫存器／Sb 非負常數的加減乘除。原生單一 X 邊沿亦可產檔，詳見 [算術及邊沿支援範圍](fun11-14-arithmetic.md)。FUN15／16、CMP、AND、DIFU／DIFD、MC／MCE 及 07P.UDCTR 的格式支援見 [原生 function 編碼](test8-test9-functions.md)，這些 action 尚無執行模擬。FUN35 XOR／36 XNR／37 ZNCMP／20 →BCD／21 →BIN 已加入，具體 operand 限制見 [test10](test10-functions.md)。MOV、間接定址、未列出的 Timer 形式、通訊、定位及多數硬體專用指令尚未支援。test19 已提供原生累積計時器編碼，但尚未整合到高階順序控制的暫停續跑。FUN33 LCNV 的 Md/L 等變化為外推；詳見 [LCNV 支援範圍](fun33-lcnv.md)。未知原生指令保持 opaque，無損 export 不丟棄原始資料。後續 test11～20 的支援範圍見 [完整功能表](../FEATURES.md)，並以 `get_capabilities` 回報目前介面。
+FUN11～14 已支援 16-bit、Sa 暫存器／Sb 非負常數的加減乘除。原生單一 X 邊沿亦可產檔，詳見 [算術及邊沿支援範圍](fun11-14-arithmetic.md)。FUN15／16、CMP、AND、DIFU／DIFD、MC／MCE 及 07P.UDCTR 的格式支援見 [原生 function 編碼](test8-test9-functions.md)，這些 action 尚無執行模擬。FUN35 XOR／36 XNR／37 ZNCMP／20 →BCD／21 →BIN 已加入，具體 operand 限制見 [test10](test10-functions.md)。MOV／MOV/ 已支援取樣的 word 形式，見 [test24](test24-functions.md)。間接定址、未列出的 Timer 形式與多數通訊／定位功能仍未實作。test19 已提供原生累積計時器編碼，但尚未整合到高階順序控制的暫停續跑。FUN33 LCNV 的 Md/L 等變化為外推；詳見 [LCNV 支援範圍](fun33-lcnv.md)。未知原生指令保持 opaque，無損 export 不丟棄原始資料。後續 test11～27 的支援範圍見 [完整功能表](../FEATURES.md)，並以 `get_capabilities` 回報目前介面。
 
 ## test11 新增
 

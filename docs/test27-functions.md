@@ -1,5 +1,9 @@
 # test27：FUN06 BSHF 與 FUN58～64 轉換功能
 
+> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
+
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 2026-10-15 原始碼更新，維持0.11.0，不製作安裝包。
 
 來源：[原始檔](../samples/test27.ldr)、[截圖](../samples/screenshots/test27.png)、[IR範例](../examples/test27_functions.json)。450 bytes、8網路；加入精確FBs-40MC-test27檔頭，保留4040 metadata。
@@ -38,7 +42,7 @@ I/O契約為X0、X1、X5、X6、X11～X14，及WY0涵蓋的Y0～Y15；沒有額�
 
 ## 驗證
 
-[MCP重建檔](../artifacts/test27_mcp_roundtrip.ldr)、[驗證報告](../artifacts/test27_verification.json)。原始GUI匯出作獨立bytes依據，測試涵蓋四路BSHF、ENCOD高低優先、各狀態腳位、範圍與保留資料、字串／選擇欄位拒絕、完整I/O與三層政策。
+MCP重建檔（本機產物：`artifacts/test27_mcp_roundtrip.ldr`）、驗證報告（本機產物：`artifacts/test27_verification.json`）。原始GUI匯出作獨立bytes依據，測試涵蓋四路BSHF、ENCOD高低優先、各狀態腳位、範圍與保留資料、字串／選擇欄位拒絕、完整I/O與三層政策。
 
 未新增獨立PLC執行模型；MCP內建模擬明確拒絕新增指令。新生成檔尚未經GUI匯入或實體PLC驗證。
 

@@ -1,5 +1,9 @@
 # test17：整數運算與 CRC16
 
+> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
+
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 原始樣本 `samples/test17.ldr` 為8網路、420 bytes；新增精確 `FBn-26MC-test17` 檔頭，保留4030 metadata。原始截圖在 `samples/screenshots/test17.png`。初次加入時未升版或打包；目前已納入0.11.0原始碼，最後安裝包仍為0.10.0。
 
 | FUNC | action.type | 目前形式與讀寫範圍 |

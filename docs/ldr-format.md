@@ -1,5 +1,7 @@
 # LDR 格式
 
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 適用樣本：WinProLadder v3.28 / FBs-20MC。以下為逆向格式，不是官方規格或跨版本相容性保證。
 
 `CONFIRMED` 表示現有樣本逐 byte 驗證；`INFERRED` 表示由樣本外推的實作規則；`UNKNOWN` 表示未解明。CRC 與往返成功不能證明任意指令組合可匯入。

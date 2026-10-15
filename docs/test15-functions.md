@@ -1,8 +1,12 @@
 # test15：TKEY、HKEY、DSW、7SGDL、MUXI
 
+> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
+
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 2026-10-08 未發版原始碼更新；版本保持 0.10.0，沒有製作安裝包。
 
-依據 `samples/test15.ldr`、`samples/screenshots/test15.png` 與本機 `C:/Fatek/FBe進階篇/進階篇應用指令.pdf` 第 7-67～73 頁。原檔 391 bytes、5 網路，沿用精確檔頭 `FBs-44MN-test13`；SHA-256 為 `587d2bcff2794470be5524cf85355f2d74f303cf9d7213a4f26f6d3f92c73c1f`。
+依據 `samples/test15.ldr`、`samples/screenshots/test15.png` 與本機 《進階篇應用指令.pdf》 第 7-67～73 頁。原檔 391 bytes、5 網路，沿用精確檔頭 `FBs-44MN-test13`；SHA-256 為 `587d2bcff2794470be5524cf85355f2d74f303cf9d7213a4f26f6d3f92c73c1f`。
 
 ## 五種原生 action
 

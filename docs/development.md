@@ -1,5 +1,7 @@
 # 開發指南
 
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 ## 目錄
 
 本機交付檔與歷史資料位置見 [資料夾導覽](folders.md)。
@@ -24,7 +26,7 @@ tmp/                  本機研究暫存（不納入 Git）
 uv sync --locked
 uv run python -m pytest
 uv run ruff check .
-uv run python -m mypy src
+uv run python -m mypy
 uv run python -m winproladder_mcp.setup check
 uv run python scripts/verify_release.py --root <新的驗證目錄>
 ```
@@ -32,13 +34,6 @@ uv run python scripts/verify_release.py --root <新的驗證目錄>
 `check` 測試真實 stdio MCP 連線、自保持模板、需求驗收及兩種二進位下載介面。完整測試涵蓋樣本雜湊、CRC、無損往返、邏輯真值表、時序與工具檔案輸出。
 
 `verify_release.py` 透過真正的 stdio MCP 生成所有控制配方及多控制、暫停流程、自訂條件、Timer/Counter 情境；逐檔檢查 CRC、SHA-256、無損往返、解碼後掃描行為與下載 bytes。也驗證重名不覆蓋、驗收失敗不產檔。每次建立 `artifacts/release-<時間>-<識別碼>/manifest.json`，保留 `.ldr` 與設計紀錄，且將每個檔案的 GUI 匯入狀態明確設為待驗證。GUI 驗證需使用該份 manifest 的檔案及 SHA-256，不以另一份同名檔代替。
-
-本機若編譯版 mypy 被系統阻擋，可使用已保留的純 Python 依賴：
-
-```powershell
-$env:PYTHONPATH=(Resolve-Path tmp/mypy-pure).Path
-uv run python -m mypy src
-```
 
 `verify_release.py` 使用獨立驗證目錄，避免將本工作區嚴格政策與歷史配方驗收混為一談。
 
@@ -48,7 +43,7 @@ uv run python -m mypy src
 
 `uv build` 產生 `dist/*.whl` 及 `dist/*.tar.gz`。交付前在專案以外的新目錄建立 Python 3.12 環境，以 `uv pip install --python <環境的 python.exe> <wheel 路徑>` 安裝。使用該環境執行 `winproladder-setup check`，並把 `scripts/verify_release.py` 複製至該目錄，用該環境執行 `python verify_release.py --root <新工作目錄>`。確認套件載入位置位於新環境的 `site-packages`，避免 editable install 或 repo 的 `src/` 掩蓋打包問題。
 
-建置產物與驗證 manifest 保留在本機，發布需另外執行；不要在套件中夾帶 `.codex/config.toml`、工作輸出或暫存資料。使用者的 wheel 安裝流程見 [入門指南](quickstart.md)。
+建置產物與驗證 manifest 保留在本機，發布需另外執行；不要在套件中夾帶 `.codex/config.toml`、工作輸出或暫存資料。日常使用優先採用 [原始碼安裝](quickstart.md)。
 
 ## 架構
 
@@ -90,7 +85,7 @@ uv run python scripts/generate_design_examples.py --root . --prefix custom
 
 `integer_functions.py` 負責 test17 整數運算編碼／解碼，CRC16 MD=1 的手冊差異由分析結果及能力說明明確揭露。
 
-`analog_functions.py`、`thermal_functions.py`、`process_functions.py` 分別集中 test18、test19、test20 編解碼。
+`analog_functions.py`、`thermal_functions.py` 分別處理 test18、test19；`process_functions.py` 負責多個功能家族共用的控制輸入、狀態輸出與 operand 分派。
 
 完整本機檔案盤點可執行 `uv run python scripts/audit_workspace.py --output tmp/workspace-audit-new.json`。JSON 報告只含路徑、大小、雜湊與檢查結果，不輸出連線設定內容；Git、環境依賴與快取只計數，不逐一審查第三方程式。文件中的 artifacts／dist／tmp 連結是本機證據，Git 原始碼副本不包含這些檔案。
 

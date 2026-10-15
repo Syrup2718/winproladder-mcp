@@ -1,66 +1,86 @@
-# 從需求取得第一個 .ldr
+# 快速開始
 
-## 連接 MCP
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
 
-依 [README](../README.md) 安裝並執行 `uv run winproladder-setup check`。出現 `PASS` 即表示 MCP 子程序、需求生成、動作驗收及檔案下載皆通過。
+本指南以 Windows PowerShell 與原始碼安裝為例。需要 Git、uv，以及支援本機 stdio MCP 的 client。Python 版本由專案設定選擇。
 
-`uv run winproladder-setup config --format codex` 只列印設定，不修改任何設定檔。將完整的 `[mcp_servers.winproladder]` 區段合併至 Codex 設定後重新連線。其他支援本機 stdio 的 MCP client 使用 `--format json`，採用輸出的 `command` 與 `args`；不需另開終端執行 server。
-
-## 提出需求並取得檔案
-
-可直接對連接 MCP 的 Agent 說：
-
-> 使用 WinProLadder MCP，X0 啟動馬達 Y0，放開 X0 後保持。X1 為 1 時停止，啟停同時成立時停止優先。請產生 motor.ldr，驗證啟動、保持、停止及同時按下的行為，並交付檔案與 I/O 表。
-
-Agent 會讀取設計指南，選擇控制配方並呼叫生成工具。交付結果包含：
-
-- `motor.ldr`：實際二進位階梯圖資源檔，預設在工作目錄的 `artifacts/`。
-- `motor.ldr.design.json`：高階配方的設計紀錄，包含 I/O、預設參數、假設及雜湊。
-- 驗證結果：CRC／解碼檢查，以及有提供驗收案例時的 `acceptance` 與 `compiled_acceptance`。
-
-若 Agent 只提供 server 路徑而 client 無法存取，讓 Agent 呼叫 `get_ldr_artifact`，使用回應的 embedded binary resource 保存 `.ldr`。也可直接讀取生成回應提供的 MCP resource URI；這是 MCP 檔案資源，並非一般 HTTPS 下載網址。Agent 端的詳細交付方法見 [操作指南](agent-guide.md)。
-
-重做相同需求時使用 `motor_v2.ldr` 等新檔名。檔案不會被覆蓋，驗收失敗也不會留下新的 `.ldr`。
-
-## WinProLadder 與 VM
-
-`.ldr` 是階梯圖資源匯入檔；在 WinProLadder 工程中執行 **Import Ladder Diagram**，選取交付檔案。目標格式為 WinProLadder v3.28 / FBs-20MC。
-
-如果 WinProLadder 位於 VM，可把 `.ldr` 複製到 VMware 共用目錄，或將 MCP 工作目錄直接設為共用目錄：
+## 1. 安裝與自我檢查
 
 ```powershell
-uv run winproladder-setup config --format codex --root C:\VM_Share
+git clone https://github.com/Syrup2718/winproladder-mcp.git
+cd winproladder-mcp
+uv sync --locked
+uv run python -m winproladder_mcp.setup check
 ```
 
-合併新設定並重新連線後，檔案會生成於 `C:\VM_Share\artifacts\`。這台開發 VM 的實際共享設定為 host `C:\VM_Share`、guest share name `VM_Share`；其他電腦請換成其實際路徑。若使用 `C:\VM\_Share`，須先確認該目錄存在且已由 VM 分享。`--root` 必須存在，`--output-dir` 如有指定則必須位於 root 內。
+看到 `PASS` 表示暫存工作目錄中的 MCP 連線、需求生成、模型驗收及下載檢查通過。這不是 GUI 匯入或實體 PLC 驗證。若使用 GitHub ZIP，解壓縮後從 `uv sync --locked` 開始。
 
-編譯與下載不需要 VM。每個新輸出是否已經 GUI 匯入，應依該檔案的驗證紀錄判斷；模型測試不能取代實際 PLC 執行驗證。
-
-## 使用 wheel 安裝包
-
-目前原始碼已為0.11.0，但尚未製作該版安裝包。以下為既有0.10.0安裝包流程，功能不包含0.11.0更新。
-
-取得本專案產出的 `winproladder_mcp-0.10.0-py3-none-any.whl` 後，可不保留原始碼。以下以將 wheel 放在 `C:\LadderWork` 為例：
+## 2. 設定 MCP client
 
 ```powershell
-cd C:\LadderWork
-uv venv --python 3.12 .venv
-uv pip install --python .venv\Scripts\python.exe .\winproladder_mcp-0.10.0-py3-none-any.whl
-.\.venv\Scripts\winproladder-setup.exe check
-.\.venv\Scripts\winproladder-setup.exe config --format codex --root C:\LadderWork
+uv run python -m winproladder_mcp.setup config --format json
 ```
 
-將最後一行輸出的設定合併到 client 設定，保留此虛擬環境與工作目錄。首次安裝需要取得 Python 與套件相依項；完成後 MCP 產檔不呼叫外部 API。此流程不假設套件已發布到 PyPI。
+此命令只列印設定，不修改設定檔。將輸出的 `mcpServers.winproladder` 合併至 client 的 MCP 設定，保留原有 server，再重新建立連線。若 client 使用 TOML，可執行：
+
+```powershell
+uv run python -m winproladder_mcp.setup config --format codex
+```
+
+設定包含 Python 與工作目錄的絕對路徑，搬動專案後需重新產生。Client 會啟動伺服器，不必另外開啟 server 終端。用 `get_capabilities` 確認實際載入的能力與工作區政策。
+
+## 3. 產生第一個檔案
+
+向 Agent 提出：
+
+> 使用 WinProLadder MCP，X0 啟動馬達 Y0，放開 X0 後保持。X1=1 時停止，啟停同時成立時停止優先。請產生 motor.ldr，驗證啟動、保持、停止及同時按下的行為，交付檔案與 I/O 表。
+
+交付內容：
+
+| 項目 | 用途 |
+| --- | --- |
+| `artifacts/motor.ldr` | 二進位階梯圖資源 |
+| `artifacts/motor.ldr.design.json` | 高階配方的參數、I/O、假設與雜湊 |
+| MCP 回應 | 檔案資源 URI、CRC／解碼與可用的驗收結果 |
+
+Client 無法存取 server 本機路徑時，使用 `get_ldr_artifact` 或 `resources/read` 取得原始二進位資源。MCP URI 不是 HTTPS 下載網址；詳見[Agent 指南](agent-guide.md)。重做時使用 `motor_v2.ldr` 等新檔名。
+
+## 4. 匯入 WinProLadder
+
+在目標工程內使用 **Import Ladder Diagram** 選取 `.ldr`。預設檔頭為已取樣的 FBs-20MC；其他樣本檔頭不代表所有機型、指令與工程設定均相容。依實際工程核對機型、I/O 與計時設定。
+
+WinProLadder 位於 VM 時，可自行將輸出複製至已設定的共用資料夾。也可將 MCP root 指向該資料夾，例如：
+
+```powershell
+uv run python -m winproladder_mcp.setup config --format json --root C:\LadderWork
+```
+
+`C:\LadderWork` 是示例，必須先建立並視需要設定 VM 分享。檔案將輸出至該 root 的 `artifacts/`。`--output-dir` 必須位於 root 內。
+
+工作區政策由 root 下的 `.winproladder-policy.json` 載入。更換 root 時應一併保留所需政策，不能藉由換目錄繞過生成限制。編譯與下載本身不需要 VM。
+
+## 更新原始碼
+
+先保留本機修改，再更新來源並執行：
+
+```powershell
+uv sync --locked
+uv run python -m winproladder_mcp.setup check
+```
+
+重新連接 MCP，讓 client 載入更新後的程序。不要將歷史安裝包的版本與目前原始碼功能混用；安裝包是否提供應以實際發布資產為準，本指南不假設已發布至 PyPI。
 
 ## 常見問題
 
 | 現象 | 處理方式 |
 | --- | --- |
-| 找不到 MCP 工具 | 重跑 `check`；確認 client 使用完整的 `command`／`args`，重新連線。 |
-| 搬動目錄後無法啟動 | 在新位置重新安裝環境，重新執行 `config`，更新 client 設定。 |
-| 已有同名檔案 | 使用新檔名，例如 `motor_v2.ldr`。 |
-| 無法讀取現有 `.ldr` | 先放入 `--root` 內，再用相對路徑或該目錄內的絕對路徑。 |
-| 驗收失敗 | 由 Agent 檢查輸入有效極性、同時命令優先權、掃描順序與時間單位；修正後再生成。 |
-| 需求包含未支援指令 | 由 Agent 查閱 `get_capabilities`；不可將未實作功能假裝成可用輸出。 |
+| 找不到工具 | 執行 `check`，核對 client 的 command／args，重新連線。 |
+| 搬動目錄後無法啟動 | 重建環境並重新產生設定。 |
+| Windows 阻擋命令啟動器 | 使用本指南的 `python -m winproladder_mcp.setup` 命令。 |
+| 同名檔案已存在 | 使用新檔名；工具不覆蓋既有輸出。 |
+| 無法讀取既有檔案 | 將 `.ldr` 放入 root，例如 `inputs/motor.ldr`。 |
+| I/O 契約不符 | 核對需求中的完整 X/Y 清單，包含 word I/O 所涵蓋的位元。 |
+| 需求驗收失敗 | 核對有效極性、優先權、掃描順序、時間單位與支援形式。 |
+| 指令無法生成或模擬 | 查閱[功能清單](../FEATURES.md)；編碼與模擬是不同能力。 |
 
-支援的配方、IR 與時序限制見 [功能參考](reference.md)。
+如需回報問題，請依[貢獻指南](../CONTRIBUTING.md)提供最小重現與驗證層級。

@@ -1,6 +1,10 @@
 # test21：FUN101～104 表格指令
 
-本次更新原始碼，版本保持0.11.0，不製作安裝包。
+> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
+
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
+此功能納入 0.11.0 之後的未發版原始碼更新。
 
 來源：[原始檔](../samples/test21.ldr)、[截圖](../samples/screenshots/test21.png)、[可重用IR](../examples/test21_functions.json)。五個網路均可解碼並原樣重建，新增精確 `FBe-40MC-test21` 檔頭，保留4030 metadata。
 
@@ -37,7 +41,7 @@ M3作為101的END，接著控制102的EN，屬於允許的原生function結果�
 
 ## 驗證
 
-[完整MCP重建檔](../artifacts/test21_mcp_roundtrip.ldr)與[驗證報告](../artifacts/test21_verification.json)。檢查來源、lowered IR、decoded bytes的政策和I/O契約；核對完整檔案bytes、CRC、SHA-256及MCP resource下載。原檔五個網路的暫存器和控制接線完整保留。
+完整MCP重建檔（本機產物：`artifacts/test21_mcp_roundtrip.ldr`）與驗證報告（本機產物：`artifacts/test21_verification.json`）。檢查來源、lowered IR、decoded bytes的政策和I/O契約；核對完整檔案bytes、CRC、SHA-256及MCP resource下載。原檔五個網路的暫存器和控制接線完整保留。
 
 離線驗證是格式、資源及架構檢查；沒有獨立PLC執行模型，MCP內建掃描模擬明確拒絕這些新指令。新生成檔未經WinProLadder GUI匯入或實體PLC驗證。
 

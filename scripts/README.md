@@ -1,5 +1,7 @@
 # 維護腳本
 
+[首頁](../README.md) · [文件索引](../docs/README.md)
+
 在專案根目錄以 `uv run python scripts/<名稱>.py` 執行。生成腳本可能寫入 artifacts，先看 `--help` 並使用新名稱；一般開發不需要逐一執行。
 
 | 腳本 | 用途 |

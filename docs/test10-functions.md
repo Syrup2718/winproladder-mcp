@@ -1,5 +1,9 @@
 # test10：XOR、XNR、ZNCMP、→BCD、→BIN
 
+> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
+
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 MCP v0.9.0 將使用者提供的 test10 當作 function 格式樣本，支援讀取、分析、產檔及網路編輯；原樣本不修改。來源為 `samples/test10.ldr` 與 `samples/screenshots/test10.png`。375 bytes、5 networks，SHA-256：`0b00e0d1da4d7f466928f76921bd281d0c55158c32a5aa9ee41b373aa4cf3600`。
 
 ## 五筆實際編碼
@@ -41,7 +45,7 @@ operation 可為 `xor` 或 `xnr`。
 
 這批新增 action 支援既有 R/D bank、T0..255 數值來源，以及已取樣的 WX0/WY0。T1 為實際樣本，其他 T 位址沿已知每字兩 byte 規則外推。T 不開放寫入；WX0 和 R3840..3903 為唯讀。其他 WX/WY 編號、WM/WS/C word 等尚不外推。
 
-WX0 對應 X0..X15，WY0 對應 Y0..Y15。生成工具會將全部位元納入 io_contract、讀寫引用和重複寫入檢查；不能只申報 X0/Y0 就通過。這是原樣本的整字 I/O 範圍，不是新增硬體。可對照本機 `C:/Fatek/FBe進階篇/基本應用指令.pdf` 第 7-38 頁 WX0 圖，以及 [FATEK 原廠手冊鏡像第 9-28 頁](https://www.esea.cz/support/fatek/doc/FBe-Manual-PDF/advance/CH09.pdf) 的 WY0 圖。
+WX0 對應 X0..X15，WY0 對應 Y0..Y15。生成工具會將全部位元納入 io_contract、讀寫引用和重複寫入檢查；不能只申報 X0/Y0 就通過。這是原樣本的整字 I/O 範圍，不是新增硬體。可對照本機 《基本應用指令.pdf》 第 7-38 頁 WX0 圖，以及 [FATEK 原廠手冊鏡像第 9-28 頁](https://www.esea.cz/support/fatek/doc/FBe-Manual-PDF/advance/CH09.pdf) 的 WY0 圖。
 
 整份 test10 的 N002 與 N004 都寫入 Y0/Y1/Y2；分析會列出重複寫入。這份檔案用於辨識 function 格式，沒有替使用者重設其控制邏輯。原樣重建檔 `test10_native_functions_roundtrip.ldr` 保留全部五個網路；`test10_XOR_XNR_blocks.ldr` 僅抽出前兩個 function，方便單獨檢查。
 

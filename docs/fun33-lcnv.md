@@ -1,5 +1,9 @@
 # FUN33 LCNV：test6 的證據與外推界線
 
+> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
+
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 ## 原始資料
 
 - [test6.ldr](../samples/test6.ldr)：SHA-256 `443500807d610cf2b459d1ea8bea00150e8dceeeae46b5750f3576b3df7d71e9`。

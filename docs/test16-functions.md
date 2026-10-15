@@ -1,5 +1,9 @@
 # test16：DIV48、SUM、PID、WDT 與高速計數器
 
+> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
+
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 原始樣本為 `samples/test16.ldr`，7個網路、423 bytes，FBs-60MC 檔頭。截圖保存在 `samples/screenshots/test16.png`。這是未發版原始碼更新，版本仍為0.10.0。
 
 ## 已支援的形式

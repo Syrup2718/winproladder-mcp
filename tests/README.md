@@ -1,11 +1,13 @@
 # 測試導覽
 
+[首頁](../README.md) · [文件索引](../docs/README.md)
+
 在根目錄執行 `uv run python -m pytest -q`。測試使用暫存工作目錄，不下載程式到實體 PLC。
 
 | 分類 | 主要檔案 |
 | --- | --- |
 | 原始證據 | `test_sample_integrity.py`、`test_ldr.py`、`test_research.py` |
-| 原生指令 | `test_test8_functions.py`～`test_test15_functions.py`、`test_lcnv.py`、`test_arithmetic_edges.py` |
+| 原生指令 | `test_test8_functions.py`～`test_test27_functions.py`、`test_lcnv.py`、`test_arithmetic_edges.py` |
 | 編譯與接圖 | `test_ir.py`、`test_inferred_compiler.py`、`test_blocks.py`、`test_actions.py`、`test_layout.py`、`test_optimize.py` |
 | 架構與 I/O | `test_architecture.py`、`test_io_and_native_timing.py` 及各原生指令的完整跨度測試 |
 | 時序與配方 | `test_timing.py`、`test_timer_units.py`、`test_sequence.py`、`test_system.py`、`test_control.py`、`test_acceptance.py` |
@@ -16,28 +18,21 @@
 
 測試通過表示所測編碼、政策及模型通過，不會自動取得 GUI 或 PLC 驗證。樣本覆蓋與各次驗證邊界見[驗證依據](../docs/verification.md)。
 
-`test_test16_functions.py` 涵蓋 DIV48／SUM／PID／WDT／HSC0 的精確重建、完整跨度、多腳位政策及未知形式拒絕。
+## 原生指令回歸範圍
 
-`test_test17_functions.py` 涵蓋整數運算、MEAN 動態 N、EXT 雙字組、DIV48 單輸入及 CRC16 引用不確定性。
+| 測試檔 | 覆蓋 |
+| --- | --- |
+| [test_test16_functions.py](test_test16_functions.py) | 涵蓋 DIV48／SUM／PID／WDT／HSC0 的精確重建、完整跨度、多腳位政策及未知形式拒絕。 |
+| [test_test17_functions.py](test_test17_functions.py) | 涵蓋整數運算、MEAN 動態 N、EXT 雙字組、DIV48 單輸入及 CRC16 引用不確定性。 |
+| [test_test18_functions.py](test_test18_functions.py) | 包含類比與位元存取、雙輸入政策、動態表格跨度及未解碼跳躍不得重定位的檢查。 |
+| [test_test19_functions.py](test_test19_functions.py) | 涵蓋積算型計時單位與CV、TPCTL完整跨度與WR獨占、雙輸入及狀態政策、全樣本拒絕和CALL僅解析邊界。 |
+| [test_test20_functions.py](test_test20_functions.py) | 涵蓋三路輸入與狀態政策、RAMP時間／Tn、RAMP2 OR區與WR4、ASCWR未知範圍、表格L−1和CLR極性及完整樣本衝突。 |
+| [test_test21_functions.py](test_test21_functions.py) | 覆蓋 FUN101～104 完整原樣生成、CLR 正反接點與常數、整表讀寫、M 政策、邊界與未編碼形式拒絕。 |
+| [test_test22_functions.py](test_test22_functions.py) | 涵蓋FUN105～112、常數與L邊界、完整表格與BKCMP隱含輸出、三層政策、I/O漏列拒絕、未知模式及原樣重建。 |
+| [test_test23_functions.py](test_test23_functions.py) | 涵蓋FUN120～127、完整矩陣範圍、MINV動態L、四路腳位分離與布林式、三層M政策、原地運算、邊界及未知形式。 |
+| [test_test24_functions.py](test_test24_functions.py) | 涵蓋八個FUNC原始bytes、每路控制及狀態、長度邊界、WY8整段I/O、TOGG讀寫、M政策及模擬拒絕。 |
+| [test_test25_functions.py](test_test25_functions.py) | 涵蓋FUN42～49原始bytes、位置與count界線、保留部分word的讀寫、交換雙端、BUNIT動態跨度、完整word契約及狀態M政策。 |
+| [test_test26_functions.py](test_test26_functions.py) | 涵蓋FUN50～57原始bytes、控制與狀態分離、原地讀寫、動態BDIST、DECOD寬度與跨word截取、I/O契約及政策。 |
+| [test_test27_functions.py](test_test27_functions.py) | 涵蓋FUN06及58～64原始bytes、四路BSHF、保留目的資料、時間跨度、字串拒絕與新檔頭。 |
 
-`test_test18_functions.py` 包含類比與位元存取、雙輸入政策、動態表格跨度及未解碼跳躍不得重定位的檢查。
-
-`test_test19_functions.py` 涵蓋積算型計時單位與CV、TPCTL完整跨度與WR獨占、雙輸入及狀態政策、全樣本拒絕和CALL僅解析邊界。
-
-`test_test20_functions.py`涵蓋三路輸入與狀態政策、RAMP時間／Tn、RAMP2 OR區與WR4、ASCWR未知範圍、表格L−1和CLR極性及完整樣本衝突。
-
-`test_example_scripts.py` 透過 subprocess 執行兩支範例腳本，覆蓋有／無專案政策的 I/O 契約與政策拒絕結果。`test_documentation.py` 檢查正式文件連結；完整本機輸出連結由 `scripts/audit_workspace.py` 額外檢查。
-
-`test_test21_functions.py` 覆蓋 FUN101～104 完整原樣生成、CLR 正反接點與常數、整表讀寫、M 政策、邊界與未編碼形式拒絕。
-
-`test_test22_functions.py`涵蓋FUN105～112、常數與L邊界、完整表格與BKCMP隱含輸出、三層政策、I/O漏列拒絕、未知模式及原樣重建。
-
-`test_test23_functions.py`涵蓋FUN120～127、完整矩陣範圍、MINV動態L、四路腳位分離與布林式、三層M政策、原地運算、邊界及未知形式。
-
-`test_test24_functions.py`涵蓋八個FUNC原始bytes、每路控制及狀態、長度邊界、WY8整段I/O、TOGG讀寫、M政策及模擬拒絕。
-
-`test_test25_functions.py`涵蓋FUN42～49原始bytes、位置與count界線、保留部分word的讀寫、交換雙端、BUNIT動態跨度、完整word契約及狀態M政策。
-
-`test_test26_functions.py`涵蓋FUN50～57原始bytes、控制與狀態分離、原地讀寫、動態BDIST、DECOD寬度與跨word截取、I/O契約及政策。
-
-`test_test27_functions.py`涵蓋FUN06及58～64原始bytes、四路BSHF、保留目的資料、時間跨度、字串拒絕與新檔頭。
+`test_documentation.py` 檢查可攜連結、工具清單及可編譯 JSON 範例；`test_example_scripts.py` 驗證腳本產檔與政策拒絕。

@@ -1,5 +1,7 @@
 # Agent 操作指南
 
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 ## 生成流程
 
 本工作區啟用 `forbid_m_to_m=true`、`allow_function_m_to_m=true`。禁止無意義的 M→M 複製、冗餘中繼與自動 relay helpers；允許 M 控制原生 function，再由該 function 輸出 M 結果或狀態，包括計時器、計數器、比較、DIFU／DIFD 等。普通 M 複製不因位於 MC 區域或加註 function 名稱就取得例外；不得製造假 function 來包裝複製。數值與步序仍優先使用原生暫存器。舊政策檔未設定新旗標時保留嚴格模式。
@@ -9,7 +11,7 @@
 檢查。違規或無法解析的網路會拒絕輸出，既有檔仍可讀取及分析。規則檔每次操作
 重新讀取；升級程式碼後，已啟動的 MCP 程序需重新載入一次。
 
-沒有規則檔的其他工作區保留相容行為；本工作區已永久啟用此限制。
+沒有規則檔的其他工作區保留相容行為；本儲存庫附帶的政策檔啟用上述限制。
 
 1. 讀取 `get_capabilities` 與 `get_design_guide`，確認支援範圍及 schema。
 2. 把需求整理成 I/O、有效極性、動作順序、優先權、時間與復歸條件。只把使用者指定的 X/Y 寫入必填的 `io_contract.inputs`／`outputs`，不可為了通過檢查擴增允許清單。不得自動新增 X/Y 或外部時脈。
@@ -61,6 +63,6 @@ Server 僅存取 `--root` 內的檔案；預設輸出為 `ROOT/artifacts/`，可
 
 有提供 `acceptance` 時，生成前會分別驗證原始模型及從實際輸出 bytes 解碼的階梯圖。兩者任一不符即不寫檔；`compiled_acceptance` 回報後者結果，`artifact_validation` 回報 CRC 與可解碼網路數。
 
-共享目錄可用 `--root C:\VM_Share`，檔案生成於其 `artifacts/`。編譯不需要 VMware、WinProLadder 或 PLC 連線；GUI 匯入是獨立驗證步驟。
+可用 `--root` 指定已建立的共享目錄，並保留該工作區所需的政策檔；輸出位於其 `artifacts/`。編譯不需要 VMware、WinProLadder 或 PLC 連線；GUI 匯入是獨立驗證步驟。
 
 詳細條件與時序限制見 [功能參考](reference.md)。

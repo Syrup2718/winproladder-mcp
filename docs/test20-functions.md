@@ -1,5 +1,9 @@
 # test20：ASCWR、RAMP、RAMP2、R→T
 
+> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
+
+[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+
 2026-10-13原始碼更新，版本維持0.11.0，沒有打包。
 
 來源：[原始test20](../samples/test20.ldr)、[原始截圖](../samples/screenshots/test20.png)、[解析IR](../examples/test20_functions.json)。四個網路均可解碼並逐位元組重建；原始檔案保持不變。IR描述樣本，不代表整份樣本可直接通過資源衝突檢查。
@@ -17,7 +21,7 @@
 
 ## 編碼證據與手冊
 
-手冊為使用者提供的 `C:/Fatek/FBe進階篇/進階篇應用指令.pdf`；頁碼採頁面印刷編號。
+手冊為使用者提供的 《進階篇應用指令.pdf》；頁碼採頁面印刷編號。
 
 - **7-87，94P ASCWR**：樣本F103，後接S、Pt。MD=1被手冊列為保留用途，不能把MD=0的Port1印表機行為直接當成MD=1執行語意。目前支援該樣本形式的參數化編碼，未推測MD=0或非P opcode。Pt保守按8個獨占暫存器檢查；ASCII資料直到END，且可能內嵌其他運算元，因此S只追蹤起點，引用報告明列不完整。不宣稱能生成ASCII資料檔或已驗證通訊。
 - **7-88～89，95 RAMP**：樣本F816、固定0000形式欄位，後接PV、Tn、SL、SU、D。Tn必須使用設定為10 ms的計時器，且不能重複使用；接受T0..255並標示仍需目的PLC設定確認。PV在M1974=0時是10 ms計時設定，在M1974=1時是每10 ms的增減量。U/D=1升、0降，在EN上升時決定；PAU暫停。SU須大於SL是執行值條件，不能比較暫存器位址大小來判斷。D+1獨占，連同Tn列入跨網路衝突檢查。
@@ -32,8 +36,8 @@ N002的RAMP2 WR=R15，佔用**R15～R18**；N003的R→T目的表格從R10開始
 
 分開產出兩份候選檔，原參數與接線不變：
 
-- [ASCWR／RAMP／RAMP2](../artifacts/test20_process_functions.ldr)：原N000～N002。
-- [R→T](../artifacts/test20_register_to_table.ldr)：原N003。
+- ASCWR／RAMP／RAMP2（本機產物：`artifacts/test20_process_functions.ldr`）：原N000～N002。
+- R→T（本機產物：`artifacts/test20_register_to_table.ldr`）：原N003。
 
 這兩份檔案是**分開匯入的指令試檔**，不能重新合併使用而忽略同一工作區衝突。沒有補入暫存器初始化、ASCII資料或PLC環境設定。
 
@@ -43,4 +47,4 @@ N002的RAMP2 WR=R15，佔用**R15～R18**；N003的R→T目的表格從R10開始
 
 完整測試 **788項通過**；Ruff／格式檢查、30個來源檔案的Mypy檢查通過。setup check確認19個MCP工具及既有需求到LDR流程正常。
 
-另以新啟動的MCP stdio呼叫生成與二進位resource回讀，核對候選檔與原樣本對應網路位元組一致；[驗證報告](../artifacts/test20_verification.json)記錄結果。沒有新指令的獨立執行模型或MCP內建執行模擬，未做GUI匯入、通訊或實體PLC驗證。
+另以新啟動的MCP stdio呼叫生成與二進位resource回讀，核對候選檔與原樣本對應網路位元組一致；驗證報告（本機產物：`artifacts/test20_verification.json`）記錄結果。沒有新指令的獨立執行模型或MCP內建執行模擬，未做GUI匯入、通訊或實體PLC驗證。
