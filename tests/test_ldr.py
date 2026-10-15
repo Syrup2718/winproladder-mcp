@@ -83,3 +83,29 @@ def test_invalid_length_and_extra_footer_bytes() -> None:
     doc = parse(data)
     assert not doc.editable
     assert doc.encode() == data
+
+
+@pytest.mark.parametrize("marker", [b"\x12", b"\xff"])
+def test_truncated_marker_after_many_records(marker: bytes) -> None:
+    record = Record.create(b"\xde\xad").encode()
+    data = default_header() + record * 1000 + marker
+    with pytest.raises(LdrError, match="Truncated marker"):
+        parse(data)
+
+
+def test_unknown_metadata_is_not_recognized_as_known_model() -> None:
+    from winproladder_mcp.service import header_profile
+
+    header = bytearray(default_header())
+    header[177] ^= 1
+    assert header_profile(bytes(header)) is None
+
+
+def test_every_declared_profile_has_distinct_exact_header() -> None:
+    from typing import get_args
+
+    from winproladder_mcp.ir import HeaderProfile
+    from winproladder_mcp.service import header_profile
+
+    for profile in get_args(HeaderProfile):
+        assert header_profile(default_header(profile)) == profile

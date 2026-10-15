@@ -12,7 +12,6 @@ from .architecture import architecture_report, enforce_architecture, load_policy
 from .capabilities import capabilities as capabilities
 from .io_contract import IOContract, check_io
 from .ir import (
-    HeaderProfile,
     Ladder,
     Network,
     compile_network,
@@ -21,96 +20,8 @@ from .ir import (
 )
 from .layout import expressions, lower_ladder, memory_used, needs_lowering
 from .ldr import FOOTER, MAX_SIZE, Document, LdrError, Record, parse
-
-
-def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
-    # Exact shared header from all five v3.28 FBs-20MC exports; no unknown
-    # metadata is inferred. See test_lossless_roundtrip.
-    header = bytearray(256)
-    header[:29] = b"Fatek Resource File Format 1\x16"
-    header[128:134] = b"FB-RES"
-    header[144:156] = b"WinProladder"
-    if profile not in {
-        "FBs-40MC-test27",
-        "HB1-32M-test23",
-        "FB-28MA-test22",
-        "FBe-40MC-test21",
-        "FBe-20MA-test19",
-        "FBn-26MC-test17",
-        "FBs-60MC-test16",
-        "FBs-20MC",
-        "FBs-24MA",
-        "FBs-24MA-test7",
-        "FBs-32MA-test11",
-        "FBs-40MA-test12",
-        "FBs-44MN-test13",
-    }:
-        raise ValueError("Unsupported header profile")
-    header[160:168] = (
-        (
-            {
-                "FBs-40MC-test27": "FBs-40MC",
-                "HB1-32M-test23": "HB1-32M",
-                "FB-28MA-test22": "FB-28MA",
-                "FBe-40MC-test21": "FBe-40MC",
-                "FBe-20MA-test19": "FBe-20MA",
-                "FBn-26MC-test17": "FBn-26MC",
-                "FBs-60MC-test16": "FBs-60MC",
-                "FBs-24MA-test7": "FBs-24MA",
-                "FBs-32MA-test11": "FBs-32MA",
-                "FBs-40MA-test12": "FBs-40MA",
-                "FBs-44MN-test13": "FBs-44MN",
-            }.get(profile, profile)
-        )
-        .encode("ascii")
-        .ljust(8, b"\x00")
-    )
-    # Preserve exact sampled metadata, including unknown profile-specific fields.
-    header[176:178] = b"@@" if profile == "FBs-20MC" else bytes.fromhex("1045")
-    if profile in {"FBs-24MA-test7", "FBs-32MA-test11", "FBs-40MA-test12"}:
-        header[176:178] = bytes.fromhex("1040")
-    if profile in {"FBs-44MN-test13", "FBs-60MC-test16", "FBs-40MC-test27"}:
-        header[176:178] = b"@@"
-    if profile in {"FBn-26MC-test17", "FBe-40MC-test21"}:
-        header[176:178] = bytes.fromhex("4030")
-    if profile == "FBe-20MA-test19":
-        header[176:178] = bytes.fromhex("1030")
-    if profile == "FB-28MA-test22":
-        header[176:178] = bytes.fromhex("1020")
-    if profile == "HB1-32M-test23":
-        header[176:178] = bytes.fromhex("1055")
-    header[192:194] = b"H\x01"
-    return bytes(header)
-
-
-def header_profile(header: bytes) -> HeaderProfile | None:
-    if header == default_header("FBs-40MC-test27"):
-        return "FBs-40MC-test27"
-    if header == default_header("HB1-32M-test23"):
-        return "HB1-32M-test23"
-    if header == default_header("FB-28MA-test22"):
-        return "FB-28MA-test22"
-    if header == default_header("FBe-40MC-test21"):
-        return "FBe-40MC-test21"
-    if header == default_header("FBe-20MA-test19"):
-        return "FBe-20MA-test19"
-    if header == default_header("FBn-26MC-test17"):
-        return "FBn-26MC-test17"
-    if header == default_header("FBs-60MC-test16"):
-        return "FBs-60MC-test16"
-    if header == default_header("FBs-44MN-test13"):
-        return "FBs-44MN-test13"
-    if header == default_header("FBs-40MA-test12"):
-        return "FBs-40MA-test12"
-    if header == default_header("FBs-32MA-test11"):
-        return "FBs-32MA-test11"
-    if header == default_header():
-        return "FBs-20MC"
-    if header == default_header("FBs-24MA"):
-        return "FBs-24MA"
-    if header == default_header("FBs-24MA-test7"):
-        return "FBs-24MA-test7"
-    return None
+from .profiles import default_header as default_header
+from .profiles import header_profile as header_profile
 
 
 class Service:

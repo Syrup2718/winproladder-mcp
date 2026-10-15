@@ -1,4 +1,4 @@
-"""Sampled ASCWR, RAMP, RAMP2 and register-to-table encodings (test20/21)."""
+"""Shared native function framing and dispatch to operand codec families."""
 
 from typing import TYPE_CHECKING
 
@@ -87,6 +87,25 @@ STATUS = {
 }
 
 
+# One dispatch table for both directions; reject accidental opcode/action collisions.
+_OPERAND_MODULES = (
+    conversion_functions,
+    shift_functions,
+    packing_functions,
+    transfer_functions,
+    matrix_functions,
+    table_functions,
+)
+_OPERAND_CODECS = {kind: module for module in _OPERAND_MODULES for kind in module.CODES}
+if len(_OPERAND_CODECS) != sum(len(module.CODES) for module in _OPERAND_MODULES):
+    raise RuntimeError("Duplicate process function action")
+_OPCODE_KINDS = {bytes.fromhex(code): kind for kind, code in CODES.items()}
+if len(_OPCODE_KINDS) != len(CODES):
+    raise RuntimeError("Duplicate process function opcode")
+if not (FIELDS.keys() == CONTROLS.keys() == CODES.keys() == STATUS.keys()):
+    raise RuntimeError("Incomplete process function metadata")
+
+
 def ramp2_span(name: str, count: int = 1) -> set[str]:
     # OR bank encoding inferred from the R3904 anchor, scoped to FUN98.
     if name.startswith("R") and name[1:].isdigit() and 3904 <= int(name[1:]) <= 3967:
@@ -125,18 +144,8 @@ def compile_process(action: "ProcessFunction") -> bytes:
     raw += bytes.fromhex(CODES[action.type])
     if action.type in {"ramp", "ramp2"}:
         raw += b"\x00\x00"  # Reserved/sample form selector: never infer other modes.
-    if action.type in conversion_functions.CODES:
-        raw += conversion_functions.compile_operands(action)
-    elif action.type in shift_functions.CODES:
-        raw += shift_functions.compile_operands(action)
-    elif action.type in packing_functions.CODES:
-        raw += packing_functions.compile_operands(action)
-    elif action.type in transfer_functions.CODES:
-        raw += transfer_functions.compile_operands(action)
-    elif action.type in matrix_functions.CODES:
-        raw += matrix_functions.compile_operands(action)
-    elif action.type in table_functions.CODES:
-        raw += table_functions.compile_operands(action)
+    if action.type in _OPERAND_CODECS:
+        raw += _OPERAND_CODECS[action.type].compile_operands(action)
     elif action.type == "table_to_reg":
         assert action.length is not None
         raw += encode_register(action.operand("source"))
@@ -204,7 +213,7 @@ def decode_process(payload: bytes) -> "Network | None":
     from .ir import Network, ProcessFunction, decode_status_coils, decode_two_inputs
 
     for i in range(2, len(payload), 2):
-        kind = next((k for k, v in CODES.items() if payload[i : i + 2].hex() == v), None)
+        kind = _OPCODE_KINDS.get(payload[i : i + 2])
         if kind is None:
             continue
         try:
@@ -224,23 +233,8 @@ def decode_process(payload: bytes) -> "Network | None":
                 if tail[:2] != b"\x00\x00":
                     continue
                 tail = tail[2:]
-            if kind in conversion_functions.CODES:
-                operands, size = conversion_functions.decode_operands(kind, tail)
-                fields.update(operands)
-            elif kind in shift_functions.CODES:
-                operands, size = shift_functions.decode_operands(kind, tail)
-                fields.update(operands)
-            elif kind in packing_functions.CODES:
-                operands, size = packing_functions.decode_operands(kind, tail)
-                fields.update(operands)
-            elif kind in transfer_functions.CODES:
-                operands, size = transfer_functions.decode_operands(kind, tail)
-                fields.update(operands)
-            elif kind in matrix_functions.CODES:
-                operands, size = matrix_functions.decode_operands(kind, tail)
-                fields.update(operands)
-            elif kind in table_functions.CODES:
-                operands, size = table_functions.decode_operands(kind, tail)
+            if kind in _OPERAND_CODECS:
+                operands, size = _OPERAND_CODECS[kind].decode_operands(kind, tail)
                 fields.update(operands)
             elif kind == "table_to_reg":
                 fields.update(

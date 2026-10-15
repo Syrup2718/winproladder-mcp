@@ -72,7 +72,7 @@ def parse(data: bytes, *, strict_crc: bool = True) -> Document:
     while True:
         if offset >= len(data):
             raise LdrError(f"Missing footer at 0x{offset:X}")
-        if data[offset:] in {b"\x12", b"\xff"}:
+        if len(data) - offset == 1 and data[offset] in {0x12, 0xFF}:
             raise LdrError(f"Truncated marker at 0x{offset:X}")
         if data[offset : offset + 2] == b"\xff\xff":
             if data[offset : offset + 6] != FOOTER:

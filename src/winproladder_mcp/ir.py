@@ -79,6 +79,7 @@ from .logic import (
     parse_expression,
 )
 from .peripheral import bit_span, decode_peripheral_word, peripheral_word, peripheral_words
+from .profiles import HeaderProfile as HeaderProfile
 from .registers import (
     comparison_word_references,
     decode_comparison_word,
@@ -1350,23 +1351,6 @@ class Network(Model):
         ]
         | None
     ) = None
-
-
-HeaderProfile = Literal[
-    "FBs-40MC-test27",
-    "HB1-32M-test23",
-    "FB-28MA-test22",
-    "FBe-40MC-test21",
-    "FBe-20MA-test19",
-    "FBn-26MC-test17",
-    "FBs-60MC-test16",
-    "FBs-20MC",
-    "FBs-24MA",
-    "FBs-24MA-test7",
-    "FBs-32MA-test11",
-    "FBs-40MA-test12",
-    "FBs-44MN-test13",
-]
 
 
 class Ladder(Model):

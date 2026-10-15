@@ -52,6 +52,7 @@ uv run python -m mypy src
 
 ## 架構
 
+- `profiles.py`：集中定義 HeaderProfile、原始樣本檔頭及精確反向識別；service／ir 保留既有匯入介面。
 - `ldr.py`：容器解析、CRC 與 Record；`research.py`：原始差分檢查。
 - `logic.py` / `ir.py`：條件 AST、語意 IR、原始編解碼。
 - `instruction_catalog.py`：獨立樣本 payload 與 opcode 表，按樣本順序集中管理。
@@ -104,3 +105,5 @@ uv run python scripts/generate_design_examples.py --root . --prefix custom
 `shift_functions.py`集中FUN50～57：BDIST動態byte跨度、移位／旋轉N形式、Gray單word與DECOD跨word／bank末端截取分析。
 
 `conversion_functions.py`集中FUN06及58～64：ENCOD跨word、顯示／ASCII保留資料、時間多word轉換及精確ASC字串區塊。
+
+功能家族的 operand 編解碼由 `process_functions.py` 共用分派表選取；opcode 使用 bytes 索引，新增時會檢查重複 action／opcode 及缺少的 metadata。新增家族需加入 `_OPERAND_MODULES` 與四份 metadata 表，保持編碼和解碼使用同一個模組。
