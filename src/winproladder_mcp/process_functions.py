@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING
 from . import (
     conversion_functions,
     matrix_functions,
+    memory_functions,
     packing_functions,
+    pulse_functions,
     shift_functions,
     table_functions,
     transfer_functions,
@@ -22,6 +24,8 @@ if TYPE_CHECKING:
     from .ir import Network, ProcessFunction
 
 FIELDS = {
+    **pulse_functions.FIELDS,
+    **memory_functions.FIELDS,
     **conversion_functions.FIELDS,
     **shift_functions.FIELDS,
     **packing_functions.FIELDS,
@@ -38,6 +42,8 @@ FIELDS = {
     "table_swap": ("source", "destination"),
 }
 CONTROLS = {
+    **pulse_functions.CONTROLS,
+    **memory_functions.CONTROLS,
     **conversion_functions.CONTROLS,
     **shift_functions.CONTROLS,
     **packing_functions.CONTROLS,
@@ -54,6 +60,8 @@ CONTROLS = {
     "table_swap": ("enable",),
 }
 CODES = {
+    **pulse_functions.CODES,
+    **memory_functions.CODES,
     **conversion_functions.CODES,
     **shift_functions.CODES,
     **packing_functions.CODES,
@@ -70,6 +78,8 @@ CODES = {
     "table_swap": "f4c2",
 }
 STATUS = {
+    **pulse_functions.STATUS,
+    **memory_functions.STATUS,
     **conversion_functions.STATUS,
     **shift_functions.STATUS,
     **packing_functions.STATUS,
@@ -92,6 +102,8 @@ _OPERAND_MODULES = (
     conversion_functions,
     shift_functions,
     packing_functions,
+    pulse_functions,
+    memory_functions,
     transfer_functions,
     matrix_functions,
     table_functions,

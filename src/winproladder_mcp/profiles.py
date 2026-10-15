@@ -3,6 +3,8 @@
 from typing import Literal
 
 HeaderProfile = Literal[
+    "FBs-32MC-test30",
+    "FBs-32MN-test29",
     "FBs-40MC-test27",
     "HB1-32M-test23",
     "FB-28MA-test22",
@@ -19,6 +21,8 @@ HeaderProfile = Literal[
 ]
 
 _PROFILE_DATA: dict[HeaderProfile, tuple[str, str]] = {
+    "FBs-32MC-test30": ("FBs-32MC", "4040"),
+    "FBs-32MN-test29": ("FBs-32MN", "4040"),
     "FBs-20MC": ("FBs-20MC", "4040"),
     "FBs-24MA": ("FBs-24MA", "1045"),
     "FBs-24MA-test7": ("FBs-24MA", "1040"),

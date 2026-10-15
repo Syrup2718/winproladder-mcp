@@ -15,7 +15,9 @@ def compile_analog(action: "AnalogConversion | BitAccess | SampleFlow") -> bytes
     from .ir import AnalogConversion, SampleFlow, compile_coils
 
     if isinstance(action, SampleFlow):
-        return bytes.fromhex(FLOW[action.type])
+        if action.type == "lbl":
+            return encode_label(action.target)
+        return bytes.fromhex("4fe8f78ca7fe1c0000000000" if action.target == "8" else FLOW["jmp"])
     raw = compile_expression(parse_expression(action.enable))
     if isinstance(action, AnalogConversion):
         raw += compile_expression(parse_expression(action.selector), nested=True)
@@ -55,6 +57,22 @@ def decode_analog(payload: bytes) -> "Network | None":
         decode_two_inputs,
     )
 
+    if len(payload) == 8 and payload[0] == 0xEF:
+        try:
+            chars = [payload[1]]
+            for i in (2, 4, 6):
+                word = int.from_bytes(payload[i : i + 2], "big")
+                chars.extend((word >> 7, word & 127))
+            target = bytes(chars).rstrip(b"\x00").decode("ascii")
+            label = SampleFlow(type="lbl", target=target)
+            if encode_label(target) == payload:
+                return Network(action=label)
+        except (ValueError, UnicodeError):
+            return None
+    for kind in FLOW:
+        candidate = SampleFlow.model_validate({"type": kind, "target": "8"})
+        if compile_analog(candidate) == payload:
+            return Network(action=candidate)
     for kind, raw in FLOW.items():
         if payload.hex() == raw:
             return Network(action=SampleFlow.model_validate({"type": kind}))
@@ -123,3 +141,13 @@ def decode_analog(payload: bytes) -> "Network | None":
         except ValueError:
             continue
     return None
+
+
+def encode_label(target: str) -> bytes:
+    """First ASCII byte, then pairs of seven-bit characters in big-endian words."""
+    data = target.encode("ascii").ljust(7, b"\x00")
+    return (
+        b"\xef"
+        + data[:1]
+        + b"".join(((data[i] << 7) | data[i + 1]).to_bytes(2, "big") for i in (1, 3, 5))
+    )

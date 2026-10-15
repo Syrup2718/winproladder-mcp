@@ -29,6 +29,7 @@ def resources(spec: ControlSpec) -> dict[str, int]:
         if spec.kind == "star_delta"
         else int(spec.kind in {"on_delay", "off_delay", "pulse"}),
         "counter": int(spec.kind == "counter"),
+        "register_base": 2 if spec.kind in {"off_delay", "pulse", "star_delta"} else 0,
     }
 
 
@@ -47,7 +48,7 @@ def system_ladder(spec: SystemSpec) -> tuple[Ladder, dict[str, Any]]:
     networks = []
     symbols = {}
     designs = []
-    limits = {"output": 253, "memory": 250, "timer": 48, "counter": 255}
+    limits = {"output": 253, "memory": 250, "timer": 48, "counter": 255, "register_base": 3838}
     for control in spec.controls:
         allocated = {}
         for name, width in resources(control).items():

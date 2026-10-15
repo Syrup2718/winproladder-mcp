@@ -13,10 +13,12 @@ def design_guide() -> dict[str, Any]:
             "default_policy": "Physical signal/output required; no automatic X/Y assignment.",
         },
         "workflow": [
+            "test30: lbl target is 1..6 ASCII alphanumeric characters; longer names inferred. "
+            "This does not provide arbitrary JMP/CALL targets. "
             "test27: encode_bits count is NL points 2..256, unlike DECOD bit_length. "
             "to_seven_segment count 0..3 means N+1 digits. hms_to_seconds reads S seconds, "
             "S+1 minutes, S+2 hours and writes two words; seconds_to_hms reverses this. "
-            "ascii_literal text currently requires ABCDEF; do not substitute another string. "
+            "ascii_literal supports 1..12 ASCII letters/digits/spaces; test27/28 packing. "
             "ascii_to_hex/hex_to_ascii count 1..511, preserving unused destination portions. "
             "bit_shift has four independent controls; CLR has priority even when EN is false.",
             "test26: byte_distribute uses runtime length_register in bytes (max 256), "
@@ -60,7 +62,8 @@ def design_guide() -> dict[str, Any]:
             "WR conflicts; test20 R15..R17 overlap means generate separate candidates.",
             "test19: accumulative_timer uses timing=TIM, enable=EN, unit_ms=10/100/1000, "
             "cv=T/R/D and pv=R/D register. TIM pauses; EN=0 clears. No constant PV codec "
-            "or high-level sequence integration/runtime simulation. tpctl uses output=Yn, "
+            "for constants. Direct R/D timer simulation and native sequence pause are "
+            "supported. tpctl uses output=Yn, "
             "start=Sn, zones=Zn, heat_cool=H/C; verify all Zn outputs and parameter words, "
             "9 exclusive WR words. Md and actual temperature source unresolved. "
             "CALL is decode-only; never generate unresolved target anchors. "
@@ -121,27 +124,29 @@ def design_guide() -> dict[str, Any]:
             "test10 adds exclusive_logic (xor/xnr), zone_compare and word_conversion. "
             "T operands are numeric values, not contacts. WX0/WY0 are 16-bit I/O groups; "
             "include every X0..15/Y0..15 in the contract only when that word was requested. "
-            "No runtime simulation for these functions. to_bcd currently accepts constants only.",
+            "Direct R/D forms have a bounded scan model; packed I/O and T words do not. "
+            "to_bcd accepts constants only.",
             "Use native difu/difd actions with trigger and Y/M destination. "
             "Do not replace the function block with synthesized M helpers.",
             "Native increment/decrement, compare and bitwise actions are supported from test8. "
             "MC/MCE and 07P.UDCTR are supported from test9, with no built-in runtime simulation. "
             "Respect the workspace policy even for implicit M dependencies through MC regions.",
             "FUN11..14 use arithmetic actions: register Sa and nonnegative immediate Sb only. "
-            "MUL/DIV write D and D+1; reserve both. No arithmetic runtime acceptance available.",
+            "MUL/DIV write D and D+1; reserve both. Direct R/D runtime acceptance is available.",
             "Native edge networks can pulse Y/M directly without helper M contacts. "
             "Only isolated X rising/falling contacts; model starts from initial/FALSE.",
-            "For independent controls use generate_system_ldr to allocate internal M/T/C only.",
+            "For independent controls use generate_system_ldr to allocate internal M/T/C "
+            "and register_base ranges.",
             "Copy user-specified X/Y into mandatory io_contract; never add missing hardware. "
             "Use native T for timed sequences. Retentive FUN87/88/89 register-PV codec "
-            "is available only through low-level IR.",
+            "is integrated into native sequence pause/resume.",
             "For common controls use generate_control_ldr and its resolved defaults. "
             "For custom logic use generate_ldr. Do not claim any draft is ready for machinery.",
             "Interpret the user's natural-language requirements into the ladder schema below.",
             "Use AND/OR/NOT conditions; do not ask users for JSON or binary samples.",
             "Resolve input polarity and state intended behavior; examples are only patterns.",
             "Simulate Boolean startup, hold, reset and simultaneous-input cases.",
-            "Pass executable acceptance cases to generate_ldr for Boolean programs; "
+            "Pass executable Boolean/register acceptance cases to generate_ldr; "
             "a failed case prevents file creation.",
             "Call generate_ldr for a file; inferred encodings are enabled automatically.",
             "Return file links and verification status. No PLC runtime verification is implied.",
@@ -150,8 +155,7 @@ def design_guide() -> dict[str, Any]:
         "sequence_generation": {
             "tool": "generate_sequence_ldr",
             "policy": "Generate a candidate with assumptions, not a deployment-ready safety claim.",
-            "pause": "High-level native pause rejected: FUN87/88/89 codec not integrated "
-            "into sequences. "
+            "pause": "Native pause uses FUN87 TIM/EN with register state; no relay copy chains. "
             "Explicit external pulse counting is supported only if requested by the user.",
             "example_spec": {
                 "requirement": "Fill, mix, drain using native T timers",
@@ -188,7 +192,8 @@ def design_guide() -> dict[str, Any]:
         "timed_acceptance": {
             "usage": "Use scan_ms per acceptance case, or in simulate_ladder, for T/C programs.",
             "limits": "Reset-start T/C model, preset 0..32767, default .01s T0..T49 only; "
-            "one writer per block; no register/loop execution or hardware timing guarantees.",
+            "one writer per block; direct R/D arithmetic, comparisons, DIFU/DIFD, TOGG and "
+            "accumulative timers are modeled. No loops or hardware timing guarantees.",
             "on_delay_3_seconds_while_x0": [
                 {
                     "name": "3 second enable then reset",

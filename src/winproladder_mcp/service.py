@@ -59,6 +59,15 @@ class Service:
             enforce_architecture(ladder, policy) if enforce else architecture_report(ladder, policy)
         )
 
+    def check_layout(self, layout: dict[str, Any]) -> None:
+        if load_policy(self.root).forbid_m_to_m and layout["helper_devices"]:
+            raise ValueError(
+                "Workspace architecture forbids automatically lowered relay helpers; no "
+                "file written. "
+                "This condition requires an unsampled connected branch encoding; simplify the "
+                "condition or use supported native instructions, never disguised relay chains."
+            )
+
     def write(self, name: str, document: Document) -> dict[str, Any]:
         # Basename only: no caller-controlled directory traversal or overwrites.
         if (
@@ -276,6 +285,7 @@ class Service:
         check_io(source_devices, contract)
         lowered, layout = lower_ladder(ladder)
         self.architecture(lowered)
+        self.check_layout(layout)
         ladder = lowered
         result = validation(ladder)
         if not result["valid"]:
@@ -420,7 +430,10 @@ class Service:
                 raise ValueError("Cannot allocate helpers safely with opaque networks")
             known = [n for n in context if n is not None]
             reserved = memory_used(Ladder(networks=known)) if known else set()
-            lowered, _ = lower_ladder(Ladder(networks=[network]), reserved)
+            self.architecture(Ladder(networks=[network]))
+            lowered, edit_layout = lower_ladder(Ladder(networks=[network]), reserved)
+            self.architecture(lowered)
+            self.check_layout(edit_layout)
             replacement = [Record.create(compile_network(n)) for n in lowered.networks]
             records[index : index + (operation == "replace")] = replacement
         if len(records) > 1000:
