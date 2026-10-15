@@ -11,6 +11,9 @@ from winproladder_mcp.control import ControlKind
 
 
 def test_release_verifier_delivers_all_recipes_and_replays_decoded_files(tmp_path):
+    (tmp_path / ".winproladder-policy.json").write_text(
+        '{"forbid_m_to_m":true,"allow_function_m_to_m":true}'
+    )
     script = Path(__file__).resolve().parents[1] / "scripts" / "verify_release.py"
     completed = subprocess.run(
         [sys.executable, str(script), "--root", str(tmp_path)],
@@ -25,7 +28,7 @@ def test_release_verifier_delivers_all_recipes_and_replays_decoded_files(tmp_pat
     manifest = json.loads(manifests[0].read_text(encoding="utf-8"))
     assert manifest["status"] == "passed"
     cases = manifest["cases"]
-    assert len(cases) == 16
+    assert len(cases) == 17
     kinds = {
         case["request"]["arguments"]["spec"]["kind"]
         for case in cases
@@ -33,7 +36,7 @@ def test_release_verifier_delivers_all_recipes_and_replays_decoded_files(tmp_pat
     }
     assert kinds == set(get_args(ControlKind))
     assert {
-        "nested_boolean",
+        "connected_boolean",
         "custom_timer_counter",
         "independent_motors",
         "pause_resume_sequence",
@@ -45,6 +48,6 @@ def test_release_verifier_delivers_all_recipes_and_replays_decoded_files(tmp_pat
         assert all(scenario["passed"] for scenario in case["decoded_behavior"])
         assert case["delivery"]["resource_read"] and case["delivery"]["embedded_download"]
         assert case["gui_import"] == {"status": "pending", "sha256": case["sha256"]}
-    boolean_case = next(case for case in cases if case["id"] == "nested_boolean")
+    boolean_case = next(case for case in cases if case["id"] == "connected_boolean")
     assert boolean_case["decoded_behavior"][0]["scans"] == 128
     assert all(manifest["rejections"].values())

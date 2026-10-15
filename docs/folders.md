@@ -1,6 +1,6 @@
 # 專案目錄
 
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 ## 儲存庫內容
 

@@ -4,7 +4,32 @@ from typing import Any
 
 from . import __version__
 from .design import design_guide
-from .ir import Ladder, block_catalog, start_stop
+from .ir import Ladder, Network, block_catalog, start_stop
+from .runtime import simulation_capabilities
+
+
+def instruction_matrix() -> list[dict[str, Any]]:
+    mapping = Network.model_json_schema()["properties"]["action"]["anyOf"][0]["discriminator"][
+        "mapping"
+    ]
+    modeled = set(simulation_capabilities()["actions"])
+    return [
+        {
+            "action": action,
+            "schema_model": ref.rsplit("/", 1)[-1],
+            "decode": "supported_forms_only",
+            "generate": "decode_only"
+            if action == "call"
+            else "exact_test18_program_only"
+            if action == "jmp"
+            else "supported_forms_subject_to_schema_and_program_validation",
+            "simulation": "bounded_subset" if action in modeled else "not_implemented",
+            "gui_import": "requires_exact_artifact_evidence",
+            "physical_plc": "not_verified",
+            "form_limits": "See instruction details and schema; D/P/indirect forms are not implied",
+        }
+        for action, ref in sorted(mapping.items())
+    ]
 
 
 def capabilities() -> dict[str, Any]:
@@ -12,10 +37,13 @@ def capabilities() -> dict[str, Any]:
         "version": __version__,
         "profile": "Exact sampled headers: FBs-20MC, FBs-24MA (test6), FBs-24MA-test7, "
         "FBs-32MA-test11, FBs-40MA-test12, FBs-44MN-test13, FBs-60MC-test16, FBn-26MC-test17, "
-        "FBe-20MA-test19, FBe-40MC-test21, FB-28MA-test22, HB1-32M-test23; "
+        "FBe-20MA-test19, FBe-40MC-test21, FB-28MA-test22, HB1-32M-test23, "
+        "FBs-40MC-test27, FBs-32MN-test29, FBs-32MC-test30; "
         "the two 24MA variants retain differing unknown metadata",
         "transport": "stdio",
-        "simulation": "Boolean or scan_ms T/C model; max 256 scans, not a PLC emulator",
+        "simulation": "Boolean, direct R/D and native control scan model; not a PLC emulator",
+        "simulation_model": simulation_capabilities(),
+        "instruction_matrix": instruction_matrix(),
         "file_operations": ["inspect", "read", "create", "export", "replace", "insert", "delete"],
         "ir": "Prefer condition Boolean expressions; legacy steps use left-fold semantics.",
         "address_subset": {
@@ -27,7 +55,7 @@ def capabilities() -> dict[str, Any]:
             "C": "0..255",
         },
         "generation": "generate_control_ldr: 11 recipes; generate_sequence_ldr: up to 16 steps, "
-        "native T timing (retentive timing unsupported), optional explicit pulse counting; "
+        "register state, native T or FUN87 pause/resume, optional explicit pulse counting; "
         "generate_system_ldr: independent controls with "
         "internal allocation; generate_ldr: Boolean, native X edges, T/C, register, "
         "arithmetic, LCNV and loop IR.",
@@ -49,13 +77,44 @@ def capabilities() -> dict[str, Any]:
             "compare_ldr: aligned record changes",
         ],
         "native_functions": {
+            "test30_functions": {
+                "actions": "file_register(160), memory_pack_write(161P), memory_pack_read(162), "
+                "system_status(190)",
+                "forms": "R/D direct operands; constant L 1..511 for RWFR, 1..128 for packs. "
+                "Pack bank=1, offset=0; STAT group=0. "
+                "Other documented forms need encoding evidence.",
+                "labels": "LBL 1..6 ASCII alphanumeric characters; A/B1/JY1/1WX observed; "
+                "longer names inferred. JMP/CALL generation restrictions remain.",
+                "references": "Conservative file/STAT bank spans; "
+                "external pack state not enumerated. "
+                "No runtime simulation or PLC verification.",
+                "profile": "FBs-32MC-test30",
+            },
+            "test29_functions": {
+                "labels": "LBL single ASCII digit 0..9. Observed 0..6/8; 7/9 inferred. "
+                "Extended to alphanumeric names by test30; does not unlock JMP/CALL generation.",
+                "ascii": "test29 confirms 12-character digit and letter strings using the "
+                "existing test27/28 literal packing, both R and D destinations.",
+                "profile": "FBs-32MN-test29 exact sampled header",
+            },
+            "test28_functions": {
+                "actions": "pulse_output(81), pwm(82), speed_detect(83); "
+                "text_display(84) decode-only",
+                "limits": "PLSO MD0 non-D, R/D Fr/PC/HO and explicit distinct UY/DY. "
+                "PWM constants To/Tp milliseconds, To<=Tp, Y0..15. SPD X0..7, constant TI ms, "
+                "three writable R/D words. PLSO and PWM each once. TDSP exact sample only, "
+                "dynamic spans unresolved and generation rejected. LBL/JMP/CALL targets 1 and 8 "
+                "recognized; JMP relocation and CALL generation remain unresolved.",
+                "hardware": "Transistor main-unit outputs; actual CPU availability not verified. "
+                "No pulse/speed/display execution simulation.",
+            },
             "test27_functions": {
                 "actions": "bit_shift(06), encode_bits(58), to_seven_segment(59), "
                 "ascii_literal(60), hms_to_seconds(61), seconds_to_hms(62), "
                 "ascii_to_hex(63), hex_to_ascii(64)",
                 "operands": "source/destination; ENCOD source_index=Ns 0..15, count=NL 2..256; "
                 "7SG count=N 0..3 (N+1 digits). HEX/ASCII count=1..511. "
-                "ASC text currently exact ABCDEF only; arbitrary literal encoding unresolved",
+                "ASC: 1..12 ASCII letters/digits/spaces; test27/28 packed literal encoding",
                 "controls_status": "ENCOD enable/high_priority, zero/error; 7SG enable/error; "
                 "SEC enable/zero; HMS enable/zero/overflow; HEX enable/error; "
                 "ASCII and ASC enable only. BSHF enable/input_bit/left/clear and output=OTB",
@@ -65,7 +124,7 @@ def capabilities() -> dict[str, Any]:
                 "HEX N source words -> ceil(N/4) words preserving unused nibbles. "
                 "ASCII ceil(N/4) source words -> N words preserving each high byte. "
                 "BSHF CLR overrides other controls, including EN",
-                "limits": "Sampled non-P direct forms; constant counts, exact ASC ABCDEF. "
+                "limits": "Sampled non-P direct forms; constant counts, ASC letters/digits/spaces. "
                 "Other operand forms, strings, D/P/indirect encodings unresolved. "
                 "Multiword conversions R/D only; BSHF D follows basic-manual max D3071. "
                 "No runtime simulation; new FBs-40MC-test27 header",
@@ -119,7 +178,8 @@ def capabilities() -> dict[str, Any]:
                 "MOV uses basic manual D0..3071; MOV/ IR R3840..3847. Other word banks, "
                 "dynamic lengths, D/P and indirect encoding remain unresolved. "
                 "TOGG Y0..255/M0..999; other legal bit families not yet encoded. "
-                "WY8 writes Y8..Y23, all must be in IO contract. No native runtime simulation",
+                "WY8 writes Y8..Y23, all must be in IO contract. Direct R/D MOV and TOGG "
+                "are modeled; other forms are not",
             },
             "test23_functions": {
                 "actions": "matrix_and(120), matrix_or(121), matrix_xor(122), matrix_xnr(123), "
@@ -200,8 +260,9 @@ def capabilities() -> dict[str, Any]:
                 "Yn spans Zn outputs; SV/OS/PR/IR/DR/OR each Zn words; WR9 exclusive. "
                 "error=ERR, alarm=ALM. Temperature source depends on PLC configuration",
                 "limits": "No constant PV, other timer word banks, TPCTL Md encoding, "
-                "D/P variants or CALL relocation. These are codec limits. No native runtime "
-                "simulation or high-level sequence integration. test19 N002/N005 are allowed "
+                "D/P variants or CALL relocation. These are codec limits. Direct R/D timer scan "
+                "model and native sequence pause are supported; TPCTL is not simulated. "
+                "test19 N002/N005 are allowed "
                 "when allow_function_m_to_m=true; CALL remains generation-blocked "
                 "because its target metadata is unresolved and LBL/RTS are absent",
                 "manual_editions": "Advanced 7-79 allows 32 zones/D4095; older CH20 20-44 "
@@ -365,13 +426,14 @@ def capabilities() -> dict[str, Any]:
                 "words": "R/D banks; T0..255 read-only numeric values; exact WX0 and WY0 only. "
                 "WX0/WY0 expand to X0..15/Y0..15 for I/O contract and overlap checks",
                 "limitations": "Only sampled 16-bit opcode forms; parameter changes inferred. "
-                "No D/P variants, indirect addressing, runtime simulation or GUI verification",
+                "No D/P variants, indirect addressing or GUI verification; bounded direct "
+                "R/D simulation available",
             },
             "test8_functions": {
                 "increment": "FUN15 F496; action type increment, direct R/D destination, EN",
                 "decrement": "FUN16 F498; action type decrement, direct R/D destination, EN",
                 "compare": "FUN17 F46A; register Sa/Sb, EN/U/S, normal equal/greater/less coils; "
-                "preserve unknown 0000 field; no register runtime simulation",
+                "preserve unknown 0000 field; bounded direct R/D runtime model available",
                 "bitwise": "FUN18 AND F4C6 / FUN19 OR F4C8; direct R/D Sa, Sb, destination",
                 "coil_modes": "normal (optionally inverted), set, reset; test8 establishes Y forms",
             },
@@ -379,7 +441,8 @@ def capabilities() -> dict[str, Any]:
                 "mc": "FC88 + number; MCE FC89 + number; unique 0..127 inferred from manual. "
                 "Generation requires matched non-overlapping regions; no MC runtime simulation",
                 "difu_difd": "DIFU F8F6 / DIFD FCF7; trigger expression, Y/M bit destination; "
-                "M control dependencies, including implicit MC gates, cannot drive M destinations",
+                "Native function M results are allowed by allow_function_m_to_m; MC "
+                "execution is not modeled",
                 "udctr": "07P.UDCTR F100; pulse/up/clear Boolean inputs, constant preset 0..32767, "
                 "writable R/D cv; no 32-bit, register preset, CUP wiring or runtime simulation",
                 "branch_encoding": "test9_or preserves E422 two branches of two contacts; "
@@ -404,7 +467,6 @@ def capabilities() -> dict[str, Any]:
                     "P form",
                     "indirect operands",
                     "connected status flags",
-                    "runtime simulation",
                 ],
                 "import_verified": False,
             },

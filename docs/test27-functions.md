@@ -1,8 +1,6 @@
 # test27：FUN06 BSHF 與 FUN58～64 轉換功能
 
-> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
-
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 2026-10-15 原始碼更新，維持0.11.0，不製作安裝包。
 
@@ -34,7 +32,7 @@
 
 ENCOD operand順序為S、D、Ns、NL−1；7SG為S、D、N；HEX／ASCII為N、S、D。HMS在opcode後保留樣本0000選擇欄位，不推定其他值。BSHF輸入依EN、INB、L/R、CLR順序編碼。
 
-**→ASC目前只確認字串ABCDEF。** 實際字串區塊為`0007204221442246000000000000`，並非一般ASCII bytes直接排列。只有一個字串樣本，尚無足夠證據確認字元打包、長度及旗標規則；其他text會明確拒絕，不能宣稱完整1～12字元編碼已支援。仍可改動已確認形式的目的R/D、EN條件，保持ABCDEF原文字串。
+**歷史限制（已由[test28](test28-functions.md)解除）：當時→ASC只確認字串ABCDEF。** 實際字串區塊為`0007204221442246000000000000`，並非一般ASCII bytes直接排列。只有一個字串樣本，尚無足夠證據確認字元打包、長度及旗標規則；其他text會明確拒絕，不能宣稱完整1～12字元編碼已支援。仍可改動已確認形式的目的R/D、EN條件，保持ABCDEF原文字串。
 
 其他指令為樣本非P直接位址與常數Ns／NL／N形式；動態參數、P或適用的D變體、其他word banks及間接位址待補，不代表PLC禁止。單word沿用既有R/D、T、WX0、WY0編碼；多word轉換目前限R/D。BSHF的D範圍按基本手冊7-20採D0～3071，較高D編碼／手冊版本尚未確認。
 
@@ -42,7 +40,7 @@ I/O契約為X0、X1、X5、X6、X11～X14，及WY0涵蓋的Y0～Y15；沒有額�
 
 ## 驗證
 
-MCP重建檔（本機產物：`artifacts/test27_mcp_roundtrip.ldr`）、驗證報告（本機產物：`artifacts/test27_verification.json`）。原始GUI匯出作獨立bytes依據，測試涵蓋四路BSHF、ENCOD高低優先、各狀態腳位、範圍與保留資料、字串／選擇欄位拒絕、完整I/O與三層政策。
+MCP重建檔（本機：`artifacts/test27_mcp_roundtrip.ldr`）、驗證報告（本機：`artifacts/test27_verification.json`）。原始GUI匯出作獨立bytes依據，測試涵蓋四路BSHF、ENCOD高低優先、各狀態腳位、範圍與保留資料、字串／選擇欄位拒絕、完整I/O與三層政策。
 
 未新增獨立PLC執行模型；MCP內建模擬明確拒絕新增指令。新生成檔尚未經GUI匯入或實體PLC驗證。
 

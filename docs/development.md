@@ -1,6 +1,6 @@
 # 開發指南
 
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 ## 目錄
 
@@ -35,7 +35,7 @@ uv run python scripts/verify_release.py --root <新的驗證目錄>
 
 `verify_release.py` 透過真正的 stdio MCP 生成所有控制配方及多控制、暫停流程、自訂條件、Timer/Counter 情境；逐檔檢查 CRC、SHA-256、無損往返、解碼後掃描行為與下載 bytes。也驗證重名不覆蓋、驗收失敗不產檔。每次建立 `artifacts/release-<時間>-<識別碼>/manifest.json`，保留 `.ldr` 與設計紀錄，且將每個檔案的 GUI 匯入狀態明確設為待驗證。GUI 驗證需使用該份 manifest 的檔案及 SHA-256，不以另一份同名檔代替。
 
-`verify_release.py` 使用獨立驗證目錄，避免將本工作區嚴格政策與歷史配方驗收混為一談。
+`verify_release.py` 使用新輸出目錄，遵守指定 root 的現行政策。測試會在 forbid_m_to_m=true、allow_function_m_to_m=true 下驗證所有配方；複雜條件需要自動 helpers 時列為拒絕情境。
 
 ## 安裝包驗證
 

@@ -17,7 +17,7 @@ def compile_thermal(action: "AccumulativeTimer | TemperatureControl | SampleCall
     from .ir import AccumulativeTimer, SampleCall, compile_coils
 
     if isinstance(action, SampleCall):
-        return CALL_ANCHOR
+        return CALL_ANCHOR if action.target == "1" else bytes.fromhex("4fe8f78da7fe1c0000000000")
     if isinstance(action, AccumulativeTimer):
         raw = compile_expression(parse_expression(action.timing))
         raw += compile_expression(parse_expression(action.enable), nested=True)
@@ -47,6 +47,8 @@ def decode_thermal(payload: bytes) -> "Network | None":
         decode_two_inputs,
     )
 
+    if payload == bytes.fromhex("4fe8f78da7fe1c0000000000"):
+        return Network(action=SampleCall(type="call", target="8"))
     if payload == CALL_ANCHOR:
         return Network(action=SampleCall(type="call"))
     for i in range(2, len(payload), 2):

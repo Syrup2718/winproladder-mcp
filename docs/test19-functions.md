@@ -1,8 +1,6 @@
 # test19：積算型計時器與溫控
 
-> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
-
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 版本維持0.11.0，屬未發版原始碼更新，未製作安裝包。
 
@@ -39,14 +37,14 @@ TPCTL的Sn／Zn各佔一byte。以《進階篇應用指令.pdf》7-79檢查：Sn
 
 ## 交付與驗證
 
-試匯入檔（本機產物：`artifacts/test19_timer88_tpctl.ldr`）只包含原N004及N006，參數、接線與位元組保持原樣，使用原FBe-20MA檔頭。這是兩個指令的匯入候選檔，不是含初始化、溫度規劃的完整溫控製程。
+試匯入檔（本機：`artifacts/test19_timer88_tpctl.ldr`）只包含原N004及N006，參數、接線與位元組保持原樣，使用原FBe-20MA檔頭。這是兩個指令的匯入候選檔，不是含初始化、溫度規劃的完整溫控製程。
 
 使用者已澄清：N002的M0→計時器→M250/M251，以及N005的M2→計時器→M22/M1，均屬有意義的function結果，允許生成。工作區新增 `allow_function_m_to_m=true`，保留無意義複製與中繼的禁止規則。完整原檔目前僅因CALL目標未解碼而不能生成。
 
-更新試檔（本機產物：`artifacts/test19_functions_no_call.ldr`）保留原N001～N006，共6網路，包含FOR／NEXT、三種積算計時及TPCTL；所有原接線與參數不變。只排除尚未支援生成的CALL，不是完整副程式測試。
+更新試檔（本機：`artifacts/test19_functions_no_call.ldr`）保留原N001～N006，共6網路，包含FOR／NEXT、三種積算計時及TPCTL；所有原接線與參數不變。只排除尚未支援生成的CALL，不是完整副程式測試。
 
-離線檢查包括7個網路編解碼逐位元組一致、檔頭、CRC、原始雜湊、上下限、WR衝突、雙輸入／狀態政策、完整Y範圍；另由新啟動的MCP stdio程序實際呼叫生成工具並讀回二進位資源。驗證報告見test19_verification.json（本機產物：`artifacts/test19_verification.json`）。
+離線檢查包括7個網路編解碼逐位元組一致、檔頭、CRC、原始雜湊、上下限、WR衝突、雙輸入／狀態政策、完整Y範圍；另由新啟動的MCP stdio程序實際呼叫生成工具並讀回二進位資源。驗證報告見test19_verification.json（本機：`artifacts/test19_verification.json`）。
 
-初次新增功能時完整測試743項通過，Ruff檢查／格式檢查及29個來源檔案的Mypy檢查通過；setup check確認19個MCP工具及既有需求到LDR流程正常。政策澄清後的MCP產檔紀錄另見test19_function_policy_verification.json（本機產物：`artifacts/test19_function_policy_verification.json`），新試檔416 bytes、6網路、無中繼helpers，接線與原樣本逐位元組一致。
+初次新增功能時完整測試743項通過，Ruff檢查／格式檢查及29個來源檔案的Mypy檢查通過；setup check確認19個MCP工具及既有需求到LDR流程正常。政策澄清後的MCP產檔紀錄另見test19_function_policy_verification.json（本機：`artifacts/test19_function_policy_verification.json`），新試檔416 bytes、6網路、無中繼helpers，接線與原樣本逐位元組一致。
 
 沒有獨立PLC執行模型、MCP內建新指令執行模擬、GUI匯入或實體PLC驗證。高階sequence尚未整合積算型計時；新功能透過底層`generate_ldr`使用。

@@ -1,8 +1,17 @@
 # 未發版變更
 
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 目前版本維持0.11.0；[0.11.0版本紀錄](release-0.11.0.md)之後新增下列內容，未製作安裝包。最後安裝包仍為0.10.0。
+
+## test29
+
+核對兩組12字元ASCII，擴充單數字LBL及FBs-32MN檔頭；[驗證紀錄](test29-functions.md)。版本維持0.11.0，未打包。
+
+## 2026-10-15：test28
+
+新增PLSO／PWM／SPD樣本形式，TDSP與標籤8記錄解析；ASC擴充1～12個英數字／空白。完整test28含PWM錯誤設定與未支援生成項目，另提供原樣子集。詳見[test28](test28-functions.md)。未升版、未打包。
+
 
 ## 2026-10-15：GitHub 文件整理
 
@@ -71,3 +80,16 @@
 ## test21
 
 加入 FUN101～104 的16-bit非P、直接R/D與常數L編碼；保留EN／INC／CLR與END／ERR。修正先前test20 CLR一律反相的推論，原始bytes不變。新增FBe-40MC精確檔頭、完整表格資源範圍、測試及文件；不升版、不打包。詳見[test21](test21-functions.md)。
+
+## test30
+
+新增FUN160／161P／162／190樣本形式、英數LBL及FBs-32MC標頭。[範圍與驗證](test30-functions.md)。版本不變，未製作安裝包。
+
+## 2026-10-15：高階產生器與數值驗收修復
+
+- 控制配方改用原生 DIFU/DIFD、TOGG 與 R 狀態；sequence 改用暫存器狀態機，原生 pause 整合 FUN87。
+- SystemSpec 自動配置 register_base 並檢查顯式範圍衝突。
+- 增加直接 R/D 數值與原生控制的有界掃描模型，acceptance 支援嚴格 bool/int 及輸出 bytes 重播。
+- 嚴格政策也拒絕 X-only 自動 helpers；不修改政策內容。
+- capabilities 提供逐 action 能力矩陣，修正過時的積算計時／模擬說明。
+- 完整結果、限制與後續證據見 [修復紀錄](repair-2026-10-15.md)。版本不變，未打包。

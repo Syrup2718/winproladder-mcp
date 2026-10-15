@@ -16,6 +16,9 @@ def test_lossless_roundtrip(path: Path) -> None:
     assert doc.encode() == data
     assert doc.editable
     profile = {
+        "test29.ldr": "FBs-32MN-test29",
+        "test30.ldr": "FBs-32MC-test30",
+        "test28.ldr": "FBs-40MA-test12",
         "test27.ldr": "FBs-40MC-test27",
         "test26.ldr": "FBs-60MC-test16",
         "test25.ldr": "FBs-44MN-test13",

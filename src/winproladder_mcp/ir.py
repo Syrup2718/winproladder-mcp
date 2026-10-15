@@ -768,7 +768,7 @@ class IntegerFunction(Model):
     source: str | None = None
     count: str | Annotated[int, Field(strict=True, ge=1, le=256)] | None = None
     destination: str
-    mode: Literal[1] | None = None
+    mode: Literal[0, 1] | None = None
     zero: list[Coil] = Field(default_factory=list, max_length=32)
     error: list[Coil] = Field(default_factory=list, max_length=32)
 
@@ -979,6 +979,14 @@ class ProcessFunction(Model):
     """Direct-register forms sampled in test20/21; not arbitrary instruction modes."""
 
     type: Literal[
+        "pulse_output",
+        "pwm",
+        "speed_detect",
+        "text_display",
+        "file_register",
+        "memory_pack_write",
+        "memory_pack_read",
+        "system_status",
         "encode_bits",
         "to_seven_segment",
         "ascii_literal",
@@ -1036,6 +1044,24 @@ class ProcessFunction(Model):
         "stack",
         "block_compare",
     ]
+    file_base: str | None = None
+    read_mode: str = "FALSE"
+    bank: Annotated[int, Field(strict=True, ge=0, le=1)] | None = None
+    offset: Annotated[int, Field(strict=True, ge=0, le=32510)] | None = None
+    group: Annotated[int, Field(strict=True, ge=0, le=3)] | None = None
+    frequency: str | None = None
+    pulse_count: str | None = None
+    forward_output: str | None = None
+    reverse_output: str | None = None
+    physical_output: str | None = None
+    physical_input: str | None = None
+    start_register: str | None = None
+    on_ms: Annotated[int, Field(strict=True, ge=0, le=32767)] | None = None
+    period_ms: Annotated[int, Field(strict=True, ge=1, le=32767)] | None = None
+    sample_ms: Annotated[int, Field(strict=True, ge=1, le=32767)] | None = None
+    display_number: Annotated[int, Field(strict=True, ge=0, le=65535)] | None = None
+    display_off: str = "FALSE"
+    display_on: str = "FALSE"
     source_index: Annotated[int, Field(strict=True, ge=0, le=15)] | None = None
     destination_index: Annotated[int, Field(strict=True, ge=0, le=15)] | None = None
     count: Annotated[int, Field(strict=True, ge=0, le=511)] | None = None
@@ -1068,7 +1094,7 @@ class ProcessFunction(Model):
     found: list[Coil] = Field(default_factory=list, max_length=32)
     empty_flag: list[Coil] = Field(default_factory=list, max_length=32)
     full: list[Coil] = Field(default_factory=list, max_length=32)
-    mode: Literal[1] | None = None
+    mode: Literal[0, 1] | None = None
     pulse: Literal[True] | None = None
     source: str | None = None
     work: str | None = None
@@ -1100,6 +1126,8 @@ class ProcessFunction(Model):
     def work_devices(self) -> set[str]:
         from .process_functions import ramp2_span
 
+        if self.type == "memory_pack_write":
+            return register_span(self.operand("work"), 2, writable=True)
         if self.type == "ascwr":
             return register_span(self.operand("work"), 8)
         if self.type == "ramp":
@@ -1113,13 +1141,19 @@ class ProcessFunction(Model):
         from . import (
             conversion_functions,
             matrix_functions,
+            memory_functions,
             packing_functions,
+            pulse_functions,
             shift_functions,
             transfer_functions,
         )
         from .process_functions import FIELDS
         from .table_functions import CODES, references
 
+        if self.type in memory_functions.CODES:
+            return memory_functions.references(self)[0]
+        if self.type in pulse_functions.CODES:
+            return pulse_functions.references(self)[0]
         if self.type in conversion_functions.CODES:
             return conversion_functions.references(self)[0]
         if self.type in shift_functions.CODES:
@@ -1152,12 +1186,18 @@ class ProcessFunction(Model):
         from . import (
             conversion_functions,
             matrix_functions,
+            memory_functions,
             packing_functions,
+            pulse_functions,
             shift_functions,
             transfer_functions,
         )
         from .table_functions import CODES, references
 
+        if self.type in memory_functions.CODES:
+            return memory_functions.references(self)[1]
+        if self.type in pulse_functions.CODES:
+            return pulse_functions.references(self)[1]
         if self.type in conversion_functions.CODES:
             return conversion_functions.references(self)[1]
         if self.type in shift_functions.CODES:
@@ -1187,11 +1227,26 @@ class ProcessFunction(Model):
 
     @model_validator(mode="after")
     def check(self) -> "ProcessFunction":
-        from . import conversion_functions, packing_functions, shift_functions, transfer_functions
+        from . import (
+            conversion_functions,
+            memory_functions,
+            packing_functions,
+            pulse_functions,
+            shift_functions,
+            transfer_functions,
+        )
         from .matrix_functions import CODES as MATRIX_CODES
         from .process_functions import CONTROLS, FIELDS, STATUS, ramp2_span
         from .table_functions import CODES, output_bits
 
+        if self.type in memory_functions.CODES:
+            memory_functions.check_parameters(self)
+        elif any(getattr(self, name) is not None for name in ("bank", "offset", "group")):
+            raise ValueError("Memory-specific parameters on another function")
+        if self.type in pulse_functions.CODES:
+            pulse_functions.check_parameters(self)
+        elif any(getattr(self, name) is not None for name in pulse_functions.SCALARS):
+            raise ValueError("Pulse-specific parameters on another function")
         if self.type not in conversion_functions.CODES and self.text is not None:
             raise ValueError(f"{self.type} has no literal text")
         if self.type in conversion_functions.CODES:
@@ -1206,7 +1261,11 @@ class ProcessFunction(Model):
         for name in set().union(*map(set, FIELDS.values())):
             if name in required:
                 value = self.operand(name)
-                if self.type in conversion_functions.CODES:
+                if self.type in memory_functions.CODES:
+                    memory_functions.operand_check(self.type, name, value)
+                elif self.type in pulse_functions.CODES:
+                    pulse_functions.operand_check(self.type, name, value)
+                elif self.type in conversion_functions.CODES:
                     conversion_functions.operand_check(self.type, name, value)
                 elif self.type in shift_functions.CODES:
                     shift_functions.operand_check(self.type, name, value)
@@ -1229,7 +1288,9 @@ class ProcessFunction(Model):
         if self.type == "ascwr":
             if self.mode != 1 or self.pulse is not True:
                 raise ValueError("ASCWR codec currently supports sampled 94P MD=1 only")
-        elif self.mode is not None or self.pulse is not None:
+        elif self.type not in (pulse_functions.CODES | memory_functions.CODES) and (
+            self.mode is not None or self.pulse is not None
+        ):
             raise ValueError("Unencoded mode/pulse form for this function")
         if (
             self.type
@@ -1238,6 +1299,7 @@ class ProcessFunction(Model):
                 | set(CODES)
                 | (set(MATRIX_CODES) - {"matrix_invert"})
                 | set(transfer_functions.LENGTHS)
+                | set(memory_functions.LENGTHS)
             )
         ) != (self.length is not None):
             raise ValueError("Table functions require constant length; other functions have none")
@@ -1252,7 +1314,10 @@ class ProcessFunction(Model):
                 low, high = transfer_functions.LENGTHS[self.type]
                 if not low <= self.length <= high:
                     raise ValueError(f"{self.type} length must be {low}..{high}")
-            if self.type not in {"block_compare", "zone_write"} and self.length < 2:
+            if (
+                self.type not in ({"block_compare", "zone_write"} | set(memory_functions.LENGTHS))
+                and self.length < 2
+            ):
                 raise ValueError("Table length must be at least 2")
             if self.type in (set(CODES) | set(MATRIX_CODES)) and self.length > 256:
                 raise ValueError(
@@ -1278,7 +1343,7 @@ class ProcessFunction(Model):
         self.source_devices()
         if self.type == "reg_to_table":
             register_span(self.operand("pointer"), 1, writable=True)
-        if self.work_devices() & self.source_devices():
+        if self.type != "memory_pack_write" and self.work_devices() & self.source_devices():
             raise ValueError("Exclusive function work area overlaps source operands")
         return self
 
@@ -1287,14 +1352,20 @@ class SampleCall(Model):
     """Forensic anchor only: unresolved relocation bytes, generation rejected."""
 
     type: Literal["call"]
-    target: Literal["1"] = "1"
+    target: Literal["1", "8"] = "1"
 
 
 class SampleFlow(Model):
-    """Exact test18 label/jump pair, not a general relocated jump compiler."""
+    """Alphanumeric labels; JMP retains only the observed target records."""
 
     type: Literal["lbl", "jmp"]
-    target: Literal["1"] = "1"
+    target: Annotated[str, Field(pattern=r"^[A-Za-z0-9]{1,6}$", min_length=1, max_length=6)] = "1"
+
+    @model_validator(mode="after")
+    def check(self) -> "SampleFlow":
+        if self.type == "jmp" and self.target not in {"1", "8"}:
+            raise ValueError("JMP target encoding remains limited to observed 1/8 records")
+        return self
 
 
 class Network(Model):
@@ -2633,9 +2704,11 @@ def validation(ladder: Ladder) -> dict[str, object]:
                     TEST25_PAYLOADS,
                     TEST26_PAYLOADS,
                     TEST27_PAYLOADS,
+                    TEST28_PAYLOADS,
                 )
                 from .matrix_functions import CODES as MATRIX_CODES
                 from .packing_functions import CODES as PACKING_CODES
+                from .pulse_functions import CODES as PULSE_CODES
                 from .shift_functions import CODES as SHIFT_CODES
                 from .table_functions import CODES as TABLE22_CODES
                 from .transfer_functions import CODES as TRANSFER_CODES
@@ -2666,6 +2739,9 @@ def validation(ladder: Ladder) -> dict[str, object]:
                 if network.action.type in CONVERSION_CODES:
                     anchors = TEST27_PAYLOADS
                     evidence_name = "test27"
+                if network.action.type in PULSE_CODES or payload.hex() == TEST28_PAYLOADS[7]:
+                    anchors = TEST28_PAYLOADS
+                    evidence_name = "test28"
                 observed20 = next((i for i, raw in anchors.items() if payload.hex() == raw), None)
                 instruction_evidence.append(
                     {
@@ -2854,16 +2930,81 @@ def validation(ladder: Ladder) -> dict[str, object]:
                 )
         except ValueError as error:
             errors.append(f"N{index:03}: {error}")
+    from .instruction_catalog import TEST28_PAYLOADS, TEST29_PAYLOADS, TEST30_PAYLOADS
+
+    for evidence in instruction_evidence:
+        idx = evidence["network_index"]
+        if isinstance(idx, int) and isinstance(
+            ladder.networks[idx].action, (SampleFlow, SampleCall)
+        ):
+            encoded = compile_network(ladder.networks[idx]).hex()
+            observed28 = next((i for i, raw in TEST28_PAYLOADS.items() if raw == encoded), None)
+            if observed28 is not None:
+                evidence.update(status="observed_export", source=f"test28.ldr N{observed28:03}")
+    for evidence in instruction_evidence:
+        idx = evidence["network_index"]
+        if isinstance(idx, int):
+            encoded = compile_network(ladder.networks[idx]).hex()
+            observed29 = next((i for i, raw in TEST29_PAYLOADS.items() if raw == encoded), None)
+            if observed29 is not None:
+                evidence.update(status="observed_export", source=f"test29.ldr N{observed29:03}")
+    for evidence in instruction_evidence:
+        idx = evidence["network_index"]
+        if isinstance(idx, int):
+            encoded = compile_network(ladder.networks[idx]).hex()
+            observed30 = next((i for i, raw in TEST30_PAYLOADS.items() if raw == encoded), None)
+            if observed30 is not None:
+                evidence.update(status="observed_export", source=f"test30.ldr N{observed30:03}")
+            elif isinstance(ladder.networks[idx].action, ProcessFunction):
+                from .memory_functions import CODES as MEMORY_CODES
+
+                memory_action = ladder.networks[idx].action
+                if (
+                    isinstance(memory_action, ProcessFunction)
+                    and memory_action.type in MEMORY_CODES
+                ):
+                    evidence.update(status="inferred_variant", source="test30 + manual 7-137..150")
     if any(isinstance(n.action, SampleCall) for n in ladder.networks):
         errors.append(
-            "CALL 1 target metadata unresolved (manual 7-61); test19 has no "
-            "LBL 1 / RTS. Anchor is decode-only; generation is not supported"
+            "CALL target metadata unresolved (manual 7-61); samples lack a complete "
+            "LBL / RTS subroutine. Anchor is decode-only; generation is not supported"
         )
+    for hardware_kind in ("pulse_output", "pwm"):
+        if (
+            sum(
+                isinstance(n.action, ProcessFunction) and n.action.type == hardware_kind
+                for n in ladder.networks
+            )
+            > 1
+        ):
+            errors.append(f"{hardware_kind} may only appear once (manual 7-75..76)")
+    for i, n in enumerate(ladder.networks):
+        if isinstance(n.action, ProcessFunction):
+            if (
+                n.action.type == "pwm"
+                and n.action.on_ms is not None
+                and n.action.period_ms is not None
+                and n.action.on_ms > n.action.period_ms
+            ):
+                errors.append(f"N{i:03}: PWM To exceeds Tp; PLC would assert ERR (manual 7-76)")
+            if n.action.type == "text_display":
+                errors.append(
+                    f"N{i:03}: TDSP dynamic Ns/Nl footprint unresolved (manual 7-78); decode-only"
+                )
     flow = [n.action for n in ladder.networks if isinstance(n.action, SampleFlow)]
     if flow:
         from .instruction_catalog import TEST18_PAYLOADS
 
         labels = [a.target for a in flow if a.type == "lbl"]
+        reserved = {"HSTAI", "ATMRI"}
+        reserved |= {f"{n}MS{suffix}" for n in (1, 2, 3, 4, 5, 10, 50, 100) for suffix in ("", "I")}
+        reserved |= {f"HSC{n}I" for n in range(8)}
+        reserved |= {f"{prefix}{n}I" for prefix in ("HST", "PSO") for n in range(4)}
+        reserved |= {f"INT{n}" for n in range(16)}
+        if any(label.upper() in reserved for label in labels):
+            errors.append(
+                "Reserved interrupt LBL requires an interrupt routine/RTI, not yet encoded (7-59)"
+            )
         if len(labels) != len(set(labels)):
             errors.append("Duplicate LBL target")
         if any(a.type == "jmp" and a.target not in labels for a in flow):
@@ -2891,6 +3032,13 @@ def validation(ladder: Ladder) -> dict[str, object]:
             if isinstance(n15.action, (PeripheralIO, PID, TemperatureControl, ProcessFunction)):
                 for word15 in sorted(n15.action.work_devices()):
                     other15 = (set(refs15[word15]["reads"]) | set(refs15[word15]["writes"])) - {i15}
+                    uncertain_stat = {
+                        j
+                        for j in other15
+                        if isinstance(ladder.networks[j].action, ProcessFunction)
+                        and getattr(ladder.networks[j].action, "type", None) == "system_status"
+                    }
+                    other15 -= uncertain_stat
                     if other15:
                         errors.append(
                             f"N{i15:03}: exclusive WR {word15} also used by "
@@ -2949,6 +3097,17 @@ def validation(ladder: Ladder) -> dict[str, object]:
             "test21: sampled 16-bit non-P table functions, constant L, direct R/D operands. "
             "No built-in execution simulation, GUI import or PLC verification."
         )
+    if any(
+        isinstance(n.action, ProcessFunction)
+        and n.action.type
+        in {"system_status", "file_register", "memory_pack_write", "memory_pack_read"}
+        for n in ladder.networks
+    ):
+        warnings.append(
+            "test30: STAT may overlap other registers/work areas; actual module count required. "
+            "File/pack pointer bounds are runtime-dependent. Conservative references, "
+            "no execution simulation, GUI import or PLC verification."
+        )
     from .table_functions import CODES as TABLE22_CODES
 
     if any(
@@ -2968,7 +3127,8 @@ def validation(ladder: Ladder) -> dict[str, object]:
     ):
         warnings.append(
             "test27: ENCOD NL counts points; 7SG N means N+1 digits. "
-            "ASC supports exact ABCDEF literal only. SEC/HMS use seconds, minutes, hours "
+            "ASC supports 1..12 ASCII letters/digits/spaces (packing inferred from test27/28). "
+            "SEC/HMS use seconds, minutes, hours "
             "word order. HEX/ASCII and odd-digit 7SG preserve unused destination portions. "
             "BSHF CLR overrides EN; no independent or built-in execution model, "
             "GUI or PLC verification."

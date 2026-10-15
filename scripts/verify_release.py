@@ -263,23 +263,19 @@ def release_cases() -> list[dict[str, Any]]:
     ]
     truth_expected = []
     for state in truth_inputs:
-        value = (
-            (state["X0"] or state["X1"])
-            and (state["X2"] or state["X3"])
-            and not (state["X4"] and (state["X5"] or state["X6"]))
-        )
+        value = state["X0"] and any(state[f"X{i}"] for i in range(1, 7))
         truth_expected.append({"Y0": value, "Y1": not value})
-    requirement = "Nested permissives and inhibit condition, with normal and inverted outputs."
+    requirement = "Connected permissives with normal and inverted outputs."
     cases.append(
         {
-            "id": "nested_boolean",
+            "id": "connected_boolean",
             "requirement": requirement,
             "tool": "generate_ldr",
             "arguments": {
                 "ladder": {
                     "networks": [
                         {
-                            "condition": "(X0 OR X1) AND (X2 OR X3) AND NOT (X4 AND (X5 OR X6))",
+                            "condition": "X0 AND (X1 OR X2 OR X3 OR X4 OR X5 OR X6)",
                             "coils": [{"address": 0}, {"address": 1, "inverted": True}],
                         }
                     ]
@@ -375,6 +371,29 @@ def release_cases() -> list[dict[str, Any]]:
             "inputs": sorted({d for s in scans for d in s["inputs"] if d.startswith("X")}),
             "outputs": sorted({d for s in scans for d in s["expected"] if d.startswith("Y")}),
         }
+    cases.append(
+        {
+            "id": "native_pause_resume",
+            "requirement": "retain elapsed time without an external clock",
+            "tool": "generate_sequence_ldr",
+            "arguments": {
+                "spec": {
+                    "requirement": "native pause",
+                    "start": "X0",
+                    "pause": "X1",
+                    "reset": "X2",
+                    "steps": [{"name": "mix", "outputs": [0], "ticks": 3}],
+                    "tick_ms": 10,
+                },
+                "io_contract": {"inputs": ["X0", "X1", "X2"], "outputs": ["Y0"]},
+                "acceptance": acceptance(
+                    "pause then resume",
+                    [{"X0": True}, {}, {"X1": True}, {}, {}, {"X2": True}],
+                    [{"Y0": v} for v in [True, True, False, True, False, False]],
+                ),
+            },
+        }
+    )
     return cases
 
 
@@ -531,18 +550,19 @@ async def verify_rejections(
             "Undeclared physical I/O: Y72",
         ),
         (
-            "unsupported_retention.ldr",
+            "unsupported_time_resolution.ldr",
             "generate_sequence_ldr",
             {
                 "io_contract": {"inputs": ["X1", "X3"], "outputs": ["Y71"]},
                 "spec": {
-                    "requirement": "pause preserves time",
+                    "requirement": "reject sub-10ms native timing",
+                    "tick_ms": 1,
                     "start": "X1",
                     "pause": "X3",
-                    "steps": [{"name": "pump", "outputs": [71], "ticks": 30}],
+                    "steps": [{"name": "pump", "outputs": [71], "ticks": 1}],
                 },
             },
-            "FUN87/88/89",
+            "multiple of 10 ms",
         ),
     ]:
         rejected = await session.call_tool(tool, {"output_name": name, **arguments})
@@ -556,7 +576,7 @@ async def verify_rejections(
         "failed_acceptance_writes_no_file": True,
         "undeclared_input_rejected": True,
         "undeclared_output_rejected": True,
-        "native_retention_rejected_without_clock_substitution": True,
+        "unsupported_resolution_rejected_without_clock_substitution": True,
     }
 
 

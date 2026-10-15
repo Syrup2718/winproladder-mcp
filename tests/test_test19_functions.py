@@ -203,5 +203,9 @@ def test_no_runtime_simulation_claim(index):
     ladder.networks = [ladder.networks[index]]
     with pytest.raises(ValueError):
         simulate(ladder, [{}], {})
-    with pytest.raises(ValueError):
-        timed_simulate(ladder, [{}], {}, 10)
+    if index in {4, 5}:
+        trace = timed_simulate(ladder, [{}], {}, 10)
+        assert trace[0][ladder.networks[0].action.cv] == 0
+    else:
+        with pytest.raises(ValueError):
+            timed_simulate(ladder, [{}], {}, 10)

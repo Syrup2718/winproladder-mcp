@@ -1,8 +1,6 @@
 # test23：FUN120～127 矩陣指令
 
-> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
-
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 2026-10-14原始碼更新，維持0.11.0，不製作安裝包。
 
@@ -37,7 +35,7 @@ MINV樣本使用R1作為長度暫存器，並未提供R1的運行值。靜態分
 
 ## 驗證
 
-MCP重建檔（本機產物：`artifacts/test23_mcp_roundtrip.ldr`）、驗證報告（本機產物：`artifacts/test23_verification.json`）。實際stdio MCP生成及resource下載後，460 bytes與原檔完全一致。SHA-256：`31642eb09039ab57dd5c3d09491865a24ba6e6266aa92f1452b50be7234faa34`。
+MCP重建檔（本機：`artifacts/test23_mcp_roundtrip.ldr`）、驗證報告（本機：`artifacts/test23_verification.json`）。實際stdio MCP生成及resource下載後，460 bytes與原檔完全一致。SHA-256：`31642eb09039ab57dd5c3d09491865a24ba6e6266aa92f1452b50be7234faa34`。
 
 離線驗證涵蓋原檔bytes、CRC、完整範圍、來源／lowered／decoded政策、I/O契約與四路控制分離。沒有獨立PLC執行模型，MCP內建模擬明確拒絕新矩陣指令；未進行GUI匯入或實體PLC驗證。
 

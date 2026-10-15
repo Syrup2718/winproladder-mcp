@@ -1,8 +1,6 @@
 # test25：FUN42～49 位元搬移、交換與資料組合
 
-> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
-
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 2026-10-14 原始碼更新，維持 0.11.0，不製作安裝包。
 
@@ -45,7 +43,7 @@ WX0／WY0採整word資源契約，包含X0～X15、Y0～Y15；這些來自使用
 
 ## 驗證
 
-MCP重建檔（本機產物：`artifacts/test25_mcp_roundtrip.ldr`）、驗證報告（本機產物：`artifacts/test25_verification.json`）。原始匯出作為獨立bytes依據，測試涵蓋每個網路、控制與狀態變體、完整範圍、錯誤位置／count、動態最大跨度、I/O契約和政策。
+MCP重建檔（本機：`artifacts/test25_mcp_roundtrip.ldr`）、驗證報告（本機：`artifacts/test25_verification.json`）。原始匯出作為獨立bytes依據，測試涵蓋每個網路、控制與狀態變體、完整範圍、錯誤位置／count、動態最大跨度、I/O契約和政策。
 
 沒有新增獨立PLC執行模型；MCP內建模擬明確拒絕新指令。未對新生成檔進行GUI匯入或實體PLC驗證。
 

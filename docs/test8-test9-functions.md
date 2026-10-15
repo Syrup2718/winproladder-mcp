@@ -1,8 +1,6 @@
 # test8／test9 原生 function 編碼
 
-> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
-
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 這兩份資料是**指令格式樣本**。讀取和研究不要求使用者先把範例改成完整控制程式。MCP v0.8.0 已將以下已觀察到的指令接入 `read_ldr`、`generate_ldr`、`modify_network`、`analyze_ldr`；範例參數以外的組合仍標示為外推。
 

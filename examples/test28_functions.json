@@ -1,0 +1,87 @@
+{
+  "profile": "FBs-40MA-test12",
+  "networks": [
+    {
+      "action": {
+        "type": "pulse_output",
+        "frequency": "R0",
+        "pulse_count": "R1",
+        "forward_output": "Y0",
+        "reverse_output": "Y1",
+        "enable": "X0",
+        "pause": "X1",
+        "up": "X2",
+        "mode": 0,
+        "destination": "R5",
+        "active": [
+          {
+            "device": "M",
+            "address": 0
+          }
+        ],
+        "done": [
+          {
+            "device": "M",
+            "address": 1
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "type": "lbl",
+        "target": "8"
+      }
+    },
+    {
+      "action": {
+        "type": "pwm",
+        "physical_output": "Y0",
+        "on_ms": 4096,
+        "period_ms": 100
+      }
+    },
+    {
+      "action": {
+        "type": "jmp",
+        "target": "8"
+      }
+    },
+    {
+      "action": {
+        "type": "speed_detect",
+        "physical_input": "X0",
+        "sample_ms": 1000,
+        "enable": "X10",
+        "destination": "R10"
+      }
+    },
+    {
+      "action": {
+        "type": "call",
+        "target": "8"
+      }
+    },
+    {
+      "action": {
+        "type": "text_display",
+        "start_register": "R3906",
+        "display_number": 1,
+        "display_off": "M0",
+        "display_on": "X12",
+        "length_register": "R3908",
+        "enable": "X11",
+        "mode": 1,
+        "source": "R3904",
+        "destination": "R1000"
+      }
+    },
+    {
+      "action": {
+        "type": "ascii_literal",
+        "text": "SYRUP IS CAT",
+        "destination": "R1234"
+      }
+    }
+  ]
+}

@@ -92,17 +92,29 @@ def test_native_three_and_five_seconds_without_clock_or_snapshot_copies(tmp_path
     assert all(d in result["symbols"] for d in devices(emitted) if d.startswith("M"))
 
 
-def test_native_pause_reports_missing_accumulator_encoding_without_silent_fallback(tmp_path):
+def test_native_pause_preserves_time_without_silent_external_clock(tmp_path):
+    (tmp_path / ".winproladder-policy.json").write_text(
+        '{"forbid_m_to_m":true,"allow_function_m_to_m":true}'
+    )
     spec = SequenceSpec(
         requirement="pause retains elapsed time",
         start="X1",
         pause="X3",
-        steps=[{"name": "pump", "outputs": [71], "ticks": 30}],
+        steps=[{"name": "pump", "outputs": [71], "ticks": 3}],
     )
-    with pytest.raises(ValueError, match="FUN87/88/89"):
-        ladder, design = sequence_ladder(spec)
-        Service(tmp_path).generate_design("must-not-exist.ldr", ladder, design)
-    assert not (tmp_path / "artifacts").exists()
+    ladder, design = sequence_ladder(spec)
+    result = Service(tmp_path).generate_design(
+        "paused.ldr",
+        ladder,
+        design,
+        io_contract=IOContract(inputs=["X1", "X3"], outputs=["Y71"]),
+    )
+    emitted = Ladder.model_validate(Service(tmp_path).read(result["path"])["ladder"])
+    trace = timed_simulate(emitted, [{"X1": True}, {}, {"X3": True}, {}, {}], {}, 100)
+    assert [s["Y71"] for s in trace] == [True, True, False, True, False]
+    assert [s["R2"] for s in trace] == [0, 10, 10, 20, 30]
+    assert design["timing_mode"] == "native_accumulative_10ms"
+    assert not result["layout"]["helper_devices"]
 
 
 def test_mcp_generation_requires_separate_customer_io_contract(tmp_path):

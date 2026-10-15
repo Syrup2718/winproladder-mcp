@@ -204,4 +204,4 @@ def test_missing_output_io(tmp_path):
 
 def test_unknown_jump_or_label_stays_opaque():
     assert decode_network(bytes.fromhex(PAYLOADS[3].replace("a7fe", "a7ff"))) is None
-    assert decode_network(bytes.fromhex("ef32000000000000")) is None
+    assert decode_network(bytes.fromhex("ef32010000000000")) is None

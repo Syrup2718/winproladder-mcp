@@ -128,7 +128,7 @@ def test_runtime_boundary(index):
         (1, "count", 4),
         (1, "count", None),
         (1, "count", True),
-        (2, "text", "ABCDEG"),
+        (2, "text", "ABCDEFGHIJKLM"),
         (2, "text", ""),
         (2, "text", None),
         (2, "destination", "R3838"),
@@ -198,7 +198,7 @@ def test_hex_ascii_full_spans(index, count):
 
 def test_unknown_literal_and_hms_selector_rejected():
     raw = bytes.fromhex(TEST27_PAYLOADS[2])
-    assert decode_network(raw.replace(bytes.fromhex("2042"), bytes.fromhex("2043"))) is None
+    assert decode_network(raw.replace(bytes.fromhex("f4f00007"), bytes.fromhex("f4f00047"))) is None
     raw = bytes.fromhex(TEST27_PAYLOADS[4])
     assert decode_network(raw.replace(bytes.fromhex("f4dd0000"), bytes.fromhex("f4dd0001"))) is None
 

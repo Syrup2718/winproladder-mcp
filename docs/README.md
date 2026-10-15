@@ -2,7 +2,7 @@
 
 [首頁](../README.md) · [功能清單](../FEATURES.md) · [貢獻指南](../CONTRIBUTING.md)
 
-第一次使用請從快速開始閱讀。功能表描述目前實作；指令研究文件保存參數、原始 bytes 與歷史驗證依據。手冊合法範圍與本專案已實作的編碼範圍分開記錄。
+使用方式看快速開始；支援範圍看功能清單。
 
 ## 使用指南
 
@@ -32,31 +32,35 @@
 
 ## 指令研究紀錄
 
-保留樣本編號以便與 `.ldr`、截圖及測試交叉核對。此區文件中的測試數為歷史結果；本機產物路徑不作公開下載連結。
+研究紀錄保留編碼證據與當時測試結果。本機產物不隨 Git 提供。
 
 | 文件 | 指令／主題 |
 | --- | --- |
 | [算術與邊沿](fun11-14-arithmetic.md) | FUN11～14 |
 | [線性轉換](fun33-lcnv.md) | FUN33 LCNV |
 | [test8／test9](test8-test9-functions.md) | MC／MCE、DIFU／DIFD、UDCTR、INC／DEC、CMP、AND |
-| [test10](test10-functions.md) | test10：XOR、XNR、ZNCMP、→BCD、→BIN |
-| [test11](test11-functions.md) | test11：比較接點與浮點 FUNC |
-| [test12](test12-functions.md) | test12：浮點除法、比較、區間比較與平方根 |
-| [test13](test13-functions.md) | test13：三角函數、取負值、絕對值、自然對數與指數 |
-| [test14](test14-functions.md) | test14：FLOG、FPOW、反三角函數、ERR 與 IMDIO |
-| [test15](test15-functions.md) | test15：TKEY、HKEY、DSW、7SGDL、MUXI |
-| [test16](test16-functions.md) | test16：DIV48、SUM、PID、WDT 與高速計數器 |
-| [test17](test17-functions.md) | test17：整數運算與 CRC16 |
-| [test18](test18-functions.md) | test18：類比轉換、位元存取與跳躍樣本 |
-| [test19](test19-functions.md) | test19：積算型計時器與溫控 |
-| [test20](test20-functions.md) | test20：ASCWR、RAMP、RAMP2、R→T |
-| [test21](test21-functions.md) | test21：FUN101～104 表格指令 |
-| [test22](test22-functions.md) | test22：FUN105～112 表格指令 |
-| [test23](test23-functions.md) | test23：FUN120～127 矩陣指令 |
-| [test24](test24-functions.md) | test24：MOV、MOV/、TOGG、SORT、Z-WR、矩陣位元功能 |
-| [test25](test25-functions.md) | test25：FUN42～49 位元搬移、交換與資料組合 |
-| [test26](test26-functions.md) | test26：FUN50～57 分配、移位、旋轉、格雷碼與解碼 |
-| [test27](test27-functions.md) | test27：FUN06 BSHF 與 FUN58～64 轉換功能 |
+| [test10](test10-functions.md) | XOR、XNR、ZNCMP、→BCD、→BIN |
+| [test11](test11-functions.md) | 比較接點與浮點 FUNC |
+| [test12](test12-functions.md) | 浮點除法、比較、區間比較與平方根 |
+| [test13](test13-functions.md) | 三角函數、取負值、絕對值、自然對數與指數 |
+| [test14](test14-functions.md) | FLOG、FPOW、反三角函數、ERR 與 IMDIO |
+| [test15](test15-functions.md) | TKEY、HKEY、DSW、7SGDL、MUXI |
+| [test16](test16-functions.md) | DIV48、SUM、PID、WDT 與高速計數器 |
+| [test17](test17-functions.md) | 整數運算與 CRC16 |
+| [test18](test18-functions.md) | 類比轉換、位元存取與跳躍樣本 |
+| [test19](test19-functions.md) | 積算型計時器與溫控 |
+| [test20](test20-functions.md) | ASCWR、RAMP、RAMP2、R→T |
+| [test21](test21-functions.md) | FUN101～104 表格指令 |
+| [test22](test22-functions.md) | FUN105～112 表格指令 |
+| [test23](test23-functions.md) | FUN120～127 矩陣指令 |
+| [test24](test24-functions.md) | MOV、MOV/、TOGG、SORT、Z-WR、矩陣位元功能 |
+| [test25](test25-functions.md) | FUN42～49 位元搬移、交換與資料組合 |
+| [test26](test26-functions.md) | FUN50～57 分配、移位、旋轉、格雷碼與解碼 |
+| [test27](test27-functions.md) | FUN06 BSHF 與 FUN58～64 轉換功能 |
+
+- [test28：脈波、速度與字串](test28-functions.md)
+
+- [test29：ASCII與數字標籤](test29-functions.md)
 
 ## 版本與歷史
 
@@ -68,4 +72,8 @@
 | [2026-10-13 目錄盤點](folder-audit-2026-10-13.md) | 本機維護歷史 |
 | [2026-10-15 專案優化](project-optimization-2026-10-15.md) | 重構範圍、效能量測與驗證 |
 
-原廠 PDF 未隨儲存庫提供。研究文件以手冊標題及印刷頁碼引用；不同手冊版本的差異保留於各指令紀錄。
+手冊以標題與頁碼引用，PDF 不隨儲存庫提供。
+
+- [test30：記憶體指令與英數標籤](test30-functions.md)。
+
+- [2026-10-15 修復與驗證紀錄](repair-2026-10-15.md)

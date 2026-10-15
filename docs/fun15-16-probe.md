@@ -1,8 +1,6 @@
 # FUN15／16 原生編碼試檔 A（已被 test8 推翻）
 
-> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
-
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 **歷史紀錄，請勿再使用以下候選產檔。** test8 證實 FUN15=`F496`、FUN16=`F498`；`F46A` 實際屬於 CMP。重建腳本已停用這組猜測。正式支援見 [test8／test9 原生 function](test8-test9-functions.md)。下文保留當時假說，並非目前使用指引。
 

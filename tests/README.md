@@ -36,3 +36,9 @@
 | [test_test27_functions.py](test_test27_functions.py) | 涵蓋FUN06及58～64原始bytes、四路BSHF、保留目的資料、時間跨度、字串拒絕與新檔頭。 |
 
 `test_documentation.py` 檢查可攜連結、工具清單及可編譯 JSON 範例；`test_example_scripts.py` 驗證腳本產檔與政策拒絕。
+
+`test_test28_functions.py`：原始bytes、控制接線、完整I/O、PWM限制、ASCII打包及不支援形式拒絕。
+
+`test_test29_functions.py`：原樣產檔、字串bytes、數字標籤、重複與未知形式拒絕。
+
+- [test30：記憶體指令與英數標籤](../docs/test30-functions.md)。

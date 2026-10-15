@@ -83,14 +83,14 @@
 | 57 | DECOD 解碼 | `decode_bits` | source、source_index=0～15、bit_length=1～8、destination；enable／error；輸出2^NL bits |
 | 58 | ENCOD 編碼 | `encode_bits` | source、source_index=0～15、count=NL=2～256點、destination；enable／high_priority，zero／error |
 | 59 | →7SG 七段碼轉換 | `to_seven_segment` | source、count=N=0～3（N+1位）、destination；enable／error；保留未用高byte |
-| 60 | →ASC 文字轉ASCII | `ascii_literal` | 目前僅text="ABCDEF"精確字串編碼、可改R/D目的及EN；其他字串尚未確認 |
+| 60 | →ASC 文字轉ASCII | `ascii_literal` | 1～12個ASCII英數字／空白；可改R/D目的及EN；其他字元、P與ERR未實作 |
 | 61 | →SEC 時分秒轉秒 | `hms_to_seconds` | 來源3words依秒／分／時，目的2words；enable／zero |
 | 62 | →HMS 秒轉時分秒 | `seconds_to_hms` | 來源2words，目的3words依秒／分／時；enable／zero／overflow |
 | 63 | →HEX ASCII轉十六進制 | `ascii_to_hex` | count=1～511；讀N words寫ceil(N/4) words，保留未用nibbles；error |
 | 64 | →ASCII 十六進制轉ASCII | `hex_to_ascii` | count=1～511；讀ceil(N/4) words寫N words，保留目的高bytes |
-| 65 | LBL 標籤 | `lbl` | 精確標籤1記錄，尚未支援任意名稱 |
+| 65 | LBL 標籤 | `lbl` | 1～6個ASCII英數字元；A／B1／JY1／1WX已觀察，4～6字元與小寫為推導 |
 | 66 | JMP 跳躍 | `jmp` | 僅完整test18原樣重建；目標欄位未解碼，不支援重定位或改動程式 |
-| 67 | CALL 副程式呼叫 | `call` | 僅解析 test19 精確記錄；目標重定位未解碼，禁止生成 |
+| 67 | CALL 副程式呼叫 | `call` | 僅解析 test19／test28 的1／8記錄；目標欄位未解碼，禁止生成 |
 | 70 | FOR 迴圈開始 | `for` | 次數1..16383常數，單層迴圈 |
 | 71 | NEXT 迴圈結束 | `next` | 須與 FOR 配對 |
 | 74 | IMDIO 即時 I/O 更新 | `imdio` | start=X/Y、count=1..36；整段 I/O 契約，限主機點位 |
@@ -99,6 +99,10 @@
 | 78 | DSW 指撥開關 | `dsw` | X×4、Y×4、WR×2；DN／ERR |
 | 79 | 7SGDL 七段掃描輸出 | `7sgdl` | Y×8、mode=0..3、WR×1；DN |
 | 80 | MUXI 多工接點輸入 | `muxi` | X×8、Y×N，N=2..8；結果 ceil(N/2) words、WR×1 |
+| 81 | PLSO 脈波輸出 | `pulse_output` | MD0、非D，R/D Fr／PC／HO；EN／PAU／U/D；OUT／DN／ERR；明確指定UY／DY |
+| 82 | PWM 脈寬調變 | `pwm` | 常數To／Tp（ms）、Y0～15；To≤Tp，整個程式限一個PWM |
+| 83 | SPD 速度偵測 | `speed_detect` | X0～7、常數TI（ms）、R/D目的連續3 words；EN／OVF |
+| 84 | TDSP 顯示轉換 | `text_display` | test28 MD1精確解析；動態Ns／Nl跨度未確認，禁止生成 |
 | 86 | TPCTL 溫控 | `tpctl` | EN／H/C；Sn+Zn≤32、Yn及參數各Zn、WR9；ERR／ALM；Md未編碼 |
 | 87 | T.01S 積算計時 | `accumulative_timer` | unit_ms=10；TIM／EN、R/D PV、T或R/D CV、TUP／NUP |
 | 88 | T.1S 積算計時 | `accumulative_timer` | 同上，unit_ms=100 |
@@ -136,12 +140,16 @@
 | 128 | MBSHF 矩陣位元位移 | `matrix_bit_shift` | source、destination、length=2～256 words；enable／input_bit／left，output |
 | 129 | MBROT 矩陣位元旋轉 | `matrix_bit_rotate` | source、destination、length=2～256 words；enable／left，output |
 | 130 | MBCNT 矩陣位元計數 | `matrix_bit_count` | source、length=2～256 words，destination只寫1 word；enable／ones，zero |
+| 160 | RW-FR 檔案暫存器 | `file_register` | 直接R/D、F0～8191、常數L 1～511；非D/P |
+| 161 | WR-MP 寫記憶匣 | `memory_pack_write` | 161P；bank=1、offset=0、常數L 1～128；WR佔2字 |
+| 162 | RD-MP 讀記憶匣 | `memory_pack_read` | 非P；bank=1、offset=0、常數L 1～128 |
 | 170 | = 相等比較接點 | `comparison_chain` / `eq` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
 | 171 | > 大於比較接點 | `comparison_chain` / `gt` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
 | 172 | < 小於比較接點 | `comparison_chain` / `lt` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
 | 173 | <> 不等比較接點 | `comparison_chain` / `ne` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
 | 174 | >= 大於等於比較接點 | `comparison_chain` / `ge` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認 |
 | 175 | <= 小於等於比較接點 | `comparison_chain` / `le` | 首段／後續串聯皆可；位置試檔已經使用者 GUI 確認，可用常數 Sb=0..32767 |
+| 190 | STAT 系統資訊 | `system_status` | group=0；輸出長度依實際擴充模組，分析採保守bank範圍 |
 | 200 | I→F 整數轉浮點 | `float_operation` / `i_to_f` | 來源 1 word，結果 2 words |
 | 201 | F→I 浮點轉整數 | `float_operation` / `f_to_i` | 來源 2 words，結果 1 word |
 | 202 | FADD 浮點加法 | `float_operation` / `add` | 各來源及結果都是 2 words |
@@ -216,11 +224,11 @@
 | `forward_reverse` | 正反轉互鎖 |
 | `star_delta` | 星三角順序 |
 
-這是配方介面清單，**不保證每個參數組合都能在目前政策下產檔**。部分配方會合成內部 M 網路，若構成無意義的 M→M 複製或中繼仍會被拒絕；原生 function 的 M 結果／狀態允許。配方也不必然採用同名原生 FUNC。
+這是配方介面清單，**不保證每個參數組合都能在目前政策下產檔**。11 種配方已使用原生微分／TOGG／暫存器狀態，標準配置皆在現行政策下驗證產檔；複雜條件若仍需自動 helper，會明確拒絕。
 
-- `generate_system_ldr`：最多組合 24 個獨立控制配方，自動分配內部 M/T/C，允許共用輸入、拒絕資源衝突；不是跨配方製程協調器。
+- `generate_system_ldr`：最多組合 24 個獨立控制配方，自動分配內部 M/T/C 與 register_base 暫存器範圍，允許共用輸入、拒絕資源衝突；不是跨配方製程協調器。
 - `generate_sequence_ldr`：1..16 步，可設定各步輸出、計時、完成條件、逾時、reset、abort；每掃描最多轉移一步，同樣受架構政策檢查。
-- 順序控制預設使用原生 T。高階順序控制尚未整合原生累積計時器的暫停續跑；只有需求明確指定外部 clock 時，才能使用外部脈波模式，不自動補一個 X。
+- 順序控制預設使用原生 T。指定 pause 時使用 FUN87 原生累積計時與暫存器狀態；只有需求明確指定外部 clock 時，才能使用外部脈波模式，不自動補一個 X。
 
 ## 5. MCP 工具清單（19 個）
 
@@ -242,7 +250,7 @@
 | `analyze_ldr` | 解釋網路、列出元件讀寫與重複寫入 |
 | `compare_ldr` | 比較兩份檔案的新增／刪除／修改網路 |
 | `validate_ladder` | 預覽結構、接圖簡化、資源用量與架構政策結果 |
-| `simulate_ladder` | 在支援的布林／T/C 範圍內執行掃描模型 |
+| `simulate_ladder` | 在支援的布林、直接 R/D、T/C 與積算計時範圍內執行掃描模型 |
 | `export_ldr` | 匯出新檔並保留原始內容；嚴格政策下仍可能拒絕未知或違規網路 |
 | `modify_network` | 插入、替換或刪除網路，另存新檔，索引 0 對應 N000 |
 
@@ -263,19 +271,19 @@
 | 層次 | 目前狀態 |
 | --- | --- |
 | 獨立離線核對 | 原始樣本 bytes、CRC、逐 byte 往返、I/O 引用、政策、負數與邊界檢查；不等同 PLC 行為 |
-| MCP 內建模擬 | 布林接點／線圈、SET／RESET、單一 X 邊沿；指定 scan_ms 時支援有限的非保持 T/C 掃描模型 |
+| MCP 內建模擬 | 布林接點／線圈、SET／RESET、邊沿、直接 R/D 算術／比較／位元運算／搬移／BCD、DIFU／DIFD／TOGG；scan_ms 啟用 T/C 及 FUN87～89 模型 |
 | MCP 真實呼叫 | 已測試 stdio 連線、需求產檔、資源下載與 SHA-256 核對 |
 | WinProLadder GUI | 僅部分歷史檔案有人工匯入紀錄；test8～test27 新生成檔未因此自動取得 GUI 驗證 |
 | 實體 PLC | 未執行實機驗證 |
 
-內建模擬每次最多 256 scans；有時間模型時 scan_ms 為 1..60000 ms。T 時間模型限預設 `.01S` 的 T0..49 及支援的 preset 範圍，不模擬 PLC 非同步時脈相位。數值比較接點、原生 action、暫存器運算、MC/MCE、DIFU/DIFD、UDCTR 與迴圈均未提供執行模型。
+內建模擬每次最多 256 scans；有時間模型時 scan_ms 為 1..60000 ms。T 時間模型限預設 `.01S` 的 T0..49 及支援的 preset 範圍，不模擬 PLC 非同步時脈相位。數值比較接點、MC/MCE、UDCTR、迴圈與未列出的 function 尚無執行模型；不支援時明確拒絕。暫存器以 unsigned 16-bit 儲存，signed 運算依最高位解讀；比較旗號採 M1919=0 假設。詳見 [修復與驗證紀錄](docs/repair-2026-10-15.md)。
 
-v0.10.0 打包時為 **443 項通過**；0.11.0升版時為 **663 項通過**，目前含test27的原始碼測試結果見 [test27驗證紀錄](docs/test27-functions.md)。原始樣本目前 **28 份、195 networks** 可語意解碼與重建。這是現有樣本覆蓋，不代表所有程式都符合政策或所有指令變體皆有效。test11 的比較接點與浮點指令同樣區分離線、MCP 模擬、GUI 與實機驗證。
+v0.10.0 打包時為 **443 項通過**；0.11.0升版時為 **663 項通過**，目前含test30的原始碼測試結果見 [test30驗證紀錄](docs/test30-functions.md)。原始樣本目前 **31 份、219 networks** 可語意解碼與重建。這是現有樣本覆蓋，不代表所有程式都符合政策或所有指令變體皆有效。test11 的比較接點與浮點指令同樣區分離線、MCP 模擬、GUI 與實機驗證。
 
 ## 8. 仍未支援
 
-- MOV 等尚未取得可靠編碼的原生 FUNC。
-- FUN87～89 的常數 PV、其他 word bank、高階順序產生器整合與執行模擬。
+- MOV 的常數來源、D/P 等未取得可靠編碼的形式；已支援的 MOV word 形式見上表。
+- FUN87～89 的常數 PV 編碼、其他 word bank；目前模型限直接 R/D。
 - 未明列的 32-bit／P 形式、間接定址、運算元種類與狀態接線。
 - 多數硬體專用指令、通訊與定位功能。
 - 全指令 PLC 執行模擬、自動 GUI 匯入驗證、實體 PLC 連線／下載。
@@ -310,4 +318,10 @@ Agent 應先核對需求 I/O 與目前功能，再選擇生成工具，最後交
 
 - [test26：FUN50～57](docs/test26-functions.md)：BDIST動態N、移位／旋轉雙輸入、格雷碼及DECOD跨word範圍。
 
-- [test27：FUN06及58～64](docs/test27-functions.md)：ENCOD、7SG、ASCII、時間轉換與四路BSHF；ASC文字編碼仍限ABCDEF。
+- [test27：FUN06及58～64](docs/test27-functions.md)：ENCOD、7SG、ASCII、時間轉換與四路BSHF。ASC後續擴充見test28。
+
+- [test28：FUN81～84與ASCII擴充](docs/test28-functions.md)。
+
+- [test29：ASCII與數字標籤](docs/test29-functions.md)。
+
+- [test30：記憶體指令與英數標籤](docs/test30-functions.md)。

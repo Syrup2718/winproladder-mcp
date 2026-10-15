@@ -1,8 +1,6 @@
 # test22：FUN105～112 表格指令
 
-> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
-
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 2026-10-14原始碼更新，維持0.11.0，不製作安裝包。
 
@@ -43,7 +41,7 @@ BKCMP結果支援Y0～255／M0～999，必須檢查整段，而非只檢查起�
 
 ## 驗證
 
-MCP重建檔（本機產物：`artifacts/test22_mcp_roundtrip.ldr`）、驗證報告（本機產物：`artifacts/test22_verification.json`）。實際stdio MCP生成並resource下載後，481 bytes與原檔完全一致，包含空白網路。SHA-256：`6eff04db1f6734fbb1592fb082d26388df243284b05d3a42acefae9d1503826d`。
+MCP重建檔（本機：`artifacts/test22_mcp_roundtrip.ldr`）、驗證報告（本機：`artifacts/test22_verification.json`）。實際stdio MCP生成並resource下載後，481 bytes與原檔完全一致，包含空白網路。SHA-256：`6eff04db1f6734fbb1592fb082d26388df243284b05d3a42acefae9d1503826d`。
 
 離線檢查涵蓋CRC、完整bytes、資源範圍、政策、I/O、常數與邊界。未建立獨立PLC執行模型；MCP內建模擬明確拒絕這些新指令；未進行WinProLadder GUI匯入或實體PLC驗證。
 

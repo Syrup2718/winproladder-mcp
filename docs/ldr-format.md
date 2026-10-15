@@ -1,6 +1,6 @@
 # LDR 格式
 
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 適用樣本：WinProLadder v3.28 / FBs-20MC。以下為逆向格式，不是官方規格或跨版本相容性保證。
 

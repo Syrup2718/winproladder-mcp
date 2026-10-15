@@ -1,6 +1,6 @@
 # Agent 操作指南
 
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 ## 生成流程
 
@@ -30,7 +30,7 @@
 | `get_ldr_artifact` | 取得生成檔的二進位內容與 SHA-256，供 client 下載保存 |
 | `generate_control_ldr` | 單一控制配方 |
 | `generate_system_ldr` | 最多 24 個獨立配方，只自動分配內部 M/T/C |
-| `generate_sequence_ldr` | 最多 16 步原生 T 計時；原生暫停保留尚未支援 |
+| `generate_sequence_ldr` | 最多 16 步暫存器狀態；普通 T 或 FUN87 暫停續跑 |
 | `generate_ldr` | 自訂 Ladder IR，可附 acceptance |
 | `validate_ladder` | 不寫檔，回傳檢查、optimized_ladder、layout |
 | `simulate_ladder` | 布林或指定 scan_ms 的 Timer/Counter 模型 |

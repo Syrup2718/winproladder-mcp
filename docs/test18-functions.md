@@ -1,8 +1,6 @@
 # test18：類比轉換、位元存取與跳躍樣本
 
-> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
-
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 2026-10-12未發版更新，版本維持0.11.0。原始 `samples/test18.ldr` 為6網路、400 bytes，使用既有 FBs-20MC 檔頭；截圖保存在 `samples/screenshots/test18.png`。
 

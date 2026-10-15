@@ -4,8 +4,19 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field
 
-from .ir import Coil, Counter, EdgeContact, Ladder, Model, Network, Timer
+from .ir import (
+    Coil,
+    Counter,
+    Differential,
+    EdgeContact,
+    Ladder,
+    Model,
+    Network,
+    ProcessFunction,
+    Timer,
+)
 from .logic import contacts, parse_expression
+from .native_state import assign_word, status, zero_word
 
 ControlKind = Literal[
     "start_stop",
@@ -31,6 +42,7 @@ class ControlSpec(Model):
     reverse: str = "FALSE"
     output: Annotated[int, Field(strict=True, ge=0, le=253)]
     memory: Annotated[int, Field(strict=True, ge=0, le=250)] = 0
+    register_base: Annotated[int, Field(strict=True, ge=0, le=3838)] = 0
     timer: Annotated[int, Field(strict=True, ge=0, le=48)] = 0
     counter: Annotated[int, Field(strict=True, ge=0, le=255)] = 0
     delay_ms: Annotated[int, Field(strict=True, ge=10, le=327670)] = 1000
@@ -66,7 +78,10 @@ def control_ladder(spec: ControlSpec) -> tuple[Ladder, dict[str, Any]]:
     ns: list[Network] = []
     s, stop, reset, rev = (f"({v})" for v in (spec.signal, spec.stop, spec.reset, spec.reverse))
     y, m, t = f"Y{spec.output}", f"M{spec.memory}", f"T{spec.timer}"
-    prev, edge = f"M{spec.memory + 1}", f"M{spec.memory + 2}"
+    edge = f"M{spec.memory + 2}"
+    register, zero = f"R{spec.register_base}", f"R{spec.register_base + 1}"
+    if spec.kind in {"off_delay", "pulse", "star_delta"}:
+        ns.append(zero_word(zero))
 
     def coil(expr: str, name: str) -> None:
         ns.append(
@@ -94,23 +109,49 @@ def control_ladder(spec: ControlSpec) -> tuple[Ladder, dict[str, Any]]:
         clear = stop if spec.kind == "start_stop" else reset
         coil(f"({y} OR {s}) AND NOT {clear}", y)
     elif spec.kind in {"rising_edge", "falling_edge", "toggle", "pulse"}:
-        coil(f"{s} AND NOT {prev}" if spec.kind != "falling_edge" else f"NOT {s} AND {prev}", edge)
-        coil(s, prev)
+        ns.append(
+            Network(
+                action=Differential(
+                    type="difd" if spec.kind == "falling_edge" else "difu",
+                    trigger=spec.signal,
+                    destination=edge,
+                )
+            )
+        )
         if spec.kind in {"rising_edge", "falling_edge"}:
             coil(f"{edge} AND NOT {reset}", y)
         elif spec.kind == "toggle":
-            coil(f"(({y} AND NOT {edge}) OR (NOT {y} AND {edge})) AND NOT {reset}", y)
+            ns.append(
+                Network(
+                    action=ProcessFunction(
+                        type="toggle_bit",
+                        bit_destination=y,
+                        trigger=edge,
+                    )
+                )
+            )
+            ns.append(
+                Network(condition=spec.reset, coils=[Coil(address=spec.output, mode="reset")])
+            )
         else:
-            # Ignore triggers while active. A reset must cancel the timer as well.
-            coil(f"({m} OR ({edge} AND NOT {m})) AND NOT {t} AND NOT {reset}", m)
+            ns.append(status(register, 1, 1, spec.memory))
+            ns.append(
+                assign_word(register, 1, zero, f"{edge} AND NOT {m} AND NOT {t} AND NOT {reset}")
+            )
+            ns.append(assign_word(register, 0, zero, spec.reset))
+            ns.append(status(register, 1, 1, spec.memory))
             timer(m)
+            ns.append(assign_word(register, 0, zero, t))
             coil(f"{m} AND NOT {t} AND NOT {reset}", y)
     elif spec.kind == "on_delay":
         timer(f"{s} AND NOT {reset}")
         coil(t, y)
     elif spec.kind == "off_delay":
+        ns.append(status(register, 1, 1, spec.memory))
         timer(f"{m} AND NOT {s} AND NOT {reset}")
-        coil(f"({s} OR ({m} AND NOT {t})) AND NOT {reset}", m)
+        ns.append(assign_word(register, 1, zero, spec.signal))
+        ns.append(assign_word(register, 0, zero, f"{t} OR {reset}"))
+        ns.append(status(register, 1, 1, spec.memory))
         coil(m, y)
     elif spec.kind == "counter":
         ns.append(
@@ -122,7 +163,9 @@ def control_ladder(spec: ControlSpec) -> tuple[Ladder, dict[str, Any]]:
         coil(f"({y} OR {s}) AND NOT {stop} AND NOT {reverse_output}", y)
         coil(f"({reverse_output} OR {rev}) AND NOT {stop} AND NOT {y}", reverse_output)
     elif spec.kind == "star_delta":
-        coil(f"({m} OR {s}) AND NOT {stop} AND NOT {reset}", m)
+        ns.append(assign_word(register, 1, zero, spec.signal))
+        ns.append(assign_word(register, 0, zero, f"{stop} OR {reset}"))
+        ns.append(status(register, 1, 1, spec.memory))
         timer(m)
         timer(f"{m} AND {t}", 1, spec.gap_ms)
         coil(m, y)
@@ -130,11 +173,14 @@ def control_ladder(spec: ControlSpec) -> tuple[Ladder, dict[str, Any]]:
         coil(f"{m} AND {t} AND T{spec.timer + 1}", f"Y{spec.output + 2}")
     roles = {
         m: "Control active latch",
-        prev: "Previous scan signal for edge detection",
         edge: "One-scan signal edge",
     }
-    used_m = {f"M{c.address}" for n in ns for c in n.coils if c.device == "M"}
+    from .ir import network_coils
+
+    used_m = {f"M{c.address}" for n in ns for c in network_coils(n) if c.device == "M"}
     symbols = {name: role for name, role in roles.items() if name in used_m}
+    if spec.kind in {"off_delay", "pulse", "star_delta"}:
+        symbols.update({register: "Control state: 0 idle, 1 active", zero: "Numeric zero"})
     for n in ns:
         if n.coils:
             n.comment = "; ".join(symbols.get(f"{c.device}{c.address}", "") for c in n.coils)
@@ -147,9 +193,10 @@ def control_ladder(spec: ControlSpec) -> tuple[Ladder, dict[str, Any]]:
             "Offline candidate, not certified or commissioned equipment control.",
             "Signal and output must be explicit. Absent optional controls are FALSE.",
             "Input expressions describe PLC bit polarity; physical NC wiring is not inferred.",
-            "Timers assume default T0..T49 .01s configuration; M/Y startup states must be reset.",
+            "Timers assume default T0..T49 .01s configuration; R/Y startup states must be "
+            "zero or explicitly reset.",
             "Single-X edges without reset use native contacts, with no helper M. "
-            "Compound/reset-gated edges, toggle and SET-RST use Boolean networks.",
+            "Compound/reset-gated edges use DIFU/DIFD; toggle uses native TOGG.",
             "Forward/reverse favors forward on simultaneous starts when stopped.",
             "Star/delta: Y(base)=main, Y(base+1)=star, Y(base+2)=delta; "
             "hardware interlocks required.",

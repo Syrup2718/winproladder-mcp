@@ -33,3 +33,9 @@ Timer/Counter 檔案用於重現樣本，不是直接可用的製程設計。一
 | [test25原始IR](test25_functions.json) | FUN42～49；BUNIT使用length_register，WX0／WY0契約包含全部16點。 |
 | [test26原始IR](test26_functions.json) | FUN50～57；移位N分count／length_register，DECOD採source_index與bit_length。 |
 | [test27原始IR](test27_functions.json) | FUN06與58～64；ENCOD count為掃描點數，7SG count=N代表N+1位；ASC限ABCDEF。 |
+
+- [test28 IR](test28_functions.json)：完整解析資料；PWM錯誤設定及CALL／TDSP限制見[test28](../docs/test28-functions.md)。
+
+- [test29 IR](test29_functions.json)：兩組ASCII字串、六個數字標籤。
+
+- [test30：記憶體指令與英數標籤](../docs/test30-functions.md)。

@@ -2,7 +2,7 @@
 
 > 歷史維護紀錄：以下檔案數及本機路徑反映當時工作目錄，不是 clone 後的必要內容。
 
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 ## 範圍
 
@@ -29,8 +29,8 @@ test16～20、version-0.11.0 研究及兩支一次性 extend 腳本歸入 tmp/re
 
 這次為資料夾及離線軟體檢查，不是 WinProLadder GUI 或實體 PLC 驗證。既有 CALL 位移編碼、高階原生計時暫停續跑及部分指令執行模型仍有明確限制，詳見[功能總覽](../FEATURES.md)。
 
-本機證據：整理前盤點（本機產物：`tmp/organization-2026-10-13/before.json`）、移動雜湊（本機產物：`tmp/organization-2026-10-13/moves.json`）。報告不輸出設定檔或秘密內容。
+本機證據：整理前盤點（本機：`tmp/organization-2026-10-13/before.json`）、移動雜湊（本機：`tmp/organization-2026-10-13/moves.json`）。報告不輸出設定檔或秘密內容。
 
 完成核對：223個受保護檔案的 SHA-256 未變更；115個 LDR 通過容器／CRC 檢查；內容結構錯誤0、失效文件連結0。這不代表所有歷史輸出符合目前政策或已經 PLC 執行驗證。
 
-整理後盤點（本機產物：`tmp/organization-2026-10-13/after.json`）、完成核對（本機產物：`tmp/organization-2026-10-13/verification.json`）。
+整理後盤點（本機：`tmp/organization-2026-10-13/after.json`）、完成核對（本機：`tmp/organization-2026-10-13/verification.json`）。

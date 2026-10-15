@@ -1,8 +1,6 @@
 # test10：XOR、XNR、ZNCMP、→BCD、→BIN
 
-> 指令研究紀錄：參數與編碼依據保留於下文。測試數及產物狀態屬當次紀錄；目前能力請以功能清單為準。本機產物不隨 Git 發布。
-
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 MCP v0.9.0 將使用者提供的 test10 當作 function 格式樣本，支援讀取、分析、產檔及網路編輯；原樣本不修改。來源為 `samples/test10.ldr` 與 `samples/screenshots/test10.png`。375 bytes、5 networks，SHA-256：`0b00e0d1da4d7f466928f76921bd281d0c55158c32a5aa9ee41b373aa4cf3600`。
 

@@ -23,14 +23,14 @@ from .acceptance import AcceptanceCase
 from .control import ControlSpec, control_ladder
 from .design import design_guide
 from .io_contract import IOContract
-from .ir import Ladder, Network, simulate, start_stop, validation
+from .ir import Ladder, Network, start_stop, validation
 from .layout import lower_ladder
 from .ldr import MAX_SIZE
 from .manual_reference import analyze_rtc_snapshot, manual_reference
+from .runtime import MODEL_SCOPE, Scalar, simulate_runtime
 from .sequence import SequenceSpec, sequence_ladder
 from .service import Service, capabilities
 from .system import SystemSpec, system_ladder
-from .timing import timed_simulate
 
 
 def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
@@ -41,7 +41,7 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
             "For common functions prefer generate_control_ldr; for sequential pause/resume "
             "use generate_sequence_ldr. Copy only user-specified X/Y into io_contract. "
             "Never invent physical I/O or external clocks. Require signal and output addresses. "
-            "Ordinary T timers are supported; native retentive timing encoding is unsupported. "
+            "Ordinary T and sampled FUN87/88/89 accumulative timers are supported. "
             "Use get_design_guide to turn requirements into conditions and blocks. "
             "Honor its workspace architecture policy; forbidden M-to-M chains must be "
             "redesigned using native instructions, not renamed or hidden in helpers. "
@@ -190,7 +190,7 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
         acceptance: list[AcceptanceCase] | None = None,
     ) -> CallToolResult:
         """Generate ordered steps using native T timers, with no automatic X/Y additions.
-          Native retentive pause/resume is not integrated into this high-level generator.
+          Native pause/resume uses FUN87 with register state and no relay copy chains.
         External pulse counting is only for requirements explicitly specifying a clock input.
         Return symbols and actual .ldr; not GUI or PLC verified.
         """
@@ -262,6 +262,11 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
         if not source_architecture["valid"] or not architecture["valid"]:
             result["valid"] = False
             result["errors"].append("Workspace architecture forbids M-to-M networks")
+        try:
+            service.check_layout(layout)
+        except ValueError as error:
+            result["valid"] = False
+            result["errors"].append(str(error))
         return {
             **result,
             "architecture": architecture,
@@ -283,24 +288,19 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
     def simulate_ladder(
         ladder: Ladder,
         inputs: list[dict[str, bool]],
-        initial: dict[str, bool] | None = None,
+        initial: dict[str, Scalar] | None = None,
         scan_ms: int | None = None,
     ) -> dict[str, Any]:
-        """Boolean IR scan model, not PLC emulation. Missing X inputs reset false each scan.
+        """Bounded Boolean/direct R/D model, not PLC emulation.
 
-        Missing initial devices default false. T/C contacts are fixed initial states;
-        Without scan_ms, timers/counters are not executed. With scan_ms, use the
-        reset-start T/C model for default .01s T0..T49; no register/loop execution.
-        Networks evaluate in display order, inputs apply for one scan duration.
+        scan_ms is required for T/C and FUN87/88/89. Supports the explicitly listed
+        numeric/native subset; unsupported actions fail without a partial trace.
+        Words use unsigned 16-bit storage. Missing X inputs reset false each scan.
+        See get_capabilities simulation_model for assumptions and supported actions.
         """
         return {
-            "trace": (
-                simulate(ladder, inputs, initial or {})
-                if scan_ms is None
-                else timed_simulate(ladder, inputs, initial or {}, scan_ms)
-            ),
-            "scope": "Offline scan model only; scan_ms enables reset-start T/C model, "
-            "default T0..T49 .01s configuration. No PLC runtime validation.",
+            "trace": simulate_runtime(ladder, inputs, initial or {}, scan_ms),
+            "scope": MODEL_SCOPE,
         }
 
     @mcp.tool(annotations=write)

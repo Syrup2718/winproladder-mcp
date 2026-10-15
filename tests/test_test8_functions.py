@@ -204,8 +204,13 @@ def test_new_register_actions_refuse_boolean_runtime_claims():
         ladder = Ladder(networks=[Network(action=action)])
         with pytest.raises(ValueError, match="cannot execute"):
             simulate(ladder, [{}], {})
-        with pytest.raises(ValueError, match="cannot execute"):
-            timed_simulate(ladder, [{}], {}, 10)
+        trace = timed_simulate(ladder, [{}], {}, 10)
+        if action.type == "increment":
+            assert trace[0]["R100"] == 1
+        elif action.type == "bitwise":
+            assert trace[0]["D0"] == 0
+        else:
+            assert trace == [{}]
 
 
 def test_real_mcp_test8_read_generate_download(tmp_path):

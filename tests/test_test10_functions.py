@@ -201,11 +201,20 @@ def test_new_functions_lower_and_refuse_unsupported_runtime():
     lowered, layout = lower_ladder(original)
     assert layout["helper_devices"] == []
     assert [compile_network(n).hex() for n in lowered.networks] == PAYLOADS
-    for n in original.networks:
+    for index, n in enumerate(original.networks):
         with pytest.raises(ValueError, match="cannot execute"):
             simulate(Ladder(networks=[n]), [{}], {})
-        with pytest.raises(ValueError, match="cannot execute"):
-            timed_simulate(Ladder(networks=[n]), [{}], {}, 10)
+        if index in {0, 2, 3}:
+            trace = timed_simulate(Ladder(networks=[n]), [{}], {}, 10)
+            expected = {
+                0: {"R110": 0},
+                2: {"Y0": True, "Y1": False, "Y2": False},
+                3: {"R222": 0x333},
+            }[index]
+            assert trace == [expected]
+        else:
+            with pytest.raises(ValueError, match="cannot execute"):
+                timed_simulate(Ladder(networks=[n]), [{}], {}, 10)
 
 
 def test_previous_xor_hypothesis_is_now_supported_as_inferred_variant():

@@ -2,7 +2,7 @@
 
 [首頁](../README.md) · [文件索引](../docs/README.md)
 
-共 **28 份原始匯出、195 個網路記錄**。此目錄用於格式研究與回歸測試，保留原始檔名、bytes 與截圖；生成結果另存於本機 `artifacts/`。
+共 **31 份原始匯出、219 個網路記錄**。此目錄用於格式研究與回歸測試，保留原始檔名、bytes 與截圖；生成結果另存於本機 `artifacts/`。
 
 樣本可解析不代表整份可生成：例如 test9 有未配對 MC、test19 含僅解析 CALL、test20 有工作區衝突。原始資料不因生成政策而改寫。
 
@@ -38,3 +38,9 @@
 | [test27.ldr](test27.ldr) | 450 | 8 | FUN06、58～64 編碼、顯示、ASCII與時間轉換 |
 
 雜湊由 [test_sample_integrity.py](../tests/test_sample_integrity.py) 固定。截圖保存在 `screenshots/`，指令與截圖對照入口見[文件索引](../docs/README.md)。各項 GUI 與實體 PLC 驗證狀態見[驗證範圍](../docs/verification.md)。
+
+- [test28.ldr](test28.ldr)：470 bytes、8網路，PLSO／PWM／SPD／TDSP、標籤8、ASCII字串。
+
+- [test29.ldr](test29.ldr)：438 bytes、8網路，ASCII與LBL數字標籤。
+
+- [test30.ldr](test30.ldr)：450 bytes、8網路，FUN160～162／190與英數LBL。

@@ -64,8 +64,36 @@ COUNTS = {
     "ascii_to_hex": (1, 511),
     "hex_to_ascii": (1, 511),
 }
-# Exact sampled ABCDEF literal block. Do not infer arbitrary text from one sample.
+# Original test27 oracle; test28 confirms the six parity-bit packing rule.
 ASCII_LITERAL = bytes.fromhex("0007204221442246000000000000")
+
+
+def encode_ascii(text: str | None) -> bytes:
+    if (
+        not isinstance(text, str)
+        or not 1 <= len(text) <= 12
+        or any(not (c.isascii() and (c.isalnum() or c == " ")) for c in text)
+    ):
+        raise ValueError("ASC requires 1..12 ASCII letters, digits or spaces")
+    data = text.encode("ascii").ljust(12, b"\x00")
+    flags = sum((data[2 * i] & 1) << i for i in range(6))
+    return flags.to_bytes(2, "big") + bytes(
+        value >> 1 if i % 2 == 0 else value for i, value in enumerate(data)
+    )
+
+
+def decode_ascii(raw: bytes) -> str:
+    if len(raw) != 14 or int.from_bytes(raw[:2], "big") > 63:
+        raise ValueError("Invalid ASC literal block")
+    flags = int.from_bytes(raw[:2], "big")
+    data = bytes(
+        (value << 1) | ((flags >> (i // 2)) & 1) if i % 2 == 0 else value
+        for i, value in enumerate(raw[2:])
+    )
+    text = data.rstrip(b"\x00").decode("ascii")
+    if encode_ascii(text) != raw:
+        raise ValueError("Noncanonical ASC literal")
+    return text
 
 
 def check_parameters(action: "ProcessFunction") -> None:
@@ -80,8 +108,7 @@ def check_parameters(action: "ProcessFunction") -> None:
     if action.destination_index is not None or action.bit_length is not None:
         raise ValueError("Unencoded destination_index/bit_length for test27")
     if action.type == "ascii_literal":
-        if action.text != "ABCDEF":
-            raise ValueError("ASC currently encodes exact ABCDEF literal; other strings unresolved")
+        encode_ascii(action.text)
     elif action.text is not None:
         raise ValueError(f"{action.type} has no literal text")
 
@@ -109,7 +136,9 @@ def references(action: "ProcessFunction") -> tuple[set[str], set[str]]:
     kind = action.type
     dest = action.operand("destination")
     if kind == "ascii_literal":
-        return set(), span(dest, 3, writable=True)
+        assert action.text is not None
+        words = span(dest, (len(action.text) + 1) // 2, writable=True)
+        return (words.copy() if len(action.text) % 2 else set()), words
     if kind == "bit_shift":
         words = span(dest, 1, writable=True)
         return words.copy(), words
@@ -141,7 +170,7 @@ def references(action: "ProcessFunction") -> tuple[set[str], set[str]]:
 
 def compile_operands(action: "ProcessFunction") -> bytes:
     raw = (
-        ASCII_LITERAL
+        encode_ascii(action.text)
         if action.type == "ascii_literal"
         else b"\x00\x00"
         if action.type == "seconds_to_hms"
@@ -159,16 +188,12 @@ def compile_operands(action: "ProcessFunction") -> bytes:
 
 def decode_operands(kind: str, tail: bytes) -> tuple[dict[str, object], int]:
     prefix = (
-        ASCII_LITERAL
-        if kind == "ascii_literal"
-        else b"\x00\x00"
-        if kind == "seconds_to_hms"
-        else b""
+        tail[:14] if kind == "ascii_literal" else b"\x00\x00" if kind == "seconds_to_hms" else b""
     )
     size = len(prefix) + 2 * len(ORDER[kind])
     if len(tail) < size or not tail.startswith(prefix):
         raise ValueError("Truncated or unencoded conversion operands")
-    fields: dict[str, object] = {"text": "ABCDEF"} if kind == "ascii_literal" else {}
+    fields: dict[str, object] = {"text": decode_ascii(prefix)} if kind == "ascii_literal" else {}
     tail = tail[len(prefix) :]
     for i, field in enumerate(ORDER[kind]):
         raw = tail[2 * i : 2 * i + 2]

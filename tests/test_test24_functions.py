@@ -98,8 +98,12 @@ def test_control_status_wiring_and_policy(index):
         assert getattr(decoded.networks[0].action, name) == "M30"
     with pytest.raises(ValueError):
         simulate(decoded, [{}], {})
-    with pytest.raises(ValueError):
-        timed_simulate(decoded, [{}], {}, 10)
+    if index in {5, 7}:
+        trace = timed_simulate(decoded, [{}], {}, 10)
+        assert trace
+    else:
+        with pytest.raises(ValueError):
+            timed_simulate(decoded, [{}], {}, 10)
 
 
 @pytest.mark.parametrize("index", range(8))

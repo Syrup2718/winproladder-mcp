@@ -7,6 +7,9 @@ from mcp.client.stdio import stdio_client
 
 
 def test_high_level_tools_produce_files_and_disclose_defaults(tmp_path):
+    (tmp_path / ".winproladder-policy.json").write_text(
+        '{"forbid_m_to_m":true,"allow_function_m_to_m":true}'
+    )
     async def run():
         params = StdioServerParameters(
             command=sys.executable, args=["-m", "winproladder_mcp.server", "--root", str(tmp_path)]

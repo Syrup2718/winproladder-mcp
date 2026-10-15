@@ -473,6 +473,21 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
         for i, n in networks
         if n is not None and isinstance(n.action, ProcessFunction) and n.action.type == "ascwr"
     ]
+    display_uncertain = [
+        i
+        for i, n in networks
+        if n is not None
+        and isinstance(n.action, ProcessFunction)
+        and n.action.type == "text_display"
+    ]
+    memory_uncertain = [
+        i
+        for i, n in networks
+        if n is not None
+        and isinstance(n.action, ProcessFunction)
+        and n.action.type
+        in {"file_register", "memory_pack_write", "memory_pack_read", "system_status"}
+    ]
     thermal_uncertain = [
         i for i, n in networks if n is not None and isinstance(n.action, TemperatureControl)
     ]
@@ -501,12 +516,27 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
                 "conservative work span tracked, not a complete device-reference analysis",
             }
             for i in process_uncertain
+        ]
+        + [
+            {"network": i, "reason": "TDSP dynamic Ns/Nl footprint unknown; decode-only anchor"}
+            for i in display_uncertain
+        ]
+        + [
+            {
+                "network": i,
+                "reason": "Memory-pack external state is not enumerated; "
+                "RWFR file references and STAT destination references are conservative bank spans, "
+                "not actual runtime pointer/hardware footprints.",
+            }
+            for i in memory_uncertain
         ],
         "devices": dict(sorted(references.items())),
         "complete": not unknown
         and not uncertain
         and not thermal_uncertain
-        and not process_uncertain,
+        and not process_uncertain
+        and not display_uncertain
+        and not memory_uncertain,
         "opaque_networks": unknown,
         "multiple_writers": {d: v["writes"] for d, v in references.items() if len(v["writes"]) > 1},
         "note": "Decoded structural references only, not control-flow reachability. "

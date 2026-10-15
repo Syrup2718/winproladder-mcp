@@ -1,6 +1,6 @@
 # 功能與參數
 
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 ## 控制配方
 

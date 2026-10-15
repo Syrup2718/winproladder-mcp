@@ -25,6 +25,19 @@ def manual_reference() -> dict[str, Any]:
         "rule": "Manual operand limits define PLC legality. Sample addresses are not maxima. "
         "LDR encoding support, CPU availability and manual editions are separate evidence.",
         "instruction_modes": {
+            "PULSE_SPEED_DISPLAY": {
+                "pages": "Advanced 7-74..78",
+                "81": "MD0; EN rising resets HO/OUT/DN and captures U/D. PAU preserves progress. "
+                "Fr 8..2000 Hz, PC 0..32767 for non-D (0=continuous). Values are runtime register "
+                "contents. One instruction, main-unit transistor outputs; CPU capacity unverified.",
+                "82": "To/Tp are milliseconds, To 0..Tp. To>Tp asserts ERR. One instruction, "
+                "Y0..15. Page heading says Tp<=32676 but operand table says32767; codec uses "
+                "the table 1..32767, upper boundary needs target-version confirmation.",
+                "83": "X0..7 pulse source, TI 1..32767 ms, D occupies three words. "
+                "Input frequency total below5kHz; mechanical pulse conversion not simulated.",
+                "84": "Page7-78 lists MD0..1 but omits GUI Nd. test28 MD1 Ns/Nl are registers, "
+                "not literal lengths. Exact anchor only; dynamic spans unresolved, no generation.",
+            },
             "ENCOD_ASCII_TIME_BSHF": {
                 "pages": "Basic 7-20; advanced 7-46..57",
                 "06": "CLR=1 clears D and OTB regardless of EN/INB/LR. Otherwise EN "
@@ -36,7 +49,8 @@ def manual_reference() -> dict[str, Any]:
                 "59": "N=0..3 means N+1 nibbles converted to bytes low-first. "
                 "Odd digit count preserves last high byte. Segment mapping a=B6..g=B0, B7=0",
                 "60": "Manual 1..12 English/numeric characters, two per word, first in low "
-                "byte. Codec only exact ABCDEF block; other strings remain unresolved. "
+                "byte. Codec supports 1..12 ASCII letters/digits/spaces; "
+                "inferred packing confirmed by test27/28. "
                 "Manual 7-51 example draws ERR, but GUI sample has no output; no ERR encoded",
                 "61_62": "HMS storage order seconds/minutes/hours, signed 16-bit each. "
                 "SEC result signed 32-bit; HMS source signed 32-bit, three-word result. "

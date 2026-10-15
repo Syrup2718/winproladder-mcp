@@ -1,6 +1,6 @@
 # 邏輯與接圖簡化
 
-[首頁](../README.md) · [文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](../FEATURES.md)
 
 所有生成工具與新增／替換網路共用最佳化流程：
 

@@ -138,8 +138,8 @@ def test_arithmetic_not_misrepresented_as_simulated():
     ladder = Ladder(networks=[Network(action=arithmetic())])
     with pytest.raises(ValueError, match="cannot execute"):
         simulate(ladder, [{}], {})
-    with pytest.raises(ValueError, match="cannot execute"):
-        timed_simulate(ladder, [{}], {}, 10)
+    trace = timed_simulate(ladder, [{}], {}, 10)
+    assert trace[0][arithmetic().destination] == arithmetic().sb
 
 
 @pytest.mark.parametrize("initial_x0", [False, True])
@@ -198,7 +198,7 @@ def test_native_edge_recipes_and_system_do_not_allocate_m():
     for spec in controls:
         gated, _ = control_ladder(spec.model_copy(update={"reset": "X1"}))
         assert all(n.edge is None for n in gated.networks)
-        trace = simulate(gated, [{}, {"X0": True, "X1": True}, {"X0": True}, {}], {})
+        trace = timed_simulate(gated, [{}, {"X0": True, "X1": True}, {"X0": True}, {}], {}, 10)
         assert not trace[1][f"Y{spec.output}"]
 
 
