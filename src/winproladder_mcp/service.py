@@ -31,6 +31,7 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
     header[128:134] = b"FB-RES"
     header[144:156] = b"WinProladder"
     if profile not in {
+        "FBs-40MC-test27",
         "HB1-32M-test23",
         "FB-28MA-test22",
         "FBe-40MC-test21",
@@ -48,6 +49,7 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
     header[160:168] = (
         (
             {
+                "FBs-40MC-test27": "FBs-40MC",
                 "HB1-32M-test23": "HB1-32M",
                 "FB-28MA-test22": "FB-28MA",
                 "FBe-40MC-test21": "FBe-40MC",
@@ -67,7 +69,7 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
     header[176:178] = b"@@" if profile == "FBs-20MC" else bytes.fromhex("1045")
     if profile in {"FBs-24MA-test7", "FBs-32MA-test11", "FBs-40MA-test12"}:
         header[176:178] = bytes.fromhex("1040")
-    if profile in {"FBs-44MN-test13", "FBs-60MC-test16"}:
+    if profile in {"FBs-44MN-test13", "FBs-60MC-test16", "FBs-40MC-test27"}:
         header[176:178] = b"@@"
     if profile in {"FBn-26MC-test17", "FBe-40MC-test21"}:
         header[176:178] = bytes.fromhex("4030")
@@ -82,6 +84,8 @@ def default_header(profile: HeaderProfile = "FBs-20MC") -> bytes:
 
 
 def header_profile(header: bytes) -> HeaderProfile | None:
+    if header == default_header("FBs-40MC-test27"):
+        return "FBs-40MC-test27"
     if header == default_header("HB1-32M-test23"):
         return "HB1-32M-test23"
     if header == default_header("FB-28MA-test22"):

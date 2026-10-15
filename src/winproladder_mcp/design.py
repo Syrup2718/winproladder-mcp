@@ -13,6 +13,18 @@ def design_guide() -> dict[str, Any]:
             "default_policy": "Physical signal/output required; no automatic X/Y assignment.",
         },
         "workflow": [
+            "test27: encode_bits count is NL points 2..256, unlike DECOD bit_length. "
+            "to_seven_segment count 0..3 means N+1 digits. hms_to_seconds reads S seconds, "
+            "S+1 minutes, S+2 hours and writes two words; seconds_to_hms reverses this. "
+            "ascii_literal text currently requires ABCDEF; do not substitute another string. "
+            "ascii_to_hex/hex_to_ascii count 1..511, preserving unused destination portions. "
+            "bit_shift has four independent controls; CLR has priority even when EN is false.",
+            "test26: byte_distribute uses runtime length_register in bytes (max 256), "
+            "requiring up to 128 source and 256 output words. shift_left/rotate_right use "
+            "constant count 1..16; shift_right/rotate_left sampled register N uses "
+            "length_register. Shifts also accept input_bit. decode_bits uses source_index "
+            "0..15 and bit_length 1..8; output width is 2^bit_length bits, source can cross "
+            "B15 and clips at bank end per manual 7-45. Do not invent physical IO.",
             "test25: bit_move/nibble_move/byte_move use source_index and destination_index; "
             "only the selected portion changes. word_exchange reads/writes source and "
             "destination; byte_swap is in-place. nibble_unite/distribute use constant count "
