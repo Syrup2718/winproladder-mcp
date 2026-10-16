@@ -4,13 +4,9 @@
 
 ## 安裝與連線
 
-依 [README](../README.md) 安裝。`check` 顯示 `PASS` 後，產生 client 設定：
+依 [README](../README.md) 執行安裝腳本。看到 `PASS` 和 `Setup complete` 後，將 `.install/mcp-config.json` 的 `mcpServers.winproladder` 加入 client 設定並重新連線；需要 TOML 的 client 使用 `.install/mcp-config.toml`。
 
-```powershell
-uv run python -m winproladder_mcp.setup config --format json
-```
-
-將 `mcpServers.winproladder` 加入 client 設定並重新連線。此命令只列印設定，不修改檔案；TOML 格式使用 `--format codex`。
+設定使用安裝環境的絕對路徑，不需要啟用 venv 或修改 PATH。詳細步驟、指定工作資料夾及手動安裝見[安裝指南](installation.md)。
 
 ## 產檔
 
@@ -27,24 +23,11 @@ uv run python -m winproladder_mcp.setup config --format json
 
 ## VM 與工作目錄
 
-將輸出複製到 VM 共用資料夾即可。也可指定已存在的共用目錄：
-
-```powershell
-uv run python -m winproladder_mcp.setup config --format json --root C:\LadderWork
-```
-
-`C:\LadderWork` 為示例，請換成實際路徑。輸出位於其 `artifacts/`；更換 root 時一併保留所需的 `.winproladder-policy.json`。
+將輸出複製到 VM 共用資料夾即可。若要把工作目錄直接放在共用資料夾，可在安裝時指定 `-Workspace`（Windows）或第一個參數（macOS/Linux），詳見[安裝指南](installation.md)。新的工作目錄會建立嚴格 relay 政策；既有政策保持原樣。
 
 ## 更新
 
-保留本機修改，更新原始碼後執行：
-
-```powershell
-uv sync --locked
-uv run python -m winproladder_mcp.setup check
-```
-
-重新連接 MCP。若搬動專案，需重新產生 client 設定。
+保留本機修改，更新原始碼後重新執行同一安裝命令，再重新連接 MCP。若搬動專案，需刪除搬過去的 `.install/venv`，重新執行安裝並更新 client 設定；虛擬環境不能直接跨電腦複製。
 
 ## 常見問題
 

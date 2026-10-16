@@ -8,17 +8,25 @@
 
 ## 安裝
 
-準備 Git、uv，在 PowerShell 執行：
+下載本專案 ZIP 並解壓（或 git clone），在資料夾內執行：
+
+**Windows（PowerShell）**
 
 ```powershell
-git clone https://github.com/Syrup2718/winproladder-mcp.git
-cd winproladder-mcp
-uv sync --locked
-uv run python -m winproladder_mcp.setup check
-uv run python -m winproladder_mcp.setup config --format json
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-將輸出的設定加入 MCP client，重新連線。需要 TOML 格式時改用 `--format codex`。
+**macOS / Linux（終端機）**
+
+```sh
+sh install.sh
+```
+
+自動準備 uv、Python 3.12、獨立環境與鎖定依賴，並驗證 MCP 連線及產檔。無須先安裝 Git、Python，也無須管理員權限；首次安裝需要網路。
+
+完成後，將 `.install/mcp-config.json` 的伺服器項目加入 MCP client；需要 TOML 的 client 使用 `.install/mcp-config.toml`，再重新連線。安裝器不會覆蓋 client 的其他設定。
+
+MCP 服務以 Windows、macOS、Linux 為目標；WinProLadder GUI 匯入仍需 Windows。不是所有舊版系統或 CPU 都受支援，詳見[安裝與疑難排解](docs/installation.md)。
 
 ## 使用
 

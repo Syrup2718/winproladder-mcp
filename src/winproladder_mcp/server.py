@@ -17,7 +17,7 @@ from mcp.types import (
     TextContent,
     ToolAnnotations,
 )
-from pydantic import AnyUrl, StrictInt
+from pydantic import AnyUrl, StrictBool, StrictInt
 
 from .acceptance import AcceptanceCase
 from .control import ControlSpec, control_ladder
@@ -287,9 +287,9 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
     @mcp.tool(annotations=read)
     def simulate_ladder(
         ladder: Ladder,
-        inputs: list[dict[str, bool]],
+        inputs: list[dict[str, StrictBool]],
         initial: dict[str, Scalar] | None = None,
-        scan_ms: int | None = None,
+        scan_ms: StrictInt | None = None,
     ) -> dict[str, Any]:
         """Bounded Boolean/direct R/D model, not PLC emulation.
 

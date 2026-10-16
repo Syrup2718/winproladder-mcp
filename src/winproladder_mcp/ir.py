@@ -3075,7 +3075,8 @@ def validation(ladder: Ladder) -> dict[str, object]:
             "test19: timer unit_ms is the native time base (10/100/1000 ms); "
             "PV is a register count, TIM pauses, EN=0 clears. TPCTL temperature "
             "source depends on PLC planning/R4003/R4004; Md encoding unresolved. "
-            "No built-in runtime simulation or GUI/PLC verification."
+            "Accumulative timers have a bounded offline model; TPCTL does not. "
+            "No GUI/PLC verification."
         )
     if any(
         isinstance(n.action, ProcessFunction)
@@ -3168,7 +3169,8 @@ def validation(ladder: Ladder) -> dict[str, object]:
         warnings.append(
             "test24: sampled 16-bit non-P forms and constant lengths. TOGG uses rising edges. "
             "Matrix L counts words; MBCNT writes one word. Z-WR N is literal, 1..511. "
-            "WY8 writes Y8..Y23. No built-in execution model, GUI or PLC verification."
+            "WY8 writes Y8..Y23. Direct R/D MOV and TOGG have a bounded model; "
+            "other forms do not. No GUI or PLC verification."
         )
     from .matrix_functions import CODES as MATRIX_CODES
 
@@ -3217,7 +3219,8 @@ def validation(ladder: Ladder) -> dict[str, object]:
     ):
         warnings.append(
             "test9: MC/MCE, DIFU/DIFD and 16-bit 07P.UDCTR encodings observed. "
-            "Changed operands/conditions are inferred; no built-in runtime simulation. "
+            "Changed operands/conditions are inferred. DIFU/DIFD have an offline model; "
+            "MC/MCE and UDCTR do not. "
             "UDCTR clear uses direct polarity; never substitute ordinary Counter CLR encoding."
         )
     if any(
@@ -3239,14 +3242,16 @@ def validation(ladder: Ladder) -> dict[str, object]:
         warnings.append(
             "Arithmetic: test7 observes register Sa, positive constant Sb, EN=TRUE, U/S=FALSE. "
             "Changed operands/EN/U/S are inferred. MUL/DIV write two consecutive words. "
-            "No arithmetic runtime simulation or connected status outputs; no GUI/PLC verification."
+            "Bounded direct R/D arithmetic model; no connected status outputs "
+            "or GUI/PLC verification."
         )
     if any(
         isinstance(n.action, (ExclusiveLogic, WordConversion, ZoneCompare)) for n in ladder.networks
     ):
         warnings.append(
             "test10 functions: sampled 16-bit forms only; other operands/conditions "
-            "are inferred. No D/P forms, additional flag wiring or runtime simulation. "
+            "are inferred. No D/P forms or additional flag wiring; "
+            "bounded direct R/D model available. "
             "WX0/WY0 cover X0..15/Y0..15; T operands denote numeric timer words."
         )
     if any(
@@ -3273,7 +3278,8 @@ def validation(ladder: Ladder) -> dict[str, object]:
             "test8 establishes INC F496, DEC F498, CMP F46A and AND F4C6. "
             "CMP reserved 0000 is preserved; its meaning is unknown. "
             "Other operands/conditions/status connections are inferred. "
-            "No register-action runtime simulation or generated-file GUI/PLC verification."
+            "Bounded direct R/D register-action model available; "
+            "no generated-file GUI/PLC verification."
         )
     if len(coils) != len(set(coils)):
         warnings.append("Repeated coils: later networks may overwrite earlier network results.")

@@ -93,3 +93,12 @@
 - 嚴格政策也拒絕 X-only 自動 helpers；不修改政策內容。
 - capabilities 提供逐 action 能力矩陣，修正過時的積算計時／模擬說明。
 - 完整結果、限制與後續證據見 [修復紀錄](repair-2026-10-15.md)。版本不變，未打包。
+
+## 跨平台快速安裝（未發行）
+
+- 新增 Windows PowerShell 與 macOS/Linux shell 安裝入口，自動準備 uv/Python、獨立環境與鎖定正式依賴。
+- 安裝後自動執行 MCP 自我檢查，輸出 JSON/TOML client 設定；保留既有工作區政策與 client 設定。
+- 新增三平台 CI 與安裝說明。版本不變；其他平台是否通過以實際 CI 結果為準。
+
+
+- 驗證：1523 項測試、Ruff、mypy 通過；Windows 現有 uv 與無 uv 自動下載兩條安裝路徑通過，含中文／空格工作目錄。macOS/Linux 尚待 CI 實跑。

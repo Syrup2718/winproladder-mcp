@@ -27,12 +27,12 @@ T1=256 的原始 payload 為 `4fe8 fd80 0100 0392`；T2=1000 為 `4fe8 fd80 03e8
 
 test19 現已提供 FUN87／88／89 原始編碼：FC41／FC42／FC43，依序是 TIM、EN、opcode、PV、CV、TUP／NUP 接線。`accumulative_timer` 支援 10／100／1000 ms 時間基準、R/D 暫存器 PV、T0..255 或 R/D CV（含手冊7-81明列的 IR）。PV 常數及其他 word bank 尚未編碼；不是 PLC 不允許。詳見 [test19](test19-functions.md)。
 
-底層 `generate_ldr` 可生成上述積算型計時；高階 `generate_sequence_ldr` 尚未整合，仍拒絕不帶外部脈波的 pause 需求。只有需求本來就指定脈波輸入時，才可明確設定 `clock` 使用既有的完整 tick 計數模式；此模式不代表原生保持計時。
+底層 `generate_ldr` 可生成上述積算型計時；高階 `generate_sequence_ldr` 已整合 FUN87 的暫停續跑，狀態使用 R 暫存器。只有需求本來就指定脈波輸入時，才可明確設定 `clock` 使用既有的完整 tick 計數模式；此模式不代表原生保持計時。
 
 ## M 網路的用途
 
 舊 `pump_alternation.ldr` 的前五個網路把 M0/M1/M10/M11/M12 複製到 M20/M21/M30/M31/M32，作用是保存本次掃描開始時的模式與步驟，供後續網路讀取。它們不是輸入接線，但先前未附用途說明。
 
-新版順序產生器先計算所有步驟轉移，再更新步驟狀態，已取消 M16+i → M64+i 的整批複製。保留的 M 用於啟動邊沿、執行狀態、完成／故障記憶及步驟轉移；`symbols`、`network_notes` 和高階工具的 `.ldr.design.json` 列出用途。註解尚未嵌入 `.ldr` 格式，不宣稱 WinProLadder 會顯示這些名稱。
+新版順序產生器先計算所有步驟轉移，再更新步驟狀態，已取消 M16+i → M64+i 的整批複製。保留的 M 是 DIFU／比較／積算計時結果，完成／故障記憶存於 R；`symbols`、`network_notes` 和高階工具的 `.ldr.design.json` 列出用途。註解尚未嵌入 `.ldr` 格式，不宣稱 WinProLadder 會顯示這些名稱。
 
-原有泵浦檔案未覆蓋；在原生保留計時尚未完成前，不將縮減需求的範例冒充完整泵浦控制成果。
+原有泵浦檔案未覆蓋；原生 pause 的修復不自動代表舊泵浦應用已重新生成或驗證。見 [本次修復](repair-2026-10-15.md)。

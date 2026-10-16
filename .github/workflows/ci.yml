@@ -1,0 +1,25 @@
+name: Cross-platform checks
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked --python 3.12
+      - run: uv run ruff check .
+      - run: uv run mypy src
+      - run: uv run pytest -q
+      - name: Install on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./install.ps1 -Workspace "${{ runner.temp }}/Ladder Work"
+      - name: Install on macOS or Linux
+        if: runner.os != 'Windows'
+        run: sh install.sh "${{ runner.temp }}/Ladder Work"

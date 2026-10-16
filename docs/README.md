@@ -77,3 +77,7 @@
 - [test30：記憶體指令與英數標籤](test30-functions.md)。
 
 - [2026-10-15 修復與驗證紀錄](repair-2026-10-15.md)
+
+- [WinProLadder GUI 交接清單](gui-handoff-2026-10-16.md)
+
+- [跨平台安裝與疑難排解](installation.md)
