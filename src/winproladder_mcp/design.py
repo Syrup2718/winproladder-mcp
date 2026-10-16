@@ -61,8 +61,8 @@ def design_guide() -> dict[str, Any]:
             "resets Pr; check full table span. Never silently move user operands to avoid "
             "WR conflicts; test20 R15..R17 overlap means generate separate candidates.",
             "test19: accumulative_timer uses timing=TIM, enable=EN, unit_ms=10/100/1000, "
-            "cv=T/R/D and pv=R/D register. TIM pauses; EN=0 clears. No constant PV codec "
-            "for constants. Direct R/D timer simulation and native sequence pause are "
+            "cv=T/R/D and pv=R/D register. TIM pauses; EN=0 clears. No constant PV codec. "
+            " Direct R/D timer simulation and native sequence pause are "
             "supported. tpctl uses output=Yn, "
             "start=Sn, zones=Zn, heat_cool=H/C; verify all Zn outputs and parameter words, "
             "9 exclusive WR words. Md and actual temperature source unresolved. "

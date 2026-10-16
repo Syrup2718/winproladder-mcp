@@ -32,6 +32,40 @@ def client_config(root: Path, output_dir: Path | None = None) -> dict[str, objec
     }
 
 
+def render_config(settings: dict[str, object], format_name: str) -> str:
+    if format_name == "json":
+        return json.dumps({"mcpServers": {"winproladder": settings}}, indent=2) + "\n"
+    return (
+        "[mcp_servers.winproladder]\n"
+        "command = " + json.dumps(settings["command"]) + "\n"
+        "args = " + json.dumps(settings["args"]) + "\n"
+        "startup_timeout_sec = 30\ntool_timeout_sec = 60\n"
+    )
+
+
+def prepare(root: Path, config_dir: Path) -> None:
+    """Create a workspace and standalone snippets; leave client settings untouched."""
+    root.mkdir(parents=True, exist_ok=True)
+    policy = root / ".winproladder-policy.json"
+    try:
+        with policy.open("x", encoding="utf-8") as stream:
+            json.dump({"forbid_m_to_m": True, "allow_function_m_to_m": True}, stream, indent=2)
+            stream.write("\n")
+    except FileExistsError:
+        pass
+    settings = client_config(root)
+    # Validate existing policy too: do not report a successful setup with invalid policy.
+    Service(root).architecture_policy()
+    config_dir.mkdir(parents=True, exist_ok=True)
+    for format_name, filename in [("json", "mcp-config.json"), ("codex", "mcp-config.toml")]:
+        destination = config_dir / filename
+        destination.write_text(render_config(settings, format_name), encoding="utf-8")
+        print(f"Client configuration: {destination.resolve()}")
+    print(f"Workspace: {root.resolve()}")
+    print("Setup complete. Merge ONE configuration snippet into your MCP client and reconnect.")
+    print("Keep this installation directory in place; configuration uses its absolute Python path.")
+
+
 async def check(root: Path) -> None:
     params = StdioServerParameters(
         command=sys.executable, args=["-m", "winproladder_mcp.server", "--root", str(root)]
@@ -126,22 +160,24 @@ def main() -> None:
         "--output-dir", type=Path, help="Output subdirectory; relative paths are resolved from root"
     )
     sub.add_parser("check", help="Test real stdio MCP in a temporary workspace; repeatable")
+    prepare_parser = sub.add_parser("prepare", help="Create workspace and client config snippets")
+    prepare_parser.add_argument("--root", type=Path, required=True)
+    prepare_parser.add_argument("--config-dir", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "check":
         with tempfile.TemporaryDirectory(prefix="winproladder-check-") as directory:
             asyncio.run(asyncio.wait_for(check(Path(directory)), timeout=60))
+    elif args.command == "prepare":
+        try:
+            prepare(args.root, args.config_dir)
+        except (OSError, ValueError) as error:
+            parser.error(str(error))
     else:
         try:
             settings = client_config(args.root, args.output_dir)
         except (OSError, ValueError) as error:
             parser.error(str(error))
-        if args.format == "json":
-            print(json.dumps({"mcpServers": {"winproladder": settings}}, indent=2))
-        else:
-            print("[mcp_servers.winproladder]")
-            print("command = " + json.dumps(settings["command"]))
-            print("args = " + json.dumps(settings["args"]))
-            print("startup_timeout_sec = 30\ntool_timeout_sec = 60")
+        print(render_config(settings, args.format), end="")
 
 
 if __name__ == "__main__":

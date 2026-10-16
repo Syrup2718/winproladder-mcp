@@ -1,4 +1,4 @@
-"""Executable requirements for the Boolean compiler, checked before file creation."""
+"""Executable Boolean and numeric requirements for the compiler, checked before file creation."""
 
 from typing import Annotated, Any
 
@@ -33,10 +33,15 @@ def check_acceptance(ladder: Ladder, cases: list[AcceptanceCase]) -> dict[str, A
         ]
         trace = simulate_runtime(ladder, [s.inputs for s in case.scans], case.initial, case.scan_ms)
         failures = [
-            {"scan": index, "device": name, "expected": expected, "actual": state.get(name, False)}
+            {
+                "scan": index,
+                "device": name,
+                "expected": expected,
+                "actual": state.get(name, 0 if name.startswith(("R", "D")) else False),
+            }
             for index, (expected_scan, state) in enumerate(zip(expected_values, trace, strict=True))
             for name, expected in expected_scan.items()
-            if state.get(name, False) != expected
+            if state.get(name, 0 if name.startswith(("R", "D")) else False) != expected
         ]
         results.append({"name": case.name, "passed": not failures, "failures": failures})
     return {
