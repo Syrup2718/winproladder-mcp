@@ -2,12 +2,11 @@
 
 [首頁](../README.md) · [功能清單](../FEATURES.md) · [貢獻指南](../CONTRIBUTING.md)
 
-使用方式看快速開始；支援範圍看功能清單。
-
 ## 使用指南
 
 | 文件 | 內容 |
 | --- | --- |
+| [跨平台安裝](installation.md) | Windows、macOS、Linux 安裝與疑難排解 |
 | [快速開始](quickstart.md) | 原始碼安裝、client 連線、產檔、匯入與問題排除 |
 | [Agent 操作指南](agent-guide.md) | 19 個工具、需求整理、I/O 契約與二進位交付 |
 | [功能與參數](reference.md) | 配方、順序控制、Ladder IR、時間單位與模擬 |
@@ -57,10 +56,9 @@
 | [test25](test25-functions.md) | FUN42～49 位元搬移、交換與資料組合 |
 | [test26](test26-functions.md) | FUN50～57 分配、移位、旋轉、格雷碼與解碼 |
 | [test27](test27-functions.md) | FUN06 BSHF 與 FUN58～64 轉換功能 |
-
-- [test28：脈波、速度與字串](test28-functions.md)
-
-- [test29：ASCII與數字標籤](test29-functions.md)
+| [test28](test28-functions.md) | 脈波、速度與字串 |
+| [test29](test29-functions.md) | ASCII 與數字標籤 |
+| [test30](test30-functions.md) | 記憶體指令與英數標籤 |
 
 ## 版本與歷史
 
@@ -71,13 +69,7 @@
 | [FUN15／16 舊假說](fun15-16-probe.md) | 已被新樣本推翻，僅供研究追溯 |
 | [2026-10-13 目錄盤點](folder-audit-2026-10-13.md) | 本機維護歷史 |
 | [2026-10-15 專案優化](project-optimization-2026-10-15.md) | 重構範圍、效能量測與驗證 |
+| [2026-10-15 修復](repair-2026-10-15.md) | 修復與驗證紀錄 |
+| [GUI 交接清單](gui-handoff-2026-10-16.md) | WinProLadder 匯入與補充取樣 |
 
 手冊以標題與頁碼引用，PDF 不隨儲存庫提供。
-
-- [test30：記憶體指令與英數標籤](test30-functions.md)。
-
-- [2026-10-15 修復與驗證紀錄](repair-2026-10-15.md)
-
-- [WinProLadder GUI 交接清單](gui-handoff-2026-10-16.md)
-
-- [跨平台安裝與疑難排解](installation.md)

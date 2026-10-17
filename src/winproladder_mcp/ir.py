@@ -1417,7 +1417,6 @@ class Network(Model):
             | MasterEnd
             | Differential
             | UpDownCounter,
-            # test9 introduces native master control, pulse relays and register counting.
             Field(discriminator="type"),
         ]
         | None

@@ -28,7 +28,7 @@ from .ir import (
     network_expression,
     validation,
 )
-from .logic import bit_address, evaluate, parse_expression
+from .logic import Expr, bit_address, evaluate, parse_expression
 from .registers import register_span
 
 Scalar = Annotated[bool, Field(strict=True)] | Annotated[int, Field(strict=True)]
@@ -136,11 +136,12 @@ def simulate_runtime(
                     "Generated T/C blocks start reset; no initial block state supported"
                 )
 
-    def bits() -> dict[str, bool]:
-        return {k: v for k, v in state.items() if type(v) is bool}
+    expressions: dict[str, Expr] = {}
 
     def test(expression: str) -> bool:
-        return evaluate(parse_expression(expression), bits())
+        if expression not in expressions:
+            expressions[expression] = parse_expression(expression)
+        return evaluate(expressions[expression], state)
 
     def word(name: str) -> int:
         return int(state.get(name, 0)) & 0xFFFF
@@ -149,7 +150,12 @@ def simulate_runtime(
         state[name] = value & 0xFFFF
 
     def coils(items: list[Coil], power: bool) -> None:
-        b = bits()
+        if not items:
+            return
+        b = {
+            f"{c.device}{c.address}": bool(state.get(f"{c.device}{c.address}", False))
+            for c in items
+        }
         apply_coils(items, power, b)
         state.update(b)
 
@@ -157,6 +163,11 @@ def simulate_runtime(
     elapsed: dict[int, int] = {}
     counts: dict[int, int] = {}
     flags: dict[int, tuple[bool, ...]] = {}
+    rung_expressions = {
+        i: network_expression(n)
+        for i, n in enumerate(ladder.networks)
+        if not n.empty and n.action is None and n.block is None and n.edge is None
+    }
     for i, n in enumerate(ladder.networks):
         if n.edge is not None:
             previous[i] = bool(state.get(n.edge.input, False))
@@ -293,7 +304,7 @@ def simulate_runtime(
                 )
                 previous[i] = current
             else:
-                power = evaluate(network_expression(n), bits())
+                power = evaluate(rung_expressions[i], state)
             coils(n.coils, power)
         trace.append(dict(state))
     return trace

@@ -2,6 +2,7 @@
 
 import ast
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 
@@ -69,10 +70,7 @@ def parse_expression(expression: str) -> Expr:
         if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Invert):
             return negate(convert(node.operand, depth + 1))
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitAnd | ast.BitOr):
-            # Python represents a flat AND/OR chain as a deep left spine. Walk
-            # that spine without spending the nested-branch depth budget: the
-            # compiler emits the same successive AND/OR instructions for it.
-            # This also lets layout normalization reparse its flattened output.
+            # Flat chains must not consume the nested-branch depth budget.
             operator = type(node.op)
             tail = [node.right]
             head = node.left
@@ -165,13 +163,13 @@ def expression_text(expr: Expr) -> str:
     return "(" + f" {expr.op.upper()} ".join(expression_text(x) for x in expr.items) + ")"
 
 
-def evaluate(expr: Expr, state: dict[str, bool]) -> bool:
+def evaluate(expr: Expr, state: Mapping[str, bool | int]) -> bool:
     if expr.op == "contact":
-        value = state.get(expr.name, False)
+        value = bool(state.get(expr.name, False))
         return not value if expr.nc else value
     if expr.op in {"true", "false"}:
         return expr.op == "true"
-    values = [evaluate(x, state) for x in expr.items]
+    values = (evaluate(x, state) for x in expr.items)
     return all(values) if expr.op == "and" else any(values)
 
 

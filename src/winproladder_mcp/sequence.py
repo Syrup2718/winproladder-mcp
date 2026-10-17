@@ -1,4 +1,4 @@
-"""Compile bounded, pause/resume sequences using sampled Boolean/counter families."""
+"""Compile register-based sequences with native timers or explicit pulse counters."""
 
 from typing import Annotated, Any
 
@@ -64,28 +64,34 @@ def sequence_ladder(spec: SequenceSpec) -> tuple[Ladder, dict[str, Any]]:
         "M6": "Abort or timeout latched",
     }
 
-    def publish() -> None:
-        ns.extend(
-            [
-                status(state, 1, count, 0),
-                status(state, count + 1, count + 1, 5),
-                status(state, count + 2, count + 2, 6),
-            ]
-        )
+    def publish(*, snapshot: bool = False) -> None:
+        if snapshot:
+            ns.extend([status(state, 1, count, 64), status(state, count + 2, count + 2, 66)])
+            symbols["M64"] = "Scan-entry running status"
+            symbols["M66"] = "Scan-entry aborted status"
+        else:
+            ns.extend(
+                [
+                    status(state, 1, count, 0),
+                    status(state, count + 1, count + 1, 5),
+                    status(state, count + 2, count + 2, 6),
+                ]
+            )
+        stage_base = 80 if snapshot else 16
+        label = "Scan-entry stage" if snapshot else "Active stage"
         for i, step in enumerate(spec.steps):
-            ns.append(status(state, i + 1, i + 1, 16 + i))
-            symbols[f"M{16 + i}"] = f"Active stage: {step.name}"
+            ns.append(status(state, i + 1, i + 1, stage_base + i))
+            symbols[f"M{stage_base + i}"] = f"{label}: {step.name}"
 
-    # These comparisons are the scan's stage snapshot. Do not refresh them during
-    # transitions: zero-time stages must still occupy one complete output scan.
-    publish()
+    # Freeze entry state so even zero-time stages occupy one output scan.
+    publish(snapshot=True)
     ns.append(Network(action=Differential(type="difu", trigger=spec.start, destination="M4")))
     if spec.clock is not None:
         ns.append(Network(action=Differential(type="difu", trigger=spec.clock, destination="M3")))
         symbols["M3"] = "External clock rising edge (sampled even during pause)"
     done: dict[int, str] = {}
     for i, step in enumerate(spec.steps):
-        active = f"M{16 + i} AND NOT ({spec.reset}) AND NOT ({spec.abort})"
+        active = f"M{80 + i} AND NOT ({spec.reset}) AND NOT ({spec.abort})"
         for address, ticks in ((i, step.ticks), (16 + i, step.timeout_ticks)):
             if ticks is None:
                 continue
@@ -132,20 +138,19 @@ def sequence_ladder(spec: SequenceSpec) -> tuple[Ladder, dict[str, Any]]:
                             address=address,
                             preset=ticks,
                             pulse=f"M3 AND {active} AND NOT ({spec.pause})",
-                            clear=f"NOT M{16 + i} OR ({spec.reset}) OR ({spec.abort})",
+                            clear=f"NOT M{80 + i} OR ({spec.reset}) OR ({spec.abort})",
                         )
                     )
                 )
                 done[address] = f"C{address}"
             symbols[done[address]] = f"{'Duration' if address == i else 'Timeout'}: {step.name}"
     for i, step in enumerate(spec.steps):
-        ready = f"M{16 + i} AND NOT ({spec.pause}) AND NOT ({spec.reset}) AND NOT ({spec.abort})"
+        ready = f"M{80 + i} AND NOT ({spec.pause}) AND NOT ({spec.reset}) AND NOT ({spec.abort})"
         ns.append(
             assign_word(state, i + 2, zero, f"{ready} AND {done[i]} AND ({step.complete_when})")
         )
         if step.timeout_ticks is not None:
-            # Split the two reasons for incomplete status into native register EN
-            # rungs, avoiding an automatically lowered relay helper.
+            # Separate EN conditions avoid automatically lowered relay helpers.
             for incomplete in (f"NOT {done[i]}", f"NOT ({step.complete_when})"):
                 ns.append(
                     assign_word(
@@ -157,7 +162,7 @@ def sequence_ladder(spec: SequenceSpec) -> tuple[Ladder, dict[str, Any]]:
             state,
             1,
             zero,
-            f"M4 AND NOT M0 AND NOT M6 AND NOT ({spec.reset}) AND NOT ({spec.abort})",
+            f"M4 AND NOT M64 AND NOT M66 AND NOT ({spec.reset}) AND NOT ({spec.abort})",
         )
     )
     ns.append(assign_word(state, count + 2, zero, spec.abort))

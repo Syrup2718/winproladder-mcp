@@ -37,6 +37,7 @@ def audit(root: Path) -> dict:
                 environment = parts[0] in {
                     ".git",
                     ".venv",
+                    ".install",
                     ".mypy_cache",
                     ".pytest_cache",
                     ".ruff_cache",

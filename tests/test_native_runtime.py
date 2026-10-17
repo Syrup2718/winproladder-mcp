@@ -9,7 +9,7 @@ import pytest
 from winproladder_mcp.acceptance import AcceptanceCase
 from winproladder_mcp.control import ControlKind, ControlSpec, control_ladder
 from winproladder_mcp.io_contract import IOContract
-from winproladder_mcp.ir import Ladder, Network
+from winproladder_mcp.ir import Ladder, Network, network_coils
 from winproladder_mcp.runtime import simulate_runtime
 from winproladder_mcp.sequence import SequenceSpec, sequence_ladder
 from winproladder_mcp.service import Service
@@ -199,14 +199,15 @@ def test_strict_policy_rejects_even_x_only_automatic_helpers(tmp_path):
     assert not (tmp_path / "artifacts").exists()
 
 
-@pytest.mark.parametrize("pause", ["FALSE", "X1"])
-def test_maximum_sequence_no_helpers_and_reset_wins_abort(tmp_path, pause):
+@pytest.mark.parametrize("pause,clock", [("FALSE", None), ("X1", None), ("X1", "X4")])
+def test_maximum_sequence_no_helpers_and_reset_wins_abort(tmp_path, pause, clock):
     service = strict_service(tmp_path)
     ladder, _ = sequence_ladder(
         SequenceSpec(
             requirement="16 stages",
             start="X0",
             pause=pause,
+            clock=clock,
             reset="X2",
             abort="X3",
             steps=[{"name": str(i), "ticks": 0, "outputs": [i]} for i in range(16)],
@@ -215,6 +216,13 @@ def test_maximum_sequence_no_helpers_and_reset_wins_abort(tmp_path, pause):
     result = service.generate("max.ldr", ladder)
     assert not result["layout"]["helper_devices"]
     emitted = Ladder.model_validate(service.read(result["path"])["ladder"])
+    for candidate in (ladder, emitted):
+        destinations = [
+            (coil.device, coil.address)
+            for network in candidate.networks
+            for coil in network_coils(network)
+        ]
+        assert len(destinations) == len(set(destinations)), "Repeated coil writers"
     trace = simulate_runtime(
         emitted, [{"X0": True}] + [{}] * 16 + [{"X2": True, "X3": True}], {}, 10
     )

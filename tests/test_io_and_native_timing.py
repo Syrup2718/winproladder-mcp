@@ -8,7 +8,15 @@ import pytest
 from winproladder_mcp.analysis import device_references
 from winproladder_mcp.control import ControlSpec, control_ladder
 from winproladder_mcp.io_contract import IOContract
-from winproladder_mcp.ir import Coil, Ladder, Network, Timer, decode_network
+from winproladder_mcp.ir import (
+    Coil,
+    Ladder,
+    Network,
+    Timer,
+    ZoneCompare,
+    decode_network,
+    network_coils,
+)
 from winproladder_mcp.ldr import parse
 from winproladder_mcp.sequence import SequenceSpec, sequence_ladder
 from winproladder_mcp.server import build_server
@@ -77,7 +85,14 @@ def test_native_three_and_five_seconds_without_clock_or_snapshot_copies(tmp_path
     ladder, design = sequence_ladder(spec)
     assert spec.clock is None and design["effective_timeout_ticks"] == [None, None]
     assert [n.block.preset for n in ladder.networks if isinstance(n.block, Timer)] == [300, 500]
-    assert not ({f"M{i}" for i in range(64, 80)} & devices(ladder))
+    # Snapshot bits must be native register comparisons, never M-to-M relay copies.
+    snapshots = [
+        n
+        for n in ladder.networks
+        if any(c.device == "M" and c.address >= 64 for c in network_coils(n))
+    ]
+    assert snapshots
+    assert all(isinstance(n.action, ZoneCompare) and n.action.source == "R0" for n in snapshots)
     assert all(d in ladder.symbols for d in devices(ladder) if d.startswith("M"))
     result = Service(tmp_path).generate_design(
         "native.ldr", ladder, design, io_contract=IOContract(inputs=["X1"], outputs=["Y71", "Y72"])
