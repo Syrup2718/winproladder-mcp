@@ -97,7 +97,6 @@ STATUS = {
 }
 
 
-# One dispatch table for both directions; reject accidental opcode/action collisions.
 _OPERAND_MODULES = (
     conversion_functions,
     shift_functions,

@@ -16,8 +16,7 @@ POLICY_FILE = ".winproladder-policy.json"
 class ArchitecturePolicy(BaseModel):
     model_config = ConfigDict(extra="forbid")
     forbid_m_to_m: StrictBool = False
-    # Older policy files keep their strict behavior; the workspace opts in to
-    # the user's clarified allowance for meaningful native function results.
+    # Native function results require an explicit policy opt-in.
     allow_function_m_to_m: StrictBool = False
 
 

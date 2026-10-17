@@ -276,8 +276,7 @@ class Service:
     ) -> dict[str, Any]:
         self.architecture(ladder)
         source_devices = set(device_references(list(enumerate(ladder.networks)))["devices"])
-        # Low-level callers explicitly provide their ladder; enforce that lowering cannot
-        # extend its physical I/O even when there is no separate customer contract.
+        # Lowering must preserve physical I/O even without an explicit contract.
         contract = io_contract or IOContract(
             inputs=sorted(d for d in source_devices if d.startswith("X")),
             outputs=sorted(d for d in source_devices if d.startswith("Y")),
@@ -297,8 +296,7 @@ class Service:
             )
         records = tuple(Record.create(compile_network(n)) for n in reversed(ladder.networks))
         document = Document(default_header(ladder.profile), records, FOOTER)
-        # Validate the exact emitted bytes, including network order and decoding,
-        # before creating a deliverable. Source-only simulation misses compiler bugs.
+        # Replay emitted bytes before writing; source-only checks miss compiler errors.
         parsed = parse(document.encode())
         decoded = [decode_network(r.payload) for r in reversed(parsed.records)]
         if any(n is None for n in decoded):

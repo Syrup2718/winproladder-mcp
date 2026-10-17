@@ -54,7 +54,6 @@ def prepare(root: Path, config_dir: Path) -> None:
     except FileExistsError:
         pass
     settings = client_config(root)
-    # Validate existing policy too: do not report a successful setup with invalid policy.
     Service(root).architecture_policy()
     config_dir.mkdir(parents=True, exist_ok=True)
     for format_name, filename in [("json", "mcp-config.json"), ("codex", "mcp-config.toml")]:
