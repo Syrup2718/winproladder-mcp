@@ -90,3 +90,14 @@ uv run python -m winproladder_mcp.setup config --format json
 | `--locked` 失敗 | 確認 `pyproject.toml` 與 `uv.lock` 來自同一份原始碼；不要為了安裝直接刪除鎖檔。 |
 | 檢查通過但 client 無法啟動 | 確認使用新產生的設定、絕對路徑仍存在，並重啟連線。 |
 | Windows 終端機中文顯示亂碼 | 設定檔使用 UTF-8；以編輯器查看實際路徑，勿直接複製亂碼。 |
+
+## 減少 AI 上下文用量
+
+新產生的 client 設定預設帶 `--compact-responses`。既有使用者可重新執行安裝，將新設定合併到 client 並重新連線；或直接把這個參數加進既有 server args。
+
+- 能力與設計指南預設回傳摘要，不重送整份 Ladder schema；需要指令細節時呼叫對應工具並傳 `detail=true`。
+- 產檔回覆省略重複的 design、design_summary、network_notes、symbols；完整高階設計仍保存在 `.ldr.design.json`。驗收結果、警告、I/O、時基、SHA-256 及下載連結保留。
+- 將 acceptance 與產檔放在同一次請求，避免再對同一份程式做相同模擬。需要二進位交付時才下載，不要把 base64 放進聊天文字。
+- 原始 server 命令未指定該參數時維持完整回覆。診斷低階產檔的完整 metadata 可移除該參數並重新連線。
+
+此模式減少工具回覆的文字量，不縮減工具輸入 schema、不跳過驗收。實際 token／費用差異取決於模型與 client；部分 client 會同時傳入文字和 structuredContent，因此保留兩者以維持相容性，並同步精簡兩者。

@@ -33,7 +33,9 @@ from .service import Service, capabilities
 from .system import SystemSpec, system_ladder
 
 
-def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
+def build_server(
+    root: Path, output_dir: Path | None = None, *, compact_responses: bool = False
+) -> FastMCP:
     service = Service(root, output_dir)
     mcp = FastMCP(
         "WinProLadder",
@@ -42,12 +44,13 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
             "use generate_sequence_ldr. Copy only user-specified X/Y into io_contract. "
             "Never invent physical I/O or external clocks. Require signal and output addresses. "
             "Ordinary T and sampled FUN87/88/89 accumulative timers are supported. "
-            "Use get_design_guide to turn requirements into conditions and blocks. "
+            "Use get_design_guide only when guidance is needed; detail=true expands notes. "
             "Honor its workspace architecture policy; forbidden M-to-M chains must be "
             "redesigned using native instructions, not renamed or hidden in helpers. "
             "Call generate_ldr for an actual file; inferred encodings are enabled. "
             "Do not ask the user for JSON or samples for supported expressions/parameters. "
-            "Use simulation for Boolean requirements. Return file links and validation warnings. "
+            "Include acceptance cases in generation; avoid repeating the same simulation. "
+            "Return file links and validation warnings. "
             "Generation results include an MCP resource link to the actual binary .ldr. "
             "Use resources/read or get_ldr_artifact to deliver its bytes to clients without "
             "access to the server filesystem. "
@@ -73,6 +76,15 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
         return data
 
     def artifact_result(result: dict[str, Any], data: bytes | None = None) -> CallToolResult:
+        if compact_responses:
+            assumptions = result.get("design", {}).get("assumptions")
+            result = {
+                key: value
+                for key, value in result.items()
+                if key not in {"design", "design_summary", "network_notes", "symbols"}
+            }
+            if assumptions:
+                result["design_assumptions"] = assumptions
         name = Path(result["path"]).name
         uri = AnyUrl(f"winproladder://artifacts/{quote(name, safe='')}")
         metadata = {
@@ -87,7 +99,10 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
         }
         response = CallToolResult(
             content=[
-                TextContent(type="text", text=json.dumps(metadata, ensure_ascii=False)),
+                TextContent(
+                    type="text",
+                    text=json.dumps(metadata, ensure_ascii=False, separators=(",", ":")),
+                ),
                 ResourceLink(
                     type="resource_link",
                     uri=uri,
@@ -114,9 +129,9 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
         return response
 
     @mcp.tool(annotations=read)
-    def get_capabilities() -> dict[str, Any]:
-        """Get supported operations, instruction/address limits, JSON schema and an example."""
-        return {
+    def get_capabilities(detail: bool = False) -> dict[str, Any]:
+        """Get support and limits. Use detail=true for full schema/evidence in compact mode."""
+        result = {
             **capabilities(),
             "workspace": str(service.root),
             "architecture_policy": service.architecture_policy(),
@@ -127,6 +142,24 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
                 "format": "MCP binary resource (base64 on the wire), application/octet-stream",
             },
         }
+        if compact_responses and not detail:
+            keys = {
+                "version",
+                "generation",
+                "address_subset",
+                "simulation_model",
+                "workspace",
+                "architecture_policy",
+                "output_directory",
+                "artifact_delivery",
+                "no_plc_connection",
+                "writes",
+            }
+            return {
+                **{k: v for k, v in result.items() if k in keys},
+                "more": "Use detail=true for instruction-specific limits and full schema.",
+            }
+        return result
 
     @mcp.tool(annotations=read)
     def get_manual_reference() -> dict[str, Any]:
@@ -139,8 +172,22 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
         return analyze_rtc_snapshot(registers)
 
     @mcp.tool(annotations=read)
-    def get_design_guide() -> dict[str, Any]:
-        """Get the natural-language-to-LDR workflow and complete runnable design examples."""
+    def get_design_guide(detail: bool = False) -> dict[str, Any]:
+        """Get design guidance. Use detail=true for instruction notes and full examples."""
+        if compact_responses and not detail:
+            return {
+                "control_recipes": design_guide()["control_recipes"],
+                "architecture_policy": service.architecture_policy(),
+                "workflow": [
+                    "Use control recipes for common functions, sequence for steps, system for "
+                    "independent controls, generate_ldr for custom logic.",
+                    "Use only requested X/Y and timing; do not invent inputs or clocks.",
+                    "Supply acceptance cases with generation; "
+                    "source and emitted bytes are checked.",
+                    "Return the artifact link and warnings; GUI/PLC checks are separate.",
+                ],
+                "more": "Use detail=true for instruction-specific notes, examples and schema.",
+            }
         return {
             **design_guide(),
             "architecture_policy": service.architecture_policy(),
@@ -343,19 +390,24 @@ def build_server(root: Path, output_dir: Path | None = None) -> FastMCP:
 
     @mcp.resource("winproladder://capabilities")
     def capability_resource() -> str:
-        return json.dumps(get_capabilities(), ensure_ascii=False)
+        return json.dumps(get_capabilities(detail=True), ensure_ascii=False)
 
     return mcp
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--compact-responses", action="store_true", help="Omit repeated design metadata and schemas"
+    )
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="Workspace allowed for reads")
     parser.add_argument(
         "--output-dir", type=Path, help="Absolute output subdirectory (default ROOT/artifacts)"
     )
     args = parser.parse_args()
-    build_server(args.root, args.output_dir).run(transport="stdio")
+    build_server(args.root, args.output_dir, compact_responses=args.compact_responses).run(
+        transport="stdio"
+    )
 
 
 if __name__ == "__main__":
