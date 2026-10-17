@@ -23,7 +23,13 @@ def client_config(root: Path, output_dir: Path | None = None) -> dict[str, objec
     if output_dir is not None and not output_dir.is_absolute():
         output_dir = root / output_dir
     service = Service(root, output_dir)
-    arguments = ["-m", "winproladder_mcp.server", "--root", str(service.root)]
+    arguments = [
+        "-m",
+        "winproladder_mcp.server",
+        "--compact-responses",
+        "--root",
+        str(service.root),
+    ]
     if output_dir is not None:
         arguments.extend(["--output-dir", str(service.output)])
     return {
