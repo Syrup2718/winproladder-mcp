@@ -79,6 +79,7 @@ def control_ladder(spec: ControlSpec) -> tuple[Ladder, dict[str, Any]]:
     s, stop, reset, rev = (f"({v})" for v in (spec.signal, spec.stop, spec.reset, spec.reverse))
     y, m, t = f"Y{spec.output}", f"M{spec.memory}", f"T{spec.timer}"
     edge = f"M{spec.memory + 2}"
+    entry_state = f"M{spec.memory + 3}"
     register, zero = f"R{spec.register_base}", f"R{spec.register_base + 1}"
     if spec.kind in {"off_delay", "pulse", "star_delta"}:
         ns.append(zero_word(zero))
@@ -134,9 +135,11 @@ def control_ladder(spec: ControlSpec) -> tuple[Ladder, dict[str, Any]]:
                 Network(condition=spec.reset, coils=[Coil(address=spec.output, mode="reset")])
             )
         else:
-            ns.append(status(register, 1, 1, spec.memory))
+            ns.append(status(register, 1, 1, spec.memory + 3))
             ns.append(
-                assign_word(register, 1, zero, f"{edge} AND NOT {m} AND NOT {t} AND NOT {reset}")
+                assign_word(
+                    register, 1, zero, f"{edge} AND NOT {entry_state} AND NOT {t} AND NOT {reset}"
+                )
             )
             ns.append(assign_word(register, 0, zero, spec.reset))
             ns.append(status(register, 1, 1, spec.memory))
@@ -147,8 +150,8 @@ def control_ladder(spec: ControlSpec) -> tuple[Ladder, dict[str, Any]]:
         timer(f"{s} AND NOT {reset}")
         coil(t, y)
     elif spec.kind == "off_delay":
-        ns.append(status(register, 1, 1, spec.memory))
-        timer(f"{m} AND NOT {s} AND NOT {reset}")
+        ns.append(status(register, 1, 1, spec.memory + 3))
+        timer(f"{entry_state} AND NOT {s} AND NOT {reset}")
         ns.append(assign_word(register, 1, zero, spec.signal))
         ns.append(assign_word(register, 0, zero, f"{t} OR {reset}"))
         ns.append(status(register, 1, 1, spec.memory))
@@ -174,6 +177,7 @@ def control_ladder(spec: ControlSpec) -> tuple[Ladder, dict[str, Any]]:
     roles = {
         m: "Control active latch",
         edge: "One-scan signal edge",
+        entry_state: "Control state at scan entry",
     }
     from .ir import network_coils
 
