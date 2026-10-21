@@ -63,3 +63,9 @@ MCP 會回傳可下載的 `.ldr`；明確要求註解時，另回傳 `.txt`。�
 - [貢獻指南](CONTRIBUTING.md)
 
 版本內容與後續變更統一記錄在 [CHANGELOG](CHANGELOG.md)。
+
+## 授權
+
+本專案原創程式碼與文件採用 [MIT License](LICENSE)，Copyright © 2026 syrup2718。
+
+FATEK 與 WinProLadder 的商標、原廠軟體、手冊及其他第三方內容，其權利仍歸各自權利人所有；MIT 授權不代表原廠背書或授予第三方內容的權利。

@@ -7,6 +7,7 @@ name = "winproladder-mcp"
 version = "1.0.0"
 description = "Tools for inspecting, parsing, and encoding FATEK WinProLadder LDR files."
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12"
 authors = [{ name = "WinProLadder MCP contributors" }]
 dependencies = [
