@@ -20,6 +20,7 @@ from mcp.types import (
 from pydantic import AnyUrl, StrictBool, StrictInt
 
 from .acceptance import AcceptanceCase
+from .capabilities import capability_summary, instruction_capabilities, instruction_families
 from .control import ControlSpec, control_ladder
 from .design import design_guide
 from .io_contract import IOContract
@@ -45,11 +46,13 @@ def build_server(
             "Never invent physical I/O or external clocks. Require signal and output addresses. "
             "Ordinary T and sampled FUN87/88/89 accumulative timers are supported. "
             "Use get_design_guide only when guidance is needed; detail=true expands notes. "
+            "Use list_instruction_families then get_instruction_capabilities for focused limits. "
             "Honor its workspace architecture policy; forbidden M-to-M chains must be "
             "redesigned using native instructions, not renamed or hidden in helpers. "
             "Call generate_ldr for an actual file; inferred encodings are enabled. "
             "Do not ask the user for JSON or samples for supported expressions/parameters. "
             "Include acceptance cases in generation; avoid repeating the same simulation. "
+            "Set require_acceptance=true when behavior checks are mandatory. "
             "Return file links and validation warnings. "
             "Generation results include an MCP resource link to the actual binary .ldr. "
             "Use resources/read or get_ldr_artifact to deliver its bytes to clients without "
@@ -131,8 +134,9 @@ def build_server(
     @mcp.tool(annotations=read)
     def get_capabilities(detail: bool = False) -> dict[str, Any]:
         """Get support and limits. Use detail=true for full schema/evidence in compact mode."""
+        base = capabilities() if detail or not compact_responses else capability_summary()
         result = {
-            **capabilities(),
+            **base,
             "workspace": str(service.root),
             "architecture_policy": service.architecture_policy(),
             "output_directory": str(service.output),
@@ -152,6 +156,8 @@ def build_server(
                 "architecture_policy",
                 "output_directory",
                 "artifact_delivery",
+                "instruction_family_count",
+                "instruction_discovery",
                 "no_plc_connection",
                 "writes",
             }
@@ -160,6 +166,17 @@ def build_server(
                 "more": "Use detail=true for instruction-specific limits and full schema.",
             }
         return result
+
+    @mcp.tool(annotations=read)
+    def list_instruction_families() -> dict[str, Any]:
+        """List compact instruction families; use this before requesting detailed capabilities."""
+        families = instruction_families()
+        return {"families": families, "count": len(families)}
+
+    @mcp.tool(annotations=read)
+    def get_instruction_capabilities(family: str) -> dict[str, Any]:
+        """Get support, limits and evidence for one family returned by list_instruction_families."""
+        return instruction_capabilities(family)
 
     @mcp.tool(annotations=read)
     def get_manual_reference() -> dict[str, Any]:
@@ -200,6 +217,8 @@ def build_server(
         spec: SystemSpec,
         io_contract: IOContract,
         acceptance: list[AcceptanceCase] | None = None,
+        require_acceptance: bool = False,
+        strict_writers: bool = True,
     ) -> CallToolResult:
         """Generate independent controls with automatic internal M/T/C allocation.
         Explicit overlapping resources are rejected, not silently reassigned. Inputs can be shared.
@@ -207,7 +226,13 @@ def build_server(
         ladder, design = system_ladder(spec)
         return artifact_result(
             service.generate_design(
-                output_name, ladder, design, acceptance, io_contract=io_contract
+                output_name,
+                ladder,
+                design,
+                acceptance,
+                io_contract=io_contract,
+                require_acceptance=require_acceptance,
+                strict_writers=strict_writers,
             )
         )
 
@@ -217,6 +242,8 @@ def build_server(
         spec: ControlSpec,
         io_contract: IOContract,
         acceptance: list[AcceptanceCase] | None = None,
+        require_acceptance: bool = False,
+        strict_writers: bool = True,
     ) -> CallToolResult:
         """Generate common control functions from customer requirements translated by the host.
         Physical I/O must be explicit and within io_contract. Supports latch, toggle, edges, delays,
@@ -225,7 +252,13 @@ def build_server(
         ladder, design = control_ladder(spec)
         return artifact_result(
             service.generate_design(
-                output_name, ladder, design, acceptance, io_contract=io_contract
+                output_name,
+                ladder,
+                design,
+                acceptance,
+                io_contract=io_contract,
+                require_acceptance=require_acceptance,
+                strict_writers=strict_writers,
             )
         )
 
@@ -235,6 +268,8 @@ def build_server(
         spec: SequenceSpec,
         io_contract: IOContract,
         acceptance: list[AcceptanceCase] | None = None,
+        require_acceptance: bool = False,
+        strict_writers: bool = True,
     ) -> CallToolResult:
         """Generate ordered steps using native T timers, with no automatic X/Y additions.
           Native pause/resume uses FUN87 with register state and no relay copy chains.
@@ -244,7 +279,13 @@ def build_server(
         ladder, design = sequence_ladder(spec)
         return artifact_result(
             service.generate_design(
-                output_name, ladder, design, acceptance, io_contract=io_contract
+                output_name,
+                ladder,
+                design,
+                acceptance,
+                io_contract=io_contract,
+                require_acceptance=require_acceptance,
+                strict_writers=strict_writers,
             )
         )
 
@@ -254,6 +295,8 @@ def build_server(
         ladder: Ladder,
         io_contract: IOContract,
         acceptance: list[AcceptanceCase] | None = None,
+        require_acceptance: bool = False,
+        strict_writers: bool = False,
     ) -> CallToolResult:
         """Preferred generation tool: compile conditions/blocks to an actual .ldr file.
 
@@ -261,7 +304,14 @@ def build_server(
         SHA-256, binary resource link and verification warnings. Never overwrite existing files.
         """
         return artifact_result(
-            service.generate(output_name, ladder, acceptance, io_contract=io_contract)
+            service.generate(
+                output_name,
+                ladder,
+                acceptance,
+                io_contract=io_contract,
+                require_acceptance=require_acceptance,
+                strict_writers=strict_writers,
+            )
         )
 
     @mcp.tool(annotations=read)
@@ -324,11 +374,25 @@ def build_server(
 
     @mcp.tool(annotations=write)
     def create_ldr(
-        output_name: str, ladder: Ladder, io_contract: IOContract, allow_unverified: bool = False
+        output_name: str,
+        ladder: Ladder,
+        io_contract: IOContract,
+        allow_unverified: bool = False,
+        acceptance: list[AcceptanceCase] | None = None,
+        require_acceptance: bool = False,
+        strict_writers: bool = False,
     ) -> CallToolResult:
         """Create a new file from IR with sampled header and fresh CRC. Never overwrite files."""
         return artifact_result(
-            service.create(output_name, ladder, allow_unverified, io_contract=io_contract)
+            service.create(
+                output_name,
+                ladder,
+                allow_unverified,
+                acceptance=acceptance,
+                io_contract=io_contract,
+                require_acceptance=require_acceptance,
+                strict_writers=strict_writers,
+            )
         )
 
     @mcp.tool(annotations=read)

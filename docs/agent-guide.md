@@ -26,6 +26,8 @@
 | `get_manual_reference` | 手冊定義的運算元上限、版本差異與 RTC 操作方式 |
 | `inspect_rtc_snapshot` | 檢查提供的 RTC 數值及 R4135 時分組合，不連線 PLC |
 | `get_capabilities` | 能力、限制、工作目錄與 schema |
+| `list_instruction_families` | 小型指令族群索引，避免先載入完整能力文件 |
+| `get_instruction_capabilities` | 單一指令族群的形式、限制與證據 |
 | `get_design_guide` | 設計流程與 IR 範例 |
 | `get_ldr_artifact` | 取得生成檔的二進位內容與 SHA-256，供 client 下載保存 |
 | `generate_control_ldr` | 單一控制配方 |

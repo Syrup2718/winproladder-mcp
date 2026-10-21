@@ -23,7 +23,7 @@ SET/RST 與邊沿配方由布林網路實作，不代表原生指令編碼已支
 
 預設使用原生 T 計時，時間為 ticks × tick_ms（預設 100 ms），換算成 .01S preset；例如 ticks=30 是 3 秒、preset=300。時間須為 10 ms 倍數且不超過 327670 ms。不需要外部 X 時脈。
 
-普通 T 停用會清零。原生暫停保留需要 FUN87～89，底層 `generate_ldr` 已支援暫存器 PV 形式，但尚未整合高階順序產生器；提供 pause 而未提供 clock 時會明確拒絕產檔，不能新增 X 作替代。
+普通 T 停用會清零。指定 pause 且未指定 clock 時，高階順序產生器使用 FUN87 原生累積計時與 R 暫存器狀態；FUN88／89 可由底層 IR 使用。只有需求明確指定 clock 時才使用外部脈波模式，不能自行新增 X 作替代。
 
 只有需求明確指定外部脈波時，才可設定 clock 使用計数器模式：保留完整 tick，不保留不足一個 tick 的時間；高低狀態均須被掃描，暫停期間忽略脈波，恢復時不補算邊沿。不得因為欠缺原生保持計時就替使用者加此輸入。
 
@@ -65,13 +65,13 @@ Timer 的 `preset` 是時基刻度數，不是直接的毫秒值。在 `.01S` �
 
 未指定 scan_ms 時只模擬布林邏輯。指定 1..60000ms 的 scan_ms 後啟用 Timer/Counter 模型：Timer 停用歸零，Counter 計上升沿且 clear 優先。拒絕重複 T/C 寫入、block 初始狀態及不支援的時間設定。模型不模擬 PLC 非同步時脈相位。
 
-`generate_ldr` 可附 1..32 個 acceptance cases，每個 case 含 name、initial、scans（inputs/expected），時序案例另附 scan_ms。每個 case 獨立起始；任何斷言失敗會在寫檔前拒絕生成。省略 acceptance 可編譯，但不會得到驗收結果。
+`generate_ldr` 可附 1..32 個 acceptance cases，每個 case 含 name、initial、scans（inputs/expected），時序案例另附 scan_ms。每個 case 獨立起始；任何斷言失敗會在寫檔前拒絕生成。所有產檔結果均回傳 `behavior_verification`；省略 acceptance 時明確標示 `level=not_run`。設定 `require_acceptance=true` 可在無案例時拒絕產檔。
 
-暫存器動作與迴圈不可模擬。模型驗收不等於 WinProLadder syntax check、GUI 匯入或實機執行驗證。
+模型支援列出的直接 R/D 算術、比較、位元運算、搬移、BCD、DIFU／DIFD、TOGG、T/C 與 FUN87～89；迴圈、MC/MCE、UDCTR、周邊及未列出的 function 會在執行前拒絕。模型驗收不等於 WinProLadder syntax check、GUI 匯入或實機執行驗證。
 
 ## 未支援範圍
 
-FUN11～14 已支援 16-bit、Sa 暫存器／Sb 非負常數的加減乘除。原生單一 X 邊沿亦可產檔，詳見 [算術及邊沿支援範圍](fun11-14-arithmetic.md)。FUN15／16、CMP、AND、DIFU／DIFD、MC／MCE 及 07P.UDCTR 的格式支援見 [原生 function 編碼](test8-test9-functions.md)，這些 action 尚無執行模擬。FUN35 XOR／36 XNR／37 ZNCMP／20 →BCD／21 →BIN 已加入，具體 operand 限制見 [test10](test10-functions.md)。MOV／MOV/ 已支援取樣的 word 形式，見 [test24](test24-functions.md)。間接定址、未列出的 Timer 形式與多數通訊／定位功能仍未實作。test19 已提供原生累積計時器編碼，但尚未整合到高階順序控制的暫停續跑。FUN33 LCNV 的 Md/L 等變化為外推；詳見 [LCNV 支援範圍](fun33-lcnv.md)。未知原生指令保持 opaque，無損 export 不丟棄原始資料。後續 test11～27 的支援範圍見 [完整功能表](../FEATURES.md)，並以 `get_capabilities` 回報目前介面。
+FUN11～14 已支援 16-bit、Sa 暫存器／Sb 非負常數的加減乘除。原生單一 X 邊沿亦可產檔，詳見 [算術及邊沿支援範圍](fun11-14-arithmetic.md)。FUN15／16、CMP、AND、DIFU／DIFD、MC／MCE 及 07P.UDCTR 的格式支援見 [原生 function 編碼](test8-test9-functions.md)；其中 DIFU／DIFD、CMP 與 AND 已有有界模型，MC／MCE、UDCTR 尚無。FUN35 XOR／36 XNR／37 ZNCMP／20 →BCD／21 →BIN 已加入，具體 operand 限制見 [test10](test10-functions.md)。MOV／MOV/ 已支援取樣的 word 形式，見 [test24](test24-functions.md)。間接定址、未列出的 Timer 形式與多數通訊／定位功能仍未實作。FUN87 已整合到高階順序控制的暫停續跑。FUN33 LCNV 的 Md/L 等變化為外推；詳見 [LCNV 支援範圍](fun33-lcnv.md)。未知原生指令保持 opaque，無損 export 不丟棄原始資料。後續 test11～30 的支援範圍見 [完整功能表](../FEATURES.md)；先用 `list_instruction_families`，再以 `get_instruction_capabilities` 查單一族群，可避免載入完整能力文件。
 
 ## test11 新增
 

@@ -4,6 +4,14 @@
 
 目前版本維持0.11.0；[0.11.0版本紀錄](release-0.11.0.md)之後新增下列內容，未製作安裝包。最後安裝包仍為0.10.0。
 
+## MCP 查詢與產檔品質閘門（2026-10-20）
+
+- 新增小型 `list_instruction_families` 與單族群 `get_instruction_capabilities`，compact capabilities 不再先回傳完整 schema、範例與所有指令細節。
+- 將指令驗證警告移到獨立規則模組；`ir.py` 保留編解碼及程式結構驗證。
+- 所有生成結果新增 `behavior_verification`，並可用 `require_acceptance=true` 強制來源與 emitted bytes 都通過驗收。
+- 新增三階段 writer 報告；高階產生器預設拒絕跨網路重複 normal coil。off-delay／pulse 改用不同的掃描入口與更新後比較結果 M，移除重複 M writer，不變更 X/Y 或時間契約。
+- 版本維持0.11.0，未製作安裝包。
+
 ## test29
 
 核對兩組12字元ASCII，擴充單數字LBL及FBs-32MN檔頭；[驗證紀錄](test29-functions.md)。版本維持0.11.0，未打包。

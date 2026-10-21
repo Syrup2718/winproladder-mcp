@@ -534,3 +534,55 @@ def capabilities() -> dict[str, Any]:
         "start_stop_example": start_stop().model_dump(),
         "schema": Ladder.model_json_schema(),
     }
+
+
+def capability_summary() -> dict[str, Any]:
+    """Return the stable top-level capability summary without large schemas/examples."""
+    full = capabilities()
+    keys = {
+        "version",
+        "profile",
+        "transport",
+        "simulation",
+        "simulation_model",
+        "address_subset",
+        "generation",
+        "inference_notice",
+        "manual_reference_tool",
+        "rtc_snapshot_tool",
+        "no_plc_connection",
+        "writes",
+    }
+    native = full["native_functions"]
+    return {
+        **{key: value for key, value in full.items() if key in keys},
+        "instruction_family_count": len(native),
+        "instruction_discovery": {
+            "list_tool": "list_instruction_families",
+            "detail_tool": "get_instruction_capabilities",
+        },
+    }
+
+
+def instruction_families() -> list[dict[str, Any]]:
+    """List small instruction-family summaries for tool discovery."""
+    native = capabilities()["native_functions"]
+    return [
+        {
+            "family": family,
+            "actions": details.get("actions", "See family details")
+            if isinstance(details, dict)
+            else details,
+            "profile": details.get("profile") if isinstance(details, dict) else None,
+        }
+        for family, details in native.items()
+    ]
+
+
+def instruction_capabilities(family: str) -> dict[str, Any]:
+    """Return one instruction family instead of the complete capability document."""
+    native = capabilities()["native_functions"]
+    if family not in native:
+        available = ", ".join(native)
+        raise ValueError(f"Unknown instruction family {family!r}; available: {available}")
+    return {"family": family, "details": native[family]}

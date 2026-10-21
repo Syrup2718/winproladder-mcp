@@ -55,7 +55,8 @@ uv run python scripts/verify_release.py --root <新的驗證目錄>
 - `capabilities.py` / `design.py` / `manual_reference.py`：目前能力、設計流程與手冊資料。
 - `optimize.py` / `layout.py`：局部布林簡化、接圖展平與資源配置。
 - `control.py` / `sequence.py` / `system.py`：高階配方與流程。
-- `runtime.py`：有界掃描模型；`timing.py`：相容入口；`acceptance.py`：生成前驗收。
+- `runtime.py`：有界掃描模型；`timing.py`：相容入口；`acceptance.py`：可執行驗收；`generation_quality.py`：驗收等級與 writer 閘門。
+- `validation_evidence.py`：由規則表產生指令證據警告，避免將人類可讀證據敘述混入編解碼核心。
 - `service.py`：檔案範圍及生成（保留 capabilities 匯入相容介面）；`server.py`：MCP；`setup.py`：設定及連線檢查。
 
 原始編解碼與生成最佳化必須分離，避免 read/export 改變既有 bytes。新增功能需涵蓋 schema、編譯、解碼、能力回報與測試；未實作的模擬指令必須明確拒絕。

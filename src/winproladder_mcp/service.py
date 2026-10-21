@@ -10,6 +10,7 @@ from .acceptance import AcceptanceCase, check_acceptance
 from .analysis import describe, device_references, timer_settings
 from .architecture import architecture_report, enforce_architecture, load_policy
 from .capabilities import capabilities as capabilities
+from .generation_quality import behavior_verification, writer_report
 from .io_contract import IOContract, check_io
 from .ir import (
     Ladder,
@@ -273,8 +274,16 @@ class Service:
         *,
         acceptance: list[AcceptanceCase] | None = None,
         io_contract: IOContract | None = None,
+        require_acceptance: bool = False,
+        strict_writers: bool = False,
     ) -> dict[str, Any]:
+        if require_acceptance and acceptance is None:
+            raise ValueError("Executable acceptance cases are required; no file written")
+        source_acceptance = check_acceptance(ladder, acceptance) if acceptance is not None else None
+        if source_acceptance is not None and not source_acceptance["passed"]:
+            raise ValueError(f"Acceptance failed; no file written: {source_acceptance}")
         self.architecture(ladder)
+        source_writers = writer_report(ladder, strict=strict_writers)
         source_devices = set(device_references(list(enumerate(ladder.networks)))["devices"])
         # Lowering must preserve physical I/O even without an explicit contract.
         contract = io_contract or IOContract(
@@ -285,6 +294,7 @@ class Service:
         lowered, layout = lower_ladder(ladder)
         self.architecture(lowered)
         self.check_layout(layout)
+        lowered_writers = writer_report(lowered, strict=strict_writers)
         ladder = lowered
         result = validation(ladder)
         if not result["valid"]:
@@ -303,6 +313,7 @@ class Service:
             raise ValueError("Generated network failed semantic decode; no file written")
         emitted = Ladder(profile=ladder.profile, networks=[n for n in decoded if n is not None])
         architecture = self.architecture(emitted)
+        emitted_writers = writer_report(emitted, strict=strict_writers)
         io_report = check_io(
             set(device_references(list(enumerate(emitted.networks)))["devices"]), contract
         )
@@ -325,6 +336,18 @@ class Service:
             ],
             "annotation_scope": "Symbols/comments are metadata, not embedded LDR comments",
             "compiled_acceptance": emitted_report,
+            "acceptance": source_acceptance,
+            "behavior_verification": behavior_verification(
+                acceptance,
+                source_acceptance,
+                emitted_report,
+                required=require_acceptance,
+            ),
+            "writer_policy": {
+                "source": source_writers,
+                "lowered": lowered_writers,
+                "emitted": emitted_writers,
+            },
             "artifact_validation": {
                 "crc_valid": True,
                 "decoded_networks": len(emitted.networks),
@@ -339,16 +362,20 @@ class Service:
         acceptance: list[AcceptanceCase] | None = None,
         *,
         io_contract: IOContract | None = None,
+        require_acceptance: bool = False,
+        strict_writers: bool = False,
     ) -> dict[str, Any]:
-        report = check_acceptance(ladder, acceptance) if acceptance is not None else None
-        if report is not None and not report["passed"]:
-            raise ValueError(f"Acceptance failed; no file written: {report}")
         result = self.create(
-            name, ladder, allow_unverified=True, acceptance=acceptance, io_contract=io_contract
+            name,
+            ladder,
+            allow_unverified=True,
+            acceptance=acceptance,
+            io_contract=io_contract,
+            require_acceptance=require_acceptance,
+            strict_writers=strict_writers,
         )
         return {
             **result,
-            "acceptance": report,
             "design_summary": [describe(n) for n in ladder.networks],
             "encoding_policy": "Inferred compiler enabled; see validation warnings.",
             "next_step": "Import the file into WinProLadder; no physical PLC operation performed.",
@@ -372,9 +399,18 @@ class Service:
         acceptance: list[AcceptanceCase] | None = None,
         *,
         io_contract: IOContract | None = None,
+        require_acceptance: bool = False,
+        strict_writers: bool = True,
     ) -> dict[str, Any]:
         result = {
-            **self.generate(name, ladder, acceptance, io_contract=io_contract),
+            **self.generate(
+                name,
+                ladder,
+                acceptance,
+                io_contract=io_contract,
+                require_acceptance=require_acceptance,
+                strict_writers=strict_writers,
+            ),
             "design": design,
         }
         report = Path(result["path"] + ".design.json")

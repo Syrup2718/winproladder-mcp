@@ -19,10 +19,12 @@ def resources(spec: ControlSpec) -> dict[str, int]:
         "memory": (
             0
             if native_edge(spec) is not None
+            else 4
+            if spec.kind in {"off_delay", "pulse"}
             else 3
-            if spec.kind in {"toggle", "rising_edge", "falling_edge", "pulse"}
+            if spec.kind in {"toggle", "rising_edge", "falling_edge"}
             else 1
-            if spec.kind in {"off_delay", "star_delta"}
+            if spec.kind == "star_delta"
             else 0
         ),
         "timer": 2

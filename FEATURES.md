@@ -235,6 +235,8 @@
 | 工具 | 用途 |
 | --- | --- |
 | `get_capabilities` | 查詢版本、功能、限制、政策與輸出位置 |
+| `list_instruction_families` | 以小型回覆列出原生指令族群 |
+| `get_instruction_capabilities` | 只查一個指令族群的形式、限制與證據 |
 | `get_manual_reference` | 查閱手冊範圍、版本差異與 RTC 操作程序 |
 | `inspect_rtc_snapshot` | 檢查提供的 RTC 數值，不連線或操作 PLC |
 | `get_design_guide` | 取得需求轉設計流程、範例與 Ladder schema |
@@ -262,6 +264,7 @@
 - 本工作區啟用 `forbid_m_to_m=true`、`allow_function_m_to_m=true`：禁止無意義的 M→M 複製、中繼及自動 helpers；允許 M 控制原生 function，並由其輸出 M 結果／狀態（含計時、計數、比較、DIFU／DIFD）。MC 區域內的普通 M 複製仍禁止，不能用假 function 包裝複製。
 - 數值與狀態設計應使用原生暫存器；不以改名或偽裝的繼電器鏈繞過政策。
 - 寫出前檢查來源、接圖轉換後程式及實際 bytes 解碼结果。無法符合要求時回報限制，不自行增加 I/O。
+- 每次產檔回傳 `behavior_verification`。可用 `require_acceptance=true` 強制要求可執行案例；高階工具預設使用 `strict_writers=true`，拒絕跨網路重複 normal coil，SET／RESET-only 共用則保留報告但不拒絕。
 - 新檔採不覆寫方式建立；操作限於指定工作目錄，預設輸出至 `artifacts/`。
 - 提供的 acceptance 案例若失敗即不產檔；沒有提供驗收案例不代表已驗證行為。
 - 未知格式可保留作讀取研究，但無法證明符合嚴格架構政策時不能直接輸出。

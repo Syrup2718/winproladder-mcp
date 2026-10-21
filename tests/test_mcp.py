@@ -30,6 +30,8 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
             tools = (await session.list_tools()).tools
             assert {tool.name for tool in tools} == {
                 "get_capabilities",
+                "list_instruction_families",
+                "get_instruction_capabilities",
                 "get_manual_reference",
                 "inspect_rtc_snapshot",
                 "get_ldr_artifact",
@@ -54,6 +56,14 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
             assert create.annotations.destructiveHint is False
             caps = await session.call_tool("get_capabilities", {})
             assert not caps.isError
+            families = await session.call_tool("list_instruction_families", {})
+            assert not families.isError and families.structuredContent["count"] > 0
+            family = families.structuredContent["families"][0]["family"]
+            family_detail = await session.call_tool(
+                "get_instruction_capabilities", {"family": family}
+            )
+            assert not family_detail.isError
+            assert family_detail.structuredContent["family"] == family
             manual = await session.call_tool("get_manual_reference", {})
             assert not manual.isError and "R4135" in manual.content[0].text
             clock = await session.call_tool(
