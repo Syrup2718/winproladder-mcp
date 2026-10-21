@@ -5,6 +5,7 @@
 ## Unreleased
 
 - 專案採用 MIT License，版權持有人為 syrup2718。
+- 精簡公開範例，將測試專用 IR 移至測試 fixtures。
 
 ## 1.0.0 — 2026-10-21
 

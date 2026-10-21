@@ -19,6 +19,6 @@ uv run python -m pytest -q
 | MCP 與交付 | stdio 工具、ResourceLink、`.ldr` 與元件註解下載 |
 | 安裝與文件 | 安裝流程、設定、文件連結與範例 |
 
-`fixtures/` 保存缺陷重現與人工匯入基準；`test_testN_functions.py` 對應同名原始樣本。不要為了通過測試修改原始樣本或降低政策。
+`fixtures/` 保存缺陷重現、人工匯入基準與測試專用 IR；`test_testN_functions.py` 對應同名原始樣本。不要為了通過測試修改原始樣本或降低政策。
 
 測試通過只代表所測的編碼、政策及模型成立，不會自動取得 WinProLadder GUI 或實體 PLC 驗證狀態。

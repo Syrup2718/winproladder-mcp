@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def sample():
-    return Ladder.model_validate_json((ROOT / "examples/test30_functions.json").read_text())
+    return Ladder.model_validate_json((ROOT / "tests/fixtures/test30_functions.json").read_text())
 
 
 def test_export_roundtrip_and_evidence(tmp_path):
