@@ -86,6 +86,7 @@ async def check(root: Path) -> None:
             "get_design_guide",
             "get_capabilities",
             "get_ldr_artifact",
+            "generate_component_comments",
             "create_start_stop",
             "read_ldr",
             "analyze_ldr",
@@ -121,6 +122,29 @@ async def check(root: Path) -> None:
             or base64.b64decode(embedded[0].resource.blob, validate=True) != data
         ):
             raise RuntimeError("Artifact tool did not return the original binary LDR")
+        comments = await session.call_tool(
+            "generate_component_comments",
+            {
+                "output_name": "self-check-comments.txt",
+                "entries": [
+                    {"ref": "X0", "comment": "啟動", "description": "Start input"},
+                    {"ref": "Y0", "comment": "馬達", "description": "Motor output"},
+                ],
+            },
+        )
+        comment_data = (root / "artifacts/self-check-comments.txt").read_bytes()
+        if comments.isError or not comment_data.startswith(b"REF\tCOMMENT\tDESCRIPTION\r\n"):
+            raise RuntimeError("Component-comment generation failed")
+        comment_metadata = comments.structuredContent
+        if comment_metadata is None:
+            raise RuntimeError("Component-comment metadata is missing")
+        comment_resource = await session.read_resource(AnyUrl(comment_metadata["artifact"]["uri"]))
+        if (
+            len(comment_resource.contents) != 1
+            or not isinstance(comment_resource.contents[0], BlobResourceContents)
+            or base64.b64decode(comment_resource.contents[0].blob, validate=True) != comment_data
+        ):
+            raise RuntimeError("Component-comment resource download does not match the text file")
         generated = await session.call_tool(
             "generate_control_ldr",
             {
@@ -151,7 +175,7 @@ async def check(root: Path) -> None:
                 raise RuntimeError(f"{name} self-check failed")
         print(
             f"PASS: MCP connection, {len(tools)} tools, requirement-to-LDR acceptance, "
-            "verified SHA-256 and binary artifact download"
+            "verified SHA-256, LDR download and CP950 component-comment artifact"
         )
 
 
