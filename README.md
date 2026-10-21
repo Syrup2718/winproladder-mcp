@@ -1,4 +1,8 @@
 # WinProLadder MCP
+[![CI](https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Syrup2718/winproladder-mcp)](https://github.com/Syrup2718/winproladder-mcp/releases/latest)
+[![License](https://img.shields.io/github/license/Syrup2718/winproladder-mcp)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 
 讓 AI 將控制需求轉成 WinProLadder `.ldr` 檔案，也能讀取、分析及修改既有檔案。
 
