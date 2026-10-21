@@ -1,41 +1,54 @@
 # 快速開始
 
-[首頁](../README.md) · [文件索引](README.md)
+[首頁](../README.md) · [安裝指南](installation.md) · [功能總覽](../FEATURES.md)
 
-## 安裝與連線
+## 1. 安裝
 
-依 [README](../README.md) 執行安裝腳本。看到 `PASS` 和 `Setup complete` 後，將 `.install/mcp-config.json` 的 `mcpServers.winproladder` 加入 client 設定並重新連線；需要 TOML 的 client 使用 `.install/mcp-config.toml`。
+在專案目錄執行對應腳本：
 
-設定使用安裝環境的絕對路徑，不需要啟用 venv 或修改 PATH。詳細步驟、指定工作資料夾及手動安裝見[安裝指南](installation.md)。
+```powershell
+# Windows
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+```
 
-## 產檔
+```sh
+# macOS / Linux
+sh install.sh
+```
 
-向 Agent 說：
+看到 `PASS` 與 `Setup complete` 後，將 `.install/mcp-config.json` 或
+`.install/mcp-config.toml` 中的 `winproladder` 設定加入 MCP client，然後重新連線。
 
-> X0 啟動 Y0，放開 X0 後保持。X1=1 時停止，停止優先。請驗證並交付 motor.ldr。
+## 2. 描述需求
 
-- `.ldr` 預設存於 `artifacts/`。
-- 高階配方另附 `.ldr.design.json`，記錄參數與 I/O。
-- 無法存取本機路徑時，用 `get_ldr_artifact` 下載。
-- 同名檔案不覆蓋，重做時換新檔名。
+說清楚 I/O、有效極性、優先權與時間：
 
-在 WinProLadder 使用 **Import Ladder Diagram** 匯入。預設檔頭為 FBs-20MC；匯入前核對工程機型、I/O 與計時設定。測試通過不代表已經 GUI 或實機驗證。
+> X0 啟動 Y0，放開後保持；X1=1 時停止，停止優先。驗證後產生 motor.ldr。
 
-## VM 與工作目錄
+MCP 會檢查需求中允許的 X/Y，不會自行增加輸入、輸出或外部時脈。
 
-將輸出複製到 VM 共用資料夾即可。若要把工作目錄直接放在共用資料夾，可在安裝時指定 `-Workspace`（Windows）或第一個參數（macOS/Linux），詳見[安裝指南](installation.md)。新的工作目錄會建立嚴格 relay 政策；既有政策保持原樣。
+## 3. 下載檔案
 
-## 更新
+結果會提供 `.ldr` 下載連結，預設也存入 `artifacts/`。高階配方另有
+`.ldr.design.json`，記錄設計假設與元件配置。同名檔不會被覆寫。
 
-保留本機修改，更新原始碼後重新執行同一安裝命令，再重新連接 MCP。若搬動專案，需刪除搬過去的 `.install/venv`，重新執行安裝並更新 client 設定；虛擬環境不能直接跨電腦複製。
+需要元件註解時明確提出：
+
+> 新增元件註解：X0 是啟動按鈕，Y0 是馬達輸出。
+
+此時會另外收到 CP950／Big5 編碼的 `.txt`，不會修改 `.ldr`。
+
+## 4. 使用端驗收
+
+將 `.ldr` 匯入 WinProLadder，核對機型、I/O 與時間設定，再依需要下載至 PLC 測試。這些步驟由使用者完成；離線 acceptance 不等於 GUI 或實機驗證。
 
 ## 常見問題
 
-| 問題 | 處理 |
+| 問題 | 建議 |
 | --- | --- |
-| 找不到工具 | 執行 `check`，核對設定並重新連線。 |
-| 無法讀取檔案 | 將 `.ldr` 放入 root，例如 `inputs/motor.ldr`。 |
-| I/O 或驗收失敗 | 核對位址、極性、優先權與時間單位。 |
-| 指令不能生成或模擬 | 查閱[功能清單](../FEATURES.md)，兩者支援範圍不同。 |
+| Client 看不到工具 | 重新執行安裝腳本，更新設定後重新連線 |
+| I/O 檢查失敗 | 核對位址、極性及 `io_contract` |
+| 指令不能產生或模擬 | 查閱[功能總覽](../FEATURES.md)；編碼與模擬範圍不同 |
+| 同名檔已存在 | 使用新的輸出檔名 |
 
-工具操作見 [Agent 指南](agent-guide.md)；回報問題見[貢獻指南](../CONTRIBUTING.md)。
+進階參數見[使用參考](reference.md)。

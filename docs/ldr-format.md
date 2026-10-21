@@ -63,7 +63,7 @@ Raw compiler 保留巢狀編碼以支援樣本往返；正式生成先經 [接�
 | NEXT | `F491` |
 | BREAK | enable + `F476A7FE` |
 
-算術 U/S=FALSE 的 `7FE8` 保留為未接輸入，與 Counter CLR 一樣不改寫為額外接點。其他算術形式的支援與推理界線見 [算術編碼](fun11-14-arithmetic.md)。
+算術 U/S=FALSE 的 `7FE8` 保留為未接輸入，與 Counter CLR 一樣不改寫為額外接點。其他算術形式的支援與推理界線可透過 `get_instruction_capabilities` 查詢。
 
 Timer 樣本支持 T1/T2/T3 與 preset 100/101/256/1000；Counter 支持 C1/C2/C3 與 preset 10/16/17。OR 直接暫存器支持 R0/R1/R2；高位址及其他 enable 組合仍需匯入驗證。BREAK 尾碼 A7FE 的獨立語意 UNKNOWN。
 
@@ -73,4 +73,4 @@ Timer 樣本支持 T1/T2/T3 與 preset 100/101/256/1000；Counter 支持 C1/C2/C
 
 Framing、payload 及雜湊由原始 samples 與測試固定；GUI 基準見 [驗證依據](verification.md)。未知網路可無損 export，但不可作語意生成的依據。尚未解明的 metadata、其他時間基準、指令修飾、硬體專用指令及跨型號 header 不應猜測。
 
-FUN33 與新暫存器區域的依據、限制及範例見 [LCNV 編碼研究](fun33-lcnv.md)。
+FUN33 與新暫存器區域只開放已有樣本及自動測試保護的形式；未取樣變體不由相似 opcode 推測。

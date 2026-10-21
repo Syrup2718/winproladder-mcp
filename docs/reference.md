@@ -1,6 +1,6 @@
-# 功能與參數
+# 使用參考
 
-[文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能總覽](../FEATURES.md)
 
 ## 控制配方
 
@@ -11,81 +11,66 @@
 - `on_delay`、`off_delay`、`pulse`、`counter`
 - `forward_reverse`、`star_delta`
 
-SET/RST 與邊沿配方由布林網路實作，不代表原生指令編碼已支援。脈衝動作期間不重觸發，結束後有一個復歸掃描；正反轉同時啟動時正轉優先。星三角依序使用連續三個 Y 位址作主接觸器、星形、三角形，仍需外部電氣／機械互鎖。
+`signal` 與 `output` 必填。需要 `stop`、`reset` 或 `reverse` 的配方也必須明確提供相應條件。多輸出配方使用的每個 Y 都要列入 `io_contract.outputs`。
 
-`signal` 和 `output` 必填；`stop`、`reset`、`reverse` 省略時為 FALSE，不會新增 X。start_stop 必須指定 stop，set_reset 必須指定 reset，forward_reverse 必須指定 reverse。多輸出配方使用的每個 Y 都須在 `io_contract.outputs` 中，否則拒絕產檔。
-
-`generate_system_ldr` 最多組合 24 個獨立配方，輸出由使用者指定，只自動分配內部 M/T/C；拒絕資源重疊，允許共用輸入。它不是跨配方製程協調器。
+`generate_system_ldr` 可組合最多 24 個獨立配方並配置內部 M/T/C；它不負責跨配方的製程協調。
 
 ## 順序控制
 
-`generate_sequence_ldr` 支援 1..16 步，每步可設定輸出、ticks、complete_when 及 timeout_ticks。start 必填；pause/reset/abort 省略時為 FALSE；clock 預設 null。所有轉移條件先算完才更新步驟，每掃描最多轉移一步，不複製整組步驟 M。
+`generate_sequence_ldr` 支援 1～16 步，每步可設定輸出、時間、完成條件及逾時。
 
-預設使用原生 T 計時，時間為 ticks × tick_ms（預設 100 ms），換算成 .01S preset；例如 ticks=30 是 3 秒、preset=300。時間須為 10 ms 倍數且不超過 327670 ms。不需要外部 X 時脈。
-
-普通 T 停用會清零。指定 pause 且未指定 clock 時，高階順序產生器使用 FUN87 原生累積計時與 R 暫存器狀態；FUN88／89 可由底層 IR 使用。只有需求明確指定 clock 時才使用外部脈波模式，不能自行新增 X 作替代。
-
-只有需求明確指定外部脈波時，才可設定 clock 使用計数器模式：保留完整 tick，不保留不足一個 tick 的時間；高低狀態均須被掃描，暫停期間忽略脈波，恢復時不補算邊沿。不得因為欠缺原生保持計時就替使用者加此輸入。
-
-沒有指定 timeout_ticks 就沒有超時條件；明確超時與完成同時成立時完成優先。中止／逾時故障 M6 保持到 reset，不宣稱斷電保持。
-
-生成工具必填 `io_contract`，包含使用者需求允許的 inputs（X 清單）及 outputs（Y 清單）。原始 IR 和實際產出的 bytes 都會檢查，超出清單即不寫檔。內部元件用途在 symbols/network_notes 回傳，高階工具另存設計 JSON；LDR 註解區段尚未編碼。
+- 預設使用原生 T，時間須為 10 ms 的倍數。
+- 有 pause 且沒有外部 clock 時，使用 FUN87 與暫存器狀態。
+- 只有需求明確指定 clock 時，才使用外部脈波模式。
+- 每次掃描最多轉移一步；完成與逾時同時發生時，完成優先。
 
 ## 自訂 Ladder IR
+
+最小範例：
 
 ```json
 {"networks": [{"condition": "(Y0 OR X0) AND NOT X1", "coils": [{"device": "Y", "address": 0}]}]}
 ```
 
-`condition` 支援 AND/OR/NOT、`&`/`|`/`!`、括號與 TRUE/FALSE；AND 優先於 OR。X/Y/T/C 編碼範圍為 0..255，一般 M 為 0..1911，普通及反相 Y/M coil 可用 `inverted` 指定。此範圍不是實體 PLC 容量保證。
-
-限制：1..1000 網路，條件最多 4096 字元、256 AST nodes、深度 32。Legacy `steps` 按左摺疊執行，不能與 condition 混用。工具 schema 列出完整欄位及互斥條件。
+條件支援 AND／OR／NOT、`&`／`|`／`!`、括號與 TRUE／FALSE。所有主要產生工具都要提供 I/O 契約；來源、lowered program 與輸出 bytes 會分別檢查。
 
 Timer 範例：
 
 ```json
-{"networks": [{"block": {"type": "timer", "address": 0, "preset": 300, "enable": "X0"}, "coils": [{"address": 0}]}]}
+{"networks": [{"block": {"type": "timer", "address": 0, "preset": 100, "enable": "X0"}}]}
 ```
 
-Counter 範例：
+Timer `preset` 是時基刻度，不是毫秒。`.01S` 時基下 `preset=100` 代表 1 秒；MCP 無法單靠 `.ldr` 確認目標工程的時間基準。
 
-```json
-{"networks": [{"block": {"type": "counter", "address": 0, "preset": 10, "pulse": "X0", "clear": "X1"}, "coils": [{"address": 0}]}]}
-```
+完整 schema 由 `get_design_guide` 提供；個別原生 FUNC 的 operand 與模式請用 `get_instruction_capabilities` 查詢。
 
-Timer/Counter 編碼接受位址 0..255、preset 0..65535；Timer 的 time_base 僅 `0.01s`。執行限制與編碼範圍不同：一般時序模型只接受 T0..49、preset 0..32767，且需符合專案時間基準設定。
+## 元件註解
 
-Timer 的 `preset` 是時基刻度數，不是直接的毫秒值。在 `.01S` 時基下，`preset=10` 為 100 ms，`preset=100` 為 1000 ms。生成、讀取及分析回應的 `timer_settings` 同時列出 `preset_ticks`、`assumed_time_base_ms` 和 `nominal_duration_ms`；目前的 LDR 解码不會確認目標工程的時基配置，因此 `configuration_verified=false`，不能把此報告當成實測結果。
+使用者明確要求「新增元件註解」時，呼叫 `generate_component_comments`。每筆資料包含：
 
-`action` 支援 16-bit `register_or`（sa/sb/destination 為 R0..255，enable 為布林條件）、`for`（count 1..16383）、`next`、`break`（enable）。Action 獨占網路，FOR/NEXT 無接點或線圈；只接受匹配的單層迴圈，BREAK 必須位於迴圈內。長迴圈可能觸發 PLC watchdog。
+| 欄位 | 說明 |
+| --- | --- |
+| `ref` | 元件編號，例如 X0、Y0、M0、D1 |
+| `comment` | 短註解，可留空 |
+| `description` | 補充說明，可留空 |
 
-## 元件註解檔
+輸出是獨立 `.txt`：`REF`／`COMMENT`／`DESCRIPTION`、Tab 分隔、CRLF、CP950／Big5。重複 REF、控制字元或無法以 CP950 表示的文字會被拒絕。
 
-使用者明確要求「新增元件註解」時，呼叫 `generate_component_comments` 另產生 `.txt`。每筆 `entries` 包含 `ref`、`comment`、`description`，輸出格式固定為：
+## 模擬與 acceptance
 
-```text
-REF<TAB>COMMENT<TAB>DESCRIPTION<CRLF>
-X0<TAB>啟動<TAB>啟動按鈕<CRLF>
-```
+`simulate_ladder` 最多執行 256 次掃描。未提供 `scan_ms` 時只模擬布林邏輯；提供後可模擬支援範圍內的 Timer/Counter 與 FUN87～89。
 
-實際檔案使用 CP950／Big5，不是 UTF-8；欄位以實際 Tab 分隔並以 CRLF 結尾。COMMENT 與 DESCRIPTION 可留空，重複 REF、控制字元或 CP950 無法表示的文字會拒絕。檔案獨立交付，不會嵌入或修改 `.ldr`。
+產生工具可附 1～32 個 acceptance cases。案例會先檢查來源模型，再重播實際輸出 bytes；任何斷言失敗都不寫檔。`require_acceptance=true` 可強制要求案例。
 
-## 模擬與驗收
+模型不是 PLC 模擬器。不支援的原生 function 會明確拒絕，不會回傳部分 trace。
 
-`simulate_ladder` 最多 256 次掃描，initial 最多 128 個元件。每次 inputs 是 X 輸入快照，省略的 X=false；Y/M 狀態逐掃描保留，網路按顯示順序更新。
+## 檔案操作
 
-未指定 scan_ms 時只模擬布林邏輯。指定 1..60000ms 的 scan_ms 後啟用 Timer/Counter 模型：Timer 停用歸零，Counter 計上升沿且 clear 優先。拒絕重複 T/C 寫入、block 初始狀態及不支援的時間設定。模型不模擬 PLC 非同步時脈相位。
+- `inspect_ldr`：結構、payload、CRC
+- `read_ldr`：依顯示順序解碼
+- `analyze_ldr`：網路說明與元件交叉引用
+- `compare_ldr`：比較兩份檔案
+- `modify_network`：插入、替換或刪除網路並另存
+- `export_ldr`：保留未知資料並另存
 
-`generate_ldr` 可附 1..32 個 acceptance cases，每個 case 含 name、initial、scans（inputs/expected），時序案例另附 scan_ms。每個 case 獨立起始；任何斷言失敗會在寫檔前拒絕生成。所有產檔結果均回傳 `behavior_verification`；省略 acceptance 時明確標示 `level=not_run`。設定 `require_acceptance=true` 可在無案例時拒絕產檔。
-
-模型支援列出的直接 R/D 算術、比較、位元運算、搬移、BCD、DIFU／DIFD、TOGG、T/C 與 FUN87～89；迴圈、MC/MCE、UDCTR、周邊及未列出的 function 會在執行前拒絕。模型驗收不等於 WinProLadder syntax check、GUI 匯入或實機執行驗證。
-
-## 未支援範圍
-
-FUN11～14 已支援 16-bit、Sa 暫存器／Sb 非負常數的加減乘除。原生單一 X 邊沿亦可產檔，詳見 [算術及邊沿支援範圍](fun11-14-arithmetic.md)。FUN15／16、CMP、AND、DIFU／DIFD、MC／MCE 及 07P.UDCTR 的格式支援見 [原生 function 編碼](test8-test9-functions.md)；其中 DIFU／DIFD、CMP 與 AND 已有有界模型，MC／MCE、UDCTR 尚無。FUN35 XOR／36 XNR／37 ZNCMP／20 →BCD／21 →BIN 已加入，具體 operand 限制見 [test10](test10-functions.md)。MOV／MOV/ 已支援取樣的 word 形式，見 [test24](test24-functions.md)。間接定址、未列出的 Timer 形式與多數通訊／定位功能仍未實作。FUN87 已整合到高階順序控制的暫停續跑。FUN33 LCNV 的 Md/L 等變化為外推；詳見 [LCNV 支援範圍](fun33-lcnv.md)。未知原生指令保持 opaque，無損 export 不丟棄原始資料。後續 test11～30 的支援範圍見 [完整功能表](../FEATURES.md)；先用 `list_instruction_families`，再以 `get_instruction_capabilities` 查單一族群，可避免載入完整能力文件。
-
-## test11 新增
-
-比較接點170～175的已取樣串聯位置、浮點200～204及FBs-32MA檔頭已加入，詳見 [test11](test11-functions.md)。浮點按1／2字組寬度檢查，WM0比較展開M0..15檢查政策；兩者尚無執行模擬。
-
-手冊運算元範圍與 RTC 使用方式見 [手冊與萬年曆](manual-limits-rtc.md)。
+所有寫入都限制在工作區輸出目錄，且不覆寫既有檔案。未知記錄可保留與分析；無法證明符合目前政策時不會重新生成。

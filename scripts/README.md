@@ -12,11 +12,11 @@
 | [smoke_mcp.py](smoke_mcp.py) | 本機 MCP 設定診斷 |
 | [build_start_stop_candidate.py](build_start_stop_candidate.py) | 固定自保持 binary 模板診斷 |
 
-`research/build_fun15_16_probe.py` 是已被 test8 推翻的假說工具，僅保留研究歷史，不作為目前功能入口。其他一次性本機研究位於 `tmp/research-history/`。
+一次性研究工具與已被推翻的編碼假說不納入公開腳本；必要的回歸證據保留在樣本與測試中。
 
 測試與型別檢查命令見[開發指南](../docs/development.md)。安裝包與版本變更須由使用者明確要求。
 
-[ audit_workspace.py ](audit_workspace.py) 可盤點檔案、重複內容、文件連結、JSON／Python 語法及 LDR CRC；只寫入新報告，不搬移或刪除檔案：
+[audit_workspace.py](audit_workspace.py) 可盤點檔案、重複內容、文件連結、JSON／Python 語法及 LDR CRC；只寫入新報告，不搬移或刪除檔案：
 
 ```powershell
 uv run python scripts/audit_workspace.py --output tmp/workspace-audit-new.json

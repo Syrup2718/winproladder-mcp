@@ -26,7 +26,7 @@
 
 - 自保持模板：`(Y0 OR X0) AND NOT X1 → Y0`，281 bytes，payload `4100A0009001C100`，record CRC `0x5048`。其他位址、極性或檔頭不自動繼承此狀態。
 - 交通燈匯入基準：`tests/fixtures/traffic_light-connected-verified.ldr`，25 網路、713 bytes，SHA-256 `a4694aa8db73737ada925742ebc6ba164aee52e56137bd5ae201017c203b3b94`。包含歷史輔助 M 結構，保留作缺陷與匯入對照，不代表符合現行生成政策。
-- 比較接點：2026-10-07 回報指定 FUN170～175 試檔的首段／串聯位置正確；具體 hash 與範圍見 [test11](test11-functions.md)。
+- 比較接點：FUN170～175 的指定試檔已確認首段與串聯位置；原始樣本及自動測試保留在 `samples/` 與 `tests/`。
 
 其他 GUI 截圖用於辨識原始匯出，不能當成重建檔或新參數變體的匯入驗證。未記錄實體 PLC 驗證的項目不得標示為已驗證。
 

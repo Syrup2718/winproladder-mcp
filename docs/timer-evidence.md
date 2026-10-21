@@ -25,7 +25,7 @@ T1=256 的原始 payload 為 `4fe8 fd80 0100 0392`；T2=1000 為 `4fe8 fd80 03e8
 - 積算型：EN=1 時，TIM=1 繼續計時，TIM=0 保留 CV；EN=0 清除。
 - CV 指定保存現在值的暫存器，PV 指定預設值，TUP/NUP 為到時／未到時輸出。
 
-test19 現已提供 FUN87／88／89 原始編碼：FC41／FC42／FC43，依序是 TIM、EN、opcode、PV、CV、TUP／NUP 接線。`accumulative_timer` 支援 10／100／1000 ms 時間基準、R/D 暫存器 PV、T0..255 或 R/D CV（含手冊7-81明列的 IR）。PV 常數及其他 word bank 尚未編碼；不是 PLC 不允許。詳見 [test19](test19-functions.md)。
+回歸樣本已提供 FUN87／88／89 原始編碼：FC41／FC42／FC43，依序是 TIM、EN、opcode、PV、CV、TUP／NUP 接線。`accumulative_timer` 支援 10／100／1000 ms 時間基準、R/D 暫存器 PV、T0..255 或 R/D CV（含手冊7-81明列的 IR）。PV 常數及其他 word bank 尚未編碼；這是目前序列化邊界，不表示 PLC 不允許。
 
 底層 `generate_ldr` 可生成上述積算型計時；高階 `generate_sequence_ldr` 已整合 FUN87 的暫停續跑，狀態使用 R 暫存器。只有需求本來就指定脈波輸入時，才可明確設定 `clock` 使用既有的完整 tick 計數模式；此模式不代表原生保持計時。
 
@@ -35,4 +35,4 @@ test19 現已提供 FUN87／88／89 原始編碼：FC41／FC42／FC43，依序�
 
 新版順序產生器先計算所有步驟轉移，再更新步驟狀態，已取消 M16+i → M64+i 的整批複製。保留的 M 是 DIFU／比較／積算計時結果，完成／故障記憶存於 R；`symbols`、`network_notes` 和高階工具的 `.ldr.design.json` 列出用途。註解尚未嵌入 `.ldr` 格式，不宣稱 WinProLadder 會顯示這些名稱。
 
-原有泵浦檔案未覆蓋；原生 pause 的修復不自動代表舊泵浦應用已重新生成或驗證。見 [本次修復](repair-2026-10-15.md)。
+原有泵浦檔案不會被覆蓋；原生 pause 的修復也不代表既有應用已重新生成或完成 GUI／實體 PLC 驗證。
