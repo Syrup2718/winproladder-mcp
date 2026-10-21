@@ -44,7 +44,16 @@ def capabilities() -> dict[str, Any]:
         "simulation": "Boolean, direct R/D and native control scan model; not a PLC emulator",
         "simulation_model": simulation_capabilities(),
         "instruction_matrix": instruction_matrix(),
-        "file_operations": ["inspect", "read", "create", "export", "replace", "insert", "delete"],
+        "file_operations": [
+            "inspect",
+            "read",
+            "create",
+            "export",
+            "replace",
+            "insert",
+            "delete",
+            "component_comments",
+        ],
         "ir": "Prefer condition Boolean expressions; legacy steps use left-fold semantics.",
         "address_subset": {
             "X": "0..255",
@@ -60,6 +69,16 @@ def capabilities() -> dict[str, Any]:
         "internal allocation; generate_ldr: Boolean, native X edges, T/C, register, "
         "arithmetic, LCNV and loop IR.",
         "inference_notice": "Unseen combinations/ranges are inferred, not PLC-validated.",
+        "component_comments": {
+            "tool": "generate_component_comments",
+            "trigger": "Use when the user explicitly requests 新增元件註解 or component comments",
+            "artifact": "Separate .txt; not embedded into the .ldr",
+            "columns": ["REF", "COMMENT", "DESCRIPTION"],
+            "encoding": "CP950/Big5",
+            "delimiter": "tab",
+            "newline": "CRLF",
+            "writes": "new files only; never overwrite",
+        },
         "manual_reference_tool": "get_manual_reference",
         "rtc_snapshot_tool": "inspect_rtc_snapshot (no PLC connection)",
         "design_guide": design_guide(),
@@ -230,7 +249,7 @@ def capabilities() -> dict[str, Any]:
                 "constant L supported by GUI sample and manual example",
             },
             "test20_functions": {
-                "release_status": "unreleased source update after 0.11.0; no new package",
+                "release_status": "included in 1.0.0 source; package not built",
                 "actions": "ascwr(94P MD=1), ramp(95), ramp2(98), reg_to_table(100)",
                 "ascwr": "enable/pause/abort; source S, work Pt8; active/error/done. "
                 "MD=1 is reserved in manual 7-87: encoding only, ASCII source extent "
@@ -251,7 +270,7 @@ def capabilities() -> dict[str, Any]:
                 "RAMP2 WR R15..R18 with table R10..R17: full generation rejected",
             },
             "test19_functions": {
-                "release_status": "unreleased source update after 0.11.0; no new package",
+                "release_status": "included in 1.0.0 source; package not built",
                 "actions": "tpctl(86), accumulative_timer(87/88/89); call(67) decode-only",
                 "timer": "timing=TIM, enable=EN; unit_ms=10/100/1000; PV direct R/D count; "
                 "CV T0..255 or direct R/D including IR (instruction-specific manual 7-81). "
@@ -270,7 +289,7 @@ def capabilities() -> dict[str, Any]:
                 "per 20-45. CPU/edition compatibility remains unverified",
             },
             "test18_functions": {
-                "release_status": "unreleased source update after 0.11.0; no new package",
+                "release_status": "included in 1.0.0 source; package not built",
                 "actions": "adcnv(32), mlc(34), bitrd(40), bitwr(41), lbl(65), jmp(66)",
                 "analog": "ADCNV sampled Pl=0, constant N=1..64; selector is F/T "
                 "(0=12-bit,1=14-bit). MLC constant Sl=1..64, register Tl=2..255 at runtime; "
@@ -287,7 +306,7 @@ def capabilities() -> dict[str, Any]:
                 "These are codec limits, not blanket PLC restrictions",
             },
             "test17_functions": {
-                "release_status": "included in 0.11.0 source; package not built",
+                "release_status": "included in 1.0.0 source; package not built",
                 "actions": "mean(25), sqrt(26), neg(27), abs(28), ext(29), crc16(31); "
                 "DIV48 single_input encoding and SUM additional export anchors",
                 "forms": "16-bit direct R/D; MEAN register N (runtime 2..256), "
@@ -303,7 +322,7 @@ def capabilities() -> dict[str, Any]:
                 "CRC16 MD=0 or register N, runtime simulation; no GUI/PLC verification",
             },
             "test16_functions": {
-                "release_status": "included in 0.11.0 source; package not built",
+                "release_status": "included in 1.0.0 source; package not built",
                 "actions": "div48 (23), sum (24), pid (30), wdt (90), rswdt (91), "
                 "hsctr (92), hsctw (93D)",
                 "spans": "DIV48 Sa/Sb/D each 3 words; SUM N=1..511 words; "
@@ -319,7 +338,7 @@ def capabilities() -> dict[str, Any]:
                 "runtime simulation. No generated-file GUI or PLC verification",
             },
             "test15_functions": {
-                "release_status": "included in 0.11.0 source; package not built",
+                "release_status": "included in 1.0.0 source; package not built",
                 "actions": "tkey (76), hkey (77), dsw (78), 7sgdl (79), muxi (80)",
                 "forms": "Sampled 16-bit forms; other parameters and status coils inferred. "
                 "No D/P forms",
@@ -335,7 +354,7 @@ def capabilities() -> dict[str, Any]:
                 "No generated-file GUI or PLC verification; transistor output hardware must match.",
             },
             "test14_functions": {
-                "release_status": "included in 0.11.0 source; package not built",
+                "release_status": "included in 1.0.0 source; package not built",
                 "float_operations": "log (base 10), pow, asin, acos, atan (FUN216..220)",
                 "power_order": "pow: sa=Sy exponent, sb=Sx base; result=sb**sa",
                 "inverse_angles": "binary32 source and result in radians; asin/acos input -1..1",
@@ -349,7 +368,7 @@ def capabilities() -> dict[str, Any]:
                 "unsupported": "No P/indirect, runtime simulation, GUI or PLC verification",
             },
             "test13_functions": {
-                "release_status": "included in 0.11.0 source; package not built",
+                "release_status": "included in 1.0.0 source; package not built",
                 "operations": "float_operation sin/cos/tan/neg/abs/ln/exp (FUN209..215)",
                 "angles": "Sa is one signed 16-bit word or integral constant -18000..18000; "
                 "unit=0.01 degrees, not radians or binary32. D is two words.",
@@ -364,7 +383,7 @@ def capabilities() -> dict[str, Any]:
                 "Normal ERR wiring for eligible operations is available via test14",
             },
             "test12_functions": {
-                "release_status": "included in 0.11.0 source; package not built",
+                "release_status": "included in 1.0.0 source; package not built",
                 "float_arithmetic": "FUN205 FDIV and FUN208 FSQR: float_operation div/sqrt. "
                 "Arithmetic accepts register or finite binary32 immediate sources; "
                 "I->F/F->I still require register source",
@@ -530,7 +549,7 @@ def capabilities() -> dict[str, Any]:
             "new optimized files still need GUI import verification",
         },
         "no_plc_connection": True,
-        "writes": "new .ldr files only in configured output directory; never overwrite",
+        "writes": "new .ldr and requested component-comment .txt files only; never overwrite",
         "start_stop_example": start_stop().model_dump(),
         "schema": Ladder.model_json_schema(),
     }
@@ -547,6 +566,7 @@ def capability_summary() -> dict[str, Any]:
         "simulation_model",
         "address_subset",
         "generation",
+        "component_comments",
         "inference_notice",
         "manual_reference_tool",
         "rtc_snapshot_tool",

@@ -11,7 +11,7 @@
 | 編譯與接圖 | `test_ir.py`、`test_inferred_compiler.py`、`test_blocks.py`、`test_actions.py`、`test_layout.py`、`test_optimize.py` |
 | 架構與 I/O | `test_architecture.py`、`test_io_and_native_timing.py` 及各原生指令的完整跨度測試 |
 | 時序與配方 | `test_timing.py`、`test_timer_units.py`、`test_sequence.py`、`test_system.py`、`test_control.py`、`test_acceptance.py` |
-| MCP 與交付 | `test_mcp.py`、`test_recipe_mcp.py`、`test_service.py`、`test_artifacts.py`、`test_full_generation.py`、`test_design_report.py` |
+| MCP 與交付 | `test_mcp.py`、`test_recipe_mcp.py`、`test_service.py`、`test_artifacts.py`、`test_component_comments.py`、`test_full_generation.py`、`test_design_report.py` |
 | 安裝與文件 | `test_setup.py`、`test_release.py`、`test_documentation.py`、`test_manual_reference.py` |
 
 `fixtures/` 保留既有缺陷重現與人工匯入基準，不能因整理而改寫。`test_testN_functions.py` 的 N 對應原始 `samples/testN.ldr`，保留名稱便於追溯。

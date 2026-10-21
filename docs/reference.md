@@ -59,6 +59,17 @@ Timer 的 `preset` 是時基刻度數，不是直接的毫秒值。在 `.01S` �
 
 `action` 支援 16-bit `register_or`（sa/sb/destination 為 R0..255，enable 為布林條件）、`for`（count 1..16383）、`next`、`break`（enable）。Action 獨占網路，FOR/NEXT 無接點或線圈；只接受匹配的單層迴圈，BREAK 必須位於迴圈內。長迴圈可能觸發 PLC watchdog。
 
+## 元件註解檔
+
+使用者明確要求「新增元件註解」時，呼叫 `generate_component_comments` 另產生 `.txt`。每筆 `entries` 包含 `ref`、`comment`、`description`，輸出格式固定為：
+
+```text
+REF<TAB>COMMENT<TAB>DESCRIPTION<CRLF>
+X0<TAB>啟動<TAB>啟動按鈕<CRLF>
+```
+
+實際檔案使用 CP950／Big5，不是 UTF-8；欄位以實際 Tab 分隔並以 CRLF 結尾。COMMENT 與 DESCRIPTION 可留空，重複 REF、控制字元或 CP950 無法表示的文字會拒絕。檔案獨立交付，不會嵌入或修改 `.ldr`。
+
 ## 模擬與驗收
 
 `simulate_ladder` 最多 256 次掃描，initial 最多 128 個元件。每次 inputs 是 X 輸入快照，省略的 X=false；Y/M 狀態逐掃描保留，網路按顯示順序更新。

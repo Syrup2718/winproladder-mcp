@@ -10,6 +10,7 @@ from .acceptance import AcceptanceCase, check_acceptance
 from .analysis import describe, device_references, timer_settings
 from .architecture import architecture_report, enforce_architecture, load_policy
 from .capabilities import capabilities as capabilities
+from .component_comments import ComponentComment, render_component_comments
 from .generation_quality import behavior_verification, writer_report
 from .io_contract import IOContract, check_io
 from .ir import (
@@ -69,18 +70,24 @@ class Service:
                 "condition or use supported native instructions, never disguised relay chains."
             )
 
-    def write(self, name: str, document: Document) -> dict[str, Any]:
-        # Basename only: no caller-controlled directory traversal or overwrites.
+    def _new_output_path(self, name: str, suffix: str) -> Path:
         if (
             not name
             or Path(name).name != name
             or any(c in name for c in "/\\:")
             or any(c in name for c in '<>"|?*')
             or Path(name).is_reserved()
-            or not name.lower().endswith(".ldr")
+            or Path(name).suffix.lower() != suffix
             or name.startswith(".")
         ):
-            raise ValueError("Output must be a plain .ldr filename")
+            raise ValueError(f"Output must be a plain {suffix} filename")
+        self.output.mkdir(parents=True, exist_ok=True)
+        if self.output.resolve() != self.output:
+            raise ValueError("Output directory changed through a symlink")
+        return self.output / name
+
+    def write(self, name: str, document: Document) -> dict[str, Any]:
+        # Basename only: no caller-controlled directory traversal or overwrites.
         # Final gate covers create/generate/edit/export and direct service writes.
         # Read/inspect remain available for old or opaque files.
         policy = load_policy(self.root)
@@ -94,16 +101,34 @@ class Service:
             if not decoded or any(n is None for n in decoded):
                 raise ValueError("Cannot enforce architecture on opaque networks; no file written")
             enforce_architecture(Ladder(networks=[n for n in decoded if n is not None]), policy)
-        self.output.mkdir(parents=True, exist_ok=True)
-        if self.output.resolve() != self.output:
-            raise ValueError("Output directory changed through a symlink")
-        target = self.output / name
+        target = self._new_output_path(name, ".ldr")
         data = document.encode()
         # Re-parse before touching the output; opaque data is preserved.
         parse(data, strict_crc=False)
         with target.open("xb") as stream:
             stream.write(data)
         return {"path": str(target), "size": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+
+    def write_component_comments(
+        self, name: str, entries: list[ComponentComment]
+    ) -> dict[str, Any]:
+        """Create a sampled WinProLadder component-comment import file without overwriting."""
+        data = render_component_comments(entries)
+        target = self._new_output_path(name, ".txt")
+        with target.open("xb") as stream:
+            stream.write(data)
+        return {
+            "path": str(target),
+            "size": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "entry_count": len(entries),
+            "format": {
+                "columns": ["REF", "COMMENT", "DESCRIPTION"],
+                "delimiter": "tab",
+                "newline": "CRLF",
+                "encoding": "CP950/Big5",
+            },
+        }
 
     def inspect(self, path: str) -> dict[str, Any]:
         document = self.load(path, strict_crc=False)

@@ -35,6 +35,7 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
                 "get_manual_reference",
                 "inspect_rtc_snapshot",
                 "get_ldr_artifact",
+                "generate_component_comments",
                 "inspect_ldr",
                 "read_ldr",
                 "validate_ladder",

@@ -8,7 +8,7 @@
 | --- | --- |
 | [跨平台安裝](installation.md) | Windows、macOS、Linux 安裝與疑難排解 |
 | [快速開始](quickstart.md) | 原始碼安裝、client 連線、產檔、匯入與問題排除 |
-| [Agent 操作指南](agent-guide.md) | 19 個工具、需求整理、I/O 契約與二進位交付 |
+| [Agent 操作指南](agent-guide.md) | 22 個工具、需求整理、I/O 契約與檔案交付 |
 | [功能與參數](reference.md) | 配方、順序控制、Ladder IR、時間單位與模擬 |
 | [功能清單](../FEATURES.md) | 依 FUNC 編號排列的實作範圍與限制 |
 | [驗證範圍](verification.md) | 編碼、模型、MCP、GUI 與實體 PLC 的區別 |
@@ -64,7 +64,8 @@
 
 | 文件 | 範圍 |
 | --- | --- |
-| [未發版變更](unreleased.md) | 0.11.0 之後的原始碼更新 |
+| [未發版變更](unreleased.md) | 1.0.0 之後的原始碼更新 |
+| [1.0.0 版本紀錄](release-1.0.0.md) | 穩定範圍、責任邊界與驗證快照 |
 | [0.11.0 版本紀錄](release-0.11.0.md) | 該版本的功能與驗證快照 |
 | [FUN15／16 舊假說](fun15-16-probe.md) | 已被新樣本推翻，僅供研究追溯 |
 | [2026-10-13 目錄盤點](folder-audit-2026-10-13.md) | 本機維護歷史 |

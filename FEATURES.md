@@ -2,9 +2,9 @@
 
 [首頁](README.md) · [文件索引](docs/README.md)
 
-版本：**v0.11.0**。整理日期：**2026-10-15**。
+版本：**v1.0.0**。整理日期：**2026-10-21**。
 
-本文件描述**目前原始碼**。最後安裝包為 v0.10.0，差異記錄於[0.11.0版本紀錄](docs/release-0.11.0.md)；安裝包不隨儲存庫提供。原生指令按 FUNC 編號排列，能力與限制以此表及 MCP schema 為準。
+本文件描述 **v1.0.0 原始碼**；版本內容見 [v1.0.0 版本紀錄](docs/release-1.0.0.md)。最後建立的安裝包仍為 v0.10.0，v1.0.0 未建立 wheel、sdist 或安裝器成品。原生指令按 FUNC 編號排列，能力與限制以此表及 MCP schema 為準。
 
 ## 1. 能完成什麼
 
@@ -230,7 +230,7 @@
 - `generate_sequence_ldr`：1..16 步，可設定各步輸出、計時、完成條件、逾時、reset、abort；每掃描最多轉移一步，同樣受架構政策檢查。
 - 順序控制預設使用原生 T。指定 pause 時使用 FUN87 原生累積計時與暫存器狀態；只有需求明確指定外部 clock 時，才能使用外部脈波模式，不自動補一個 X。
 
-## 5. MCP 工具清單（19 個）
+## 5. MCP 工具清單（22 個）
 
 | 工具 | 用途 |
 | --- | --- |
@@ -247,6 +247,7 @@
 | `create_ldr` | 從低階 IR 建立新檔；未驗證形式須明確標示 |
 | `create_start_stop` | 固定 X0 啟動、X1 停止、Y0 自保持模板，僅用於符合此 I/O 的需求 |
 | `get_ldr_artifact` | 取得 .ldr 原始 bytes、SHA-256 與下載資源 |
+| `generate_component_comments` | 依 REF／COMMENT／DESCRIPTION 產生 CP950 元件註解 .txt |
 | `inspect_ldr` | 查看容器、bytes、位移與 CRC |
 | `read_ldr` | 按畫面順序讀取網路，未知指令保留為 opaque |
 | `analyze_ldr` | 解釋網路、列出元件讀寫與重複寫入 |
@@ -256,7 +257,7 @@
 | `export_ldr` | 匯出新檔並保留原始內容；嚴格政策下仍可能拒絕未知或違規網路 |
 | `modify_network` | 插入、替換或刪除網路，另存新檔，索引 0 對應 N000 |
 
-傳輸方式為本機 stdio。除工具外，提供 `winproladder://capabilities` 與 `winproladder://artifacts/{name}` 資源；後者是 MCP 二進位檔案資源，不是 HTTP 網址。
+傳輸方式為本機 stdio。除工具外，提供 `winproladder://capabilities` 與 `winproladder://artifacts/{name}` 資源；後者可交付 `.ldr` 或元件註解 `.txt` 的原始 bytes，不是 HTTP 網址。
 
 ## 6. 產檔與架構規則
 
@@ -265,7 +266,7 @@
 - 數值與狀態設計應使用原生暫存器；不以改名或偽裝的繼電器鏈繞過政策。
 - 寫出前檢查來源、接圖轉換後程式及實際 bytes 解碼结果。無法符合要求時回報限制，不自行增加 I/O。
 - 每次產檔回傳 `behavior_verification`。可用 `require_acceptance=true` 強制要求可執行案例；高階工具預設使用 `strict_writers=true`，拒絕跨網路重複 normal coil，SET／RESET-only 共用則保留報告但不拒絕。
-- 新檔採不覆寫方式建立；操作限於指定工作目錄，預設輸出至 `artifacts/`。
+- 新檔採不覆寫方式建立；操作限於指定工作目錄，預設輸出至 `artifacts/`。使用者明確要求新增元件註解時，另以 CP950／Big5、CRLF、Tab 分隔輸出 `.txt`；不嵌入 `.ldr`。
 - 提供的 acceptance 案例若失敗即不產檔；沒有提供驗收案例不代表已驗證行為。
 - 未知格式可保留作讀取研究，但無法證明符合嚴格架構政策時不能直接輸出。
 
@@ -281,7 +282,7 @@
 
 內建模擬每次最多 256 scans；有時間模型時 scan_ms 為 1..60000 ms。T 時間模型限預設 `.01S` 的 T0..49 及支援的 preset 範圍，不模擬 PLC 非同步時脈相位。數值比較接點、MC/MCE、UDCTR、迴圈與未列出的 function 尚無執行模型；不支援時明確拒絕。暫存器以 unsigned 16-bit 儲存，signed 運算依最高位解讀；比較旗號採 M1919=0 假設。詳見 [修復與驗證紀錄](docs/repair-2026-10-15.md)。
 
-v0.10.0 打包時為 **443 項通過**；0.11.0升版時為 **663 項通過**，目前含test30的原始碼測試結果見 [test30驗證紀錄](docs/test30-functions.md)。原始樣本目前 **31 份、219 networks** 可語意解碼與重建。這是現有樣本覆蓋，不代表所有程式都符合政策或所有指令變體皆有效。test11 的比較接點與浮點指令同樣區分離線、MCP 模擬、GUI 與實機驗證。
+v0.10.0 打包時為 **443 項通過**；v0.11.0 升版時為 **663 項通過**；v1.0.0 的完整驗證快照見[版本紀錄](docs/release-1.0.0.md)。原始樣本目前 **31 份、219 networks** 可語意解碼與重建。這是現有樣本覆蓋，不代表所有程式都符合政策或所有指令變體皆有效。test11 的比較接點與浮點指令同樣區分離線、MCP 模擬、GUI 與實機驗證。
 
 ## 8. 仍未支援
 
@@ -305,7 +306,7 @@ Agent 應先核對需求 I/O 與目前功能，再選擇生成工具，最後交
 | 原始程式 | `src/winproladder_mcp/` |
 | 原始樣本與截圖 | `samples/`、`samples/screenshots/` |
 | 生成檔與驗證紀錄 | `artifacts/` |
-| 目前版安裝包 | `dist/`，目前為 v0.10.0 |
+| 最後建立的安裝包 | `dist/`，目前為 v0.10.0；v1.0.0 未打包 |
 | 歷史安裝包 | `dist/archive/<版本>/` |
 | 本機 VM 共享目錄 | `C:/VM_Share` |
 
@@ -313,7 +314,7 @@ Agent 應先核對需求 I/O 與目前功能，再選擇生成工具，最後交
 
 功能與欄位若有後續變更，以實際連線 MCP 回傳的 `get_capabilities`、`get_design_guide` 及工作區政策為準。
 
-最新未發版指令與限制見 [test27](docs/test27-functions.md)。
+v1.0.0 納入的指令與限制見下列研究文件；後續尚未發版內容見[未發版變更](docs/unreleased.md)。
 
 - [test24：FUN08／09／10、113／114、128～130](docs/test24-functions.md)：樣本形式、WY8完整輸出契約與手冊差異。
 

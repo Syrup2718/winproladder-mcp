@@ -38,6 +38,9 @@ def test_portable_config_with_spaces(tmp_path: Path) -> None:
 def test_check_without_repository_assets(tmp_path: Path) -> None:
     asyncio.run(check(tmp_path))
     assert (tmp_path / "artifacts/self-check.ldr").stat().st_size == 281
+    assert (tmp_path / "artifacts/self-check-comments.txt").read_bytes().startswith(
+        b"REF\tCOMMENT\tDESCRIPTION\r\n"
+    )
     assert (tmp_path / "artifacts/requirement-check.ldr").is_file()
 
 

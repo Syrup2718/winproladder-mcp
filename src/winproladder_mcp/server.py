@@ -21,6 +21,7 @@ from pydantic import AnyUrl, StrictBool, StrictInt
 
 from .acceptance import AcceptanceCase
 from .capabilities import capability_summary, instruction_capabilities, instruction_families
+from .component_comments import ComponentComment
 from .control import ControlSpec, control_ladder
 from .design import design_guide
 from .io_contract import IOContract
@@ -57,28 +58,47 @@ def build_server(
             "Generation results include an MCP resource link to the actual binary .ldr. "
             "Use resources/read or get_ldr_artifact to deliver its bytes to clients without "
             "access to the server filesystem. "
+            "When the user explicitly requests 新增元件註解 or component comments, call "
+            "generate_component_comments and return its separate .txt artifact link. "
             "Stop polarity is the PLC input logic, not physical button wiring. No PLC operations."
         ),
     )
     read = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
     write = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False)
 
-    def artifact_path(name: str) -> Path:
-        if not name or Path(name).name != name or any(c in name for c in "/\\:"):
-            raise ValueError("Artifact name must be a plain .ldr filename")
-        target = service.source(str(service.output / name))
+    def artifact_path(name: str, suffixes: frozenset[str] = frozenset({".ldr"})) -> Path:
+        if (
+            not name
+            or Path(name).name != name
+            or any(c in name for c in "/\\:")
+            or any(c in name for c in '<>"|?*')
+            or Path(name).is_reserved()
+            or Path(name).suffix.lower() not in suffixes
+            or name.startswith(".")
+        ):
+            allowed = ", ".join(sorted(suffixes))
+            raise ValueError(f"Artifact name must be a plain filename ending in {allowed}")
+        target = (service.output / name).resolve(strict=True)
         if target.parent != service.output:
             raise ValueError("Artifact must be directly inside the configured output directory")
+        if not target.is_file() or target.stat().st_size > MAX_SIZE:
+            raise ValueError("Not a file or exceeds 16 MiB limit")
         return target
 
-    def artifact_bytes(name: str) -> bytes:
-        with artifact_path(name).open("rb") as stream:
+    def artifact_bytes(name: str, suffixes: frozenset[str] = frozenset({".ldr"})) -> bytes:
+        with artifact_path(name, suffixes).open("rb") as stream:
             data = stream.read(MAX_SIZE + 1)
         if len(data) > MAX_SIZE:
             raise ValueError("Artifact exceeds 16 MiB limit")
         return data
 
-    def artifact_result(result: dict[str, Any], data: bytes | None = None) -> CallToolResult:
+    def artifact_result(
+        result: dict[str, Any],
+        data: bytes | None = None,
+        *,
+        mime_type: str = "application/octet-stream",
+        description: str = "Download the generated WinProLadder ladder resource file.",
+    ) -> CallToolResult:
         if compact_responses:
             assumptions = result.get("design", {}).get("assumptions")
             result = {
@@ -95,7 +115,7 @@ def build_server(
             "artifact": {
                 "uri": str(uri),
                 "name": name,
-                "mime_type": "application/octet-stream",
+                "mime_type": mime_type,
                 "size": result["size"],
                 "sha256": result["sha256"],
             },
@@ -111,8 +131,8 @@ def build_server(
                     uri=uri,
                     name=name,
                     title=name,
-                    description="Download the generated WinProLadder ladder resource file.",
-                    mimeType="application/octet-stream",
+                    description=description,
+                    mimeType=mime_type,
                     size=result["size"],
                 ),
             ],
@@ -124,7 +144,7 @@ def build_server(
                     type="resource",
                     resource=BlobResourceContents(
                         uri=uri,
-                        mimeType="application/octet-stream",
+                        mimeType=mime_type,
                         blob=base64.b64encode(data).decode("ascii"),
                     ),
                 )
@@ -143,7 +163,9 @@ def build_server(
             "artifact_delivery": {
                 "resource_template": "winproladder://artifacts/{name}",
                 "tool": "get_ldr_artifact",
-                "format": "MCP binary resource (base64 on the wire), application/octet-stream",
+                "ldr_tool": "get_ldr_artifact",
+                "component_comment_tool": "generate_component_comments",
+                "format": "MCP binary resources (base64 on the wire); .ldr or CP950 .txt",
             },
         }
         if compact_responses and not detail:
@@ -314,6 +336,25 @@ def build_server(
             )
         )
 
+    @mcp.tool(annotations=write)
+    def generate_component_comments(
+        output_name: str, entries: list[ComponentComment]
+    ) -> CallToolResult:
+        """Generate a separate WinProLadder component-comment import .txt.
+
+        Call this when the user explicitly requests 新增元件註解 or component comments.
+        Each row has ref, comment and description. Output exactly follows the supplied sample:
+        REF/COMMENT/DESCRIPTION columns, tabs, CRLF and CP950/Big5. Never overwrites a file.
+        """
+        result = service.write_component_comments(output_name, entries)
+        data = artifact_bytes(output_name, frozenset({".txt"}))
+        return artifact_result(
+            result,
+            data,
+            mime_type="text/tab-separated-values; charset=big5",
+            description="Download the generated WinProLadder component-comment text file.",
+        )
+
     @mcp.tool(annotations=read)
     def get_ldr_artifact(output_name: str) -> CallToolResult:
         """Retrieve a generated .ldr as an embedded MCP binary resource and download link.
@@ -444,13 +485,13 @@ def build_server(
 
     @mcp.resource(
         "winproladder://artifacts/{name}",
-        name="generated_ldr",
-        title="Generated WinProLadder file",
+        name="generated_artifact",
+        title="Generated WinProLadder artifact",
         mime_type="application/octet-stream",
     )
     def artifact_resource(name: str) -> bytes:
-        """Read a generated .ldr file. The URI name is percent-encoded UTF-8."""
-        return artifact_bytes(unquote(name, errors="strict"))
+        """Read a generated .ldr or component-comment .txt artifact."""
+        return artifact_bytes(unquote(name, errors="strict"), frozenset({".ldr", ".txt"}))
 
     @mcp.resource("winproladder://capabilities")
     def capability_resource() -> str:

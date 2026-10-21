@@ -1,8 +1,8 @@
 # WinProLadder MCP
 
-讓 AI 根據控制需求，產生可匯入 WinProLadder 的 `.ldr` 檔案。
+讓 AI 根據控制需求，產生 WinProLadder `.ldr` 檔案。
 
-支援控制配方、順序控制、自訂階梯圖，以及既有檔案的讀取、分析與修改。產檔不需要 VM 或 PLC。
+支援控制配方、順序控制、自訂階梯圖，以及既有檔案的讀取、分析與修改。使用者明確要求新增元件註解時，另產生 WinProLadder 元件註解 `.txt`。產檔不需要 VM 或 PLC。
 
 [功能清單](FEATURES.md) · [快速開始](docs/quickstart.md) · [文件](docs/README.md)
 
@@ -34,7 +34,13 @@ MCP 服務以 Windows、macOS、Linux 為目標；WinProLadder GUI 匯入仍需 
 
 > X0 啟動、X1=1 停止、Y0 自保持，停止優先。請驗證後產生 motor.ldr。
 
-檔案預設存於 `artifacts/`，也可透過 MCP 下載。在 WinProLadder 使用 **Import Ladder Diagram** 匯入。
+檔案預設存於 `artifacts/`，也可透過 MCP 下載。後續可由使用者在 WinProLadder 使用 **Import Ladder Diagram** 匯入及驗收。
+
+## 責任邊界
+
+v1.0.0 的正式範圍是離線產生、解析、分析與修改 `.ldr`，以及支援範圍內的靜態檢查、編碼核對和行為模型。產檔會檢查來源程式、lowered program 與解碼後輸出，不代表 WinProLadder 已接受該檔案，也不代表實體 PLC 已依需求運行。
+
+WinProLadder GUI 匯入、PLC 下載及實機驗證屬於使用端驗收，不是 MCP 的必要執行環境或 v1.0.0 的交付承諾。各指令實際支援形式與證據等級以[功能清單](FEATURES.md)及[驗證範圍](docs/verification.md)為準。
 
 ## 注意事項
 
@@ -42,4 +48,4 @@ MCP 服務以 Windows、macOS、Linux 為目標；WinProLadder GUI 匯入仍需 
 - 各指令的支援範圍不同，詳見[功能清單](FEATURES.md)。
 - 離線測試不等於 GUI 或實體 PLC 驗證。
 
-版本 **0.11.0**；後續更新見[變更紀錄](docs/unreleased.md)。開發與提交方式見[貢獻指南](CONTRIBUTING.md)。本專案並非 FATEK 官方產品。
+版本 **1.0.0**；詳見 [v1.0.0 版本紀錄](docs/release-1.0.0.md)，後續更新見[未發版變更](docs/unreleased.md)。開發與提交方式見[貢獻指南](CONTRIBUTING.md)。本專案並非 FATEK 官方產品。
