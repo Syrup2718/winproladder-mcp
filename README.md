@@ -3,13 +3,17 @@
   <p><strong>讓 AI 將控制需求轉成 WinProLadder <code>.ldr</code> 檔案</strong></p>
   <p>也能讀取、分析及安全地修改既有檔案</p>
   <p>
-    <a href="https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml/badge.svg"></a>
     <a href="https://github.com/Syrup2718/winproladder-mcp/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Syrup2718/winproladder-mcp"></a>
     <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/Syrup2718/winproladder-mcp"></a>
     <a href="https://www.python.org/"><img alt="Python" src="https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white"></a>
+    <a href="https://github.com/Syrup2718/winproladder-mcp/stargazers">
+    <img alt="GitHub Stars" src="https://img.shields.io/github/stars/Syrup2718/winproladder-mcp">
+    </a>
+    <a href="https://github.com/Syrup2718/winproladder-mcp">
+    <img alt="Repo Size" src="https://img.shields.io/github/repo-size/Syrup2718/winproladder-mcp">
+    </a>
   </p>
   <p><strong>繁體中文</strong> · <a href="README.en.md">English</a></p>
-  <p><strong>v1.0.0</strong> · Python 3.12+ · Windows / macOS / Linux</p>
 </div>
 
 <p align="center">
@@ -19,6 +23,7 @@
   <a href="docs/README.md">完整文件</a>
 </p>
 
+> [!IMPORTANT]
 > 本專案不是 FATEK 官方產品，不會連線或下載程式到 PLC。
 
 ## 主要功能
@@ -49,7 +54,7 @@ sh install.sh
 ```
 
 安裝完成後，將 `.install/mcp-config.json` 或 `.install/mcp-config.toml` 中的
-`winproladder` 設定加入 MCP client，再重新連線。詳細說明見[安裝指南](docs/installation.md)。
+`winproladder` 設定加   入 MCP client，再重新連線。詳細說明見[安裝指南](docs/installation.md)。
 
 ## 使用範例
 

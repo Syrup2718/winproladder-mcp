@@ -7,6 +7,7 @@ This file lists only user-facing changes. Git history and automated tests retain
 ## Unreleased
 
 - Added an English README, feature overview, core usage documentation, and the shared bilingual FUNC support table.
+- Adjust some text layout.
 
 ## 1.0.0 — 2026-10-21
 

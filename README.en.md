@@ -3,13 +3,17 @@
   <p><strong>Turn control requirements into WinProLadder <code>.ldr</code> files with an AI agent</strong></p>
   <p>Read, inspect, compare, and safely modify existing files</p>
   <p>
-    <a href="https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml/badge.svg"></a>
     <a href="https://github.com/Syrup2718/winproladder-mcp/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Syrup2718/winproladder-mcp"></a>
     <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/Syrup2718/winproladder-mcp"></a>
     <a href="https://www.python.org/"><img alt="Python" src="https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white"></a>
+    <a href="https://github.com/Syrup2718/winproladder-mcp/stargazers">
+    <img alt="GitHub Stars" src="https://img.shields.io/github/stars/Syrup2718/winproladder-mcp">
+    </a>
+    <a href="https://github.com/Syrup2718/winproladder-mcp">
+    <img alt="Repo Size" src="https://img.shields.io/github/repo-size/Syrup2718/winproladder-mcp">
+    </a>
   </p>
   <p><a href="README.md">繁體中文</a> · <strong>English</strong></p>
-  <p><strong>v1.0.0</strong> · Python 3.12+ · Windows / macOS / Linux</p>
 </div>
 
 <p align="center">
@@ -19,6 +23,7 @@
   <a href="docs/README.md">Documentation</a>
 </p>
 
+> [!IMPORTANT]
 > This is an independent project. It is not an official FATEK product and does not connect to or download programs to a PLC.
 
 ## Key features
