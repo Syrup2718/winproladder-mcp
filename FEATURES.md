@@ -1,5 +1,7 @@
 # 功能總覽
 
+**繁體中文** | [English](FEATURES.en.md)
+
 [首頁](README.md) · [快速開始](docs/quickstart.md) · [參數參考](docs/reference.md)
 
 本頁說明 v1.0.0 的公開能力與邊界。精確 schema 與個別指令限制請查詢 MCP 的
@@ -43,7 +45,7 @@
 
 「支援」只代表列出的 operand 與模式已有編解碼或模型。未取樣的 D/P、間接定址、CPU 專用形式及其他運算元組合不會自動視為可用。CALL 目前僅解析；JMP 只保留已確認的完整樣本形式。
 
-逐 FUNC 的精確 operand、模式與證據狀態請直接查詢 `get_instruction_capabilities`；公開文件不重複維護逐次測試紀錄。
+已支援的編號與主要狀態見 [FUNC 支援表](docs/supported-functions.md)。精確 operand、模式與證據狀態請查詢 `get_instruction_capabilities`。
 
 ## 讀取與分析
 

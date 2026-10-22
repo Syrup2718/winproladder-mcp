@@ -1,4 +1,7 @@
 # WinProLadder MCP
+
+**繁體中文** | [English](README.en.md)
+
 [![CI](https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Syrup2718/winproladder-mcp)](https://github.com/Syrup2718/winproladder-mcp/releases/latest)
 [![License](https://img.shields.io/github/license/Syrup2718/winproladder-mcp)](LICENSE)
@@ -19,7 +22,7 @@
 - 讀取、比較、分析及安全地另存 `.ldr`。
 - 依使用者要求另產生 CP950／Big5 元件註解 `.txt`。
 
-完整範圍請看[功能總覽](FEATURES.md)。
+完整範圍請看[功能總覽](FEATURES.md)與 [FUNC 支援表](docs/supported-functions.md)。
 
 ## 快速安裝
 
@@ -61,6 +64,7 @@ MCP 會回傳可下載的 `.ldr`；明確要求註解時，另回傳 `.txt`。�
 
 - [5 分鐘快速開始](docs/quickstart.md)
 - [功能總覽](FEATURES.md)
+- [FUNC 支援表](docs/supported-functions.md)
 - [使用與參數參考](docs/reference.md)
 - [驗證方式與證據等級](docs/verification.md)
 - [完整文件索引](docs/README.md)
@@ -71,5 +75,3 @@ MCP 會回傳可下載的 `.ldr`；明確要求註解時，另回傳 `.txt`。�
 ## 授權
 
 本專案原創程式碼與文件採用 [MIT License](LICENSE)，Copyright © 2026 syrup2718。
-
-FATEK 與 WinProLadder 的商標、原廠軟體、手冊及其他第三方內容，其權利仍歸各自權利人所有；MIT 授權不代表原廠背書或授予第三方內容的權利。

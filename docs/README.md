@@ -9,6 +9,7 @@
 | [快速開始](quickstart.md) | 產生第一個 `.ldr` 與元件註解檔 |
 | [安裝指南](installation.md) | 平台、MCP client 設定與疑難排解 |
 | [功能總覽](../FEATURES.md) | 支援能力、限制與工具分組 |
+| [FUNC 支援表](supported-functions.md) | 原生指令的解析、產生與模擬狀態 |
 | [使用參考](reference.md) | 配方、順序控制、自訂 IR 與驗收 |
 | [驗證範圍](verification.md) | 離線、GUI 與實體 PLC 驗證的差異 |
 
