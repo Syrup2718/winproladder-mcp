@@ -1,5 +1,7 @@
 # 安裝指南
 
+**繁體中文** | [English](installation.en.md)
+
 [首頁](../README.md) · [快速開始](quickstart.md)
 
 ## 系統需求

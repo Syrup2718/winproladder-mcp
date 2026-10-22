@@ -1,5 +1,7 @@
 # 貢獻指南
 
+**繁體中文** | [English](CONTRIBUTING.en.md)
+
 [首頁](README.md) · [開發指南](docs/development.md)
 
 ## 回報問題

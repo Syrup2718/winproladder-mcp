@@ -1,15 +1,23 @@
-# WinProLadder MCP
+<div align="center">
+  <h1>WinProLadder MCP</h1>
+  <p><strong>Turn control requirements into WinProLadder <code>.ldr</code> files with an AI agent</strong></p>
+  <p>Read, inspect, compare, and safely modify existing files</p>
+  <p>
+    <a href="https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml/badge.svg"></a>
+    <a href="https://github.com/Syrup2718/winproladder-mcp/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Syrup2718/winproladder-mcp"></a>
+    <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/Syrup2718/winproladder-mcp"></a>
+    <a href="https://www.python.org/"><img alt="Python" src="https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white"></a>
+  </p>
+  <p><a href="README.md">繁體中文</a> · <strong>English</strong></p>
+  <p><strong>v1.0.0</strong> · Python 3.12+ · Windows / macOS / Linux</p>
+</div>
 
-[繁體中文](README.md) | **English**
-
-[![CI](https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Syrup2718/winproladder-mcp)](https://github.com/Syrup2718/winproladder-mcp/releases/latest)
-[![License](https://img.shields.io/github/license/Syrup2718/winproladder-mcp)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-
-Turn control requirements into WinProLadder `.ldr` files with an AI agent. The MCP server can also read, inspect, compare, and safely modify existing files.
-
-Current version: **v1.0.0** · Python 3.12+ · Windows, macOS, and Linux
+<p align="center">
+  <a href="docs/quickstart.en.md">Quick start</a> ·
+  <a href="FEATURES.en.md">Features</a> ·
+  <a href="docs/supported-functions.md">FUNC support</a> ·
+  <a href="docs/README.md">Documentation</a>
+</p>
 
 > This is an independent project. It is not an official FATEK product and does not connect to or download programs to a PLC.
 
@@ -28,19 +36,19 @@ See the [feature overview](FEATURES.en.md) and [supported FUNC table](docs/suppo
 
 Download or clone the repository, then run the installer from the project directory.
 
-Windows PowerShell:
+### Windows PowerShell
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-macOS or Linux:
+### macOS / Linux
 
 ```sh
 sh install.sh
 ```
 
-After installation, add the `winproladder` entry from `.install/mcp-config.json` or `.install/mcp-config.toml` to your MCP client, then reconnect it. See the [installation guide](docs/installation.md) for platform details and troubleshooting.
+After installation, add the `winproladder` entry from `.install/mcp-config.json` or `.install/mcp-config.toml` to your MCP client, then reconnect it. See the [installation guide](docs/installation.en.md) for platform details and troubleshooting.
 
 ## Example request
 
@@ -60,14 +68,14 @@ This project provides offline file generation, parsing, and validation. The user
 
 ## Documentation
 
-- [Feature overview](FEATURES.en.md)
-- [Supported FUNC instructions](docs/supported-functions.md)
-- [5-minute quick start](docs/quickstart.md) (Traditional Chinese)
-- [User and parameter reference](docs/reference.md) (Traditional Chinese)
-- [Verification levels](docs/verification.md) (Traditional Chinese)
-- [Contributing](CONTRIBUTING.md) (Traditional Chinese)
+| Category | Documents |
+| --- | --- |
+| Getting started | [5-minute quick start](docs/quickstart.en.md) · [Installation](docs/installation.en.md) |
+| Features | [Feature overview](FEATURES.en.md) · [FUNC support table](docs/supported-functions.md) |
+| Reference | [User and parameter reference](docs/reference.en.md) · [Documentation index](docs/README.md) |
+| Verification and development | [Verification levels](docs/verification.en.md) · [Contributing](CONTRIBUTING.en.md) |
 
-See the [changelog](CHANGELOG.md) for version history.
+See the [changelog](CHANGELOG.en.md) for version history.
 
 ## License
 

@@ -1,5 +1,7 @@
 # 驗證範圍
 
+**繁體中文** | [English](verification.en.md)
+
 [文件索引](README.md) · [功能清單](../FEATURES.md)
 
 本專案將編碼、模型與實際軟體／設備驗證分開記錄。新功能不能因為通過 CRC 或沿用某個機型檔頭，就自動取得 GUI 或 PLC 驗證狀態。

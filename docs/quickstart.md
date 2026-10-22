@@ -1,5 +1,7 @@
 # 快速開始
 
+**繁體中文** | [English](quickstart.en.md)
+
 [首頁](../README.md) · [安裝指南](installation.md) · [功能總覽](../FEATURES.md)
 
 ## 1. 安裝

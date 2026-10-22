@@ -1,15 +1,23 @@
-# WinProLadder MCP
+<div align="center">
+  <h1>WinProLadder MCP</h1>
+  <p><strong>讓 AI 將控制需求轉成 WinProLadder <code>.ldr</code> 檔案</strong></p>
+  <p>也能讀取、分析及安全地修改既有檔案</p>
+  <p>
+    <a href="https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml/badge.svg"></a>
+    <a href="https://github.com/Syrup2718/winproladder-mcp/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Syrup2718/winproladder-mcp"></a>
+    <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/Syrup2718/winproladder-mcp"></a>
+    <a href="https://www.python.org/"><img alt="Python" src="https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white"></a>
+  </p>
+  <p><strong>繁體中文</strong> · <a href="README.en.md">English</a></p>
+  <p><strong>v1.0.0</strong> · Python 3.12+ · Windows / macOS / Linux</p>
+</div>
 
-**繁體中文** | [English](README.en.md)
-
-[![CI](https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Syrup2718/winproladder-mcp/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Syrup2718/winproladder-mcp)](https://github.com/Syrup2718/winproladder-mcp/releases/latest)
-[![License](https://img.shields.io/github/license/Syrup2718/winproladder-mcp)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-
-讓 AI 將控制需求轉成 WinProLadder `.ldr` 檔案，也能讀取、分析及修改既有檔案。
-
-目前版本：**v1.0.0** · Python 3.12+ · Windows、macOS、Linux
+<p align="center">
+  <a href="docs/quickstart.md">快速開始</a> ·
+  <a href="FEATURES.md">功能總覽</a> ·
+  <a href="docs/supported-functions.md">FUNC 支援表</a> ·
+  <a href="docs/README.md">完整文件</a>
+</p>
 
 > 本專案不是 FATEK 官方產品，不會連線或下載程式到 PLC。
 
@@ -28,13 +36,13 @@
 
 下載原始碼並在專案目錄執行：
 
-Windows PowerShell：
+### Windows PowerShell
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-macOS / Linux：
+### macOS / Linux
 
 ```sh
 sh install.sh
@@ -62,13 +70,12 @@ MCP 會回傳可下載的 `.ldr`；明確要求註解時，另回傳 `.txt`。�
 
 ## 文件
 
-- [5 分鐘快速開始](docs/quickstart.md)
-- [功能總覽](FEATURES.md)
-- [FUNC 支援表](docs/supported-functions.md)
-- [使用與參數參考](docs/reference.md)
-- [驗證方式與證據等級](docs/verification.md)
-- [完整文件索引](docs/README.md)
-- [貢獻指南](CONTRIBUTING.md)
+| 類別 | 文件 |
+| --- | --- |
+| 入門 | [5 分鐘快速開始](docs/quickstart.md) · [安裝指南](docs/installation.md) |
+| 功能 | [功能總覽](FEATURES.md) · [FUNC 支援表](docs/supported-functions.md) |
+| 參考 | [使用與參數參考](docs/reference.md) · [完整文件索引](docs/README.md) |
+| 驗證與開發 | [驗證方式與證據等級](docs/verification.md) · [貢獻指南](CONTRIBUTING.md) |
 
 版本內容與後續變更統一記錄在 [CHANGELOG](CHANGELOG.md)。
 
