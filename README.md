@@ -13,12 +13,12 @@
     <img alt="Repo Size" src="https://img.shields.io/github/repo-size/Syrup2718/winproladder-mcp">
     </a>
   </p>
-  <p><strong>繁體中文</strong> · <a href="README.en.md">English</a></p>
+  <p><strong>繁體中文</strong> · <a href="docs/project/README.en.md">English</a></p>
 </div>
 
 <p align="center">
   <a href="docs/quickstart.md">快速開始</a> ·
-  <a href="FEATURES.md">功能總覽</a> ·
+  <a href="docs/project/FEATURES.md">功能總覽</a> ·
   <a href="docs/supported-functions.md">FUNC 支援表</a> ·
   <a href="docs/README.md">完整文件</a>
 </p>
@@ -35,7 +35,7 @@
 - 讀取、比較、分析及安全地另存 `.ldr`。
 - 依使用者要求另產生 CP950／Big5 元件註解 `.txt`。
 
-完整範圍請看[功能總覽](FEATURES.md)與 [FUNC 支援表](docs/supported-functions.md)。
+完整範圍請看[功能總覽](docs/project/FEATURES.md)與 [FUNC 支援表](docs/supported-functions.md)。
 
 ## 快速安裝
 
@@ -78,11 +78,11 @@ MCP 會回傳可下載的 `.ldr`；明確要求註解時，另回傳 `.txt`。�
 | 類別 | 文件 |
 | --- | --- |
 | 入門 | [5 分鐘快速開始](docs/quickstart.md) · [安裝指南](docs/installation.md) |
-| 功能 | [功能總覽](FEATURES.md) · [FUNC 支援表](docs/supported-functions.md) |
+| 功能 | [功能總覽](docs/project/FEATURES.md) · [FUNC 支援表](docs/supported-functions.md) |
 | 參考 | [使用與參數參考](docs/reference.md) · [完整文件索引](docs/README.md) |
-| 驗證與開發 | [驗證方式與證據等級](docs/verification.md) · [貢獻指南](CONTRIBUTING.md) |
+| 驗證與開發 | [驗證方式與證據等級](docs/verification.md) · [貢獻指南](docs/project/CONTRIBUTING.md) |
 
-版本內容與後續變更統一記錄在 [CHANGELOG](CHANGELOG.md)。
+版本內容與後續變更統一記錄在 [CHANGELOG](docs/project/CHANGELOG.md)。
 
 ## 授權
 

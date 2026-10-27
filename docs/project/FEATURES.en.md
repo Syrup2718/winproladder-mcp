@@ -2,7 +2,7 @@
 
 [繁體中文](FEATURES.md) | **English**
 
-[Home](README.en.md) · [Supported FUNC instructions](docs/supported-functions.md)
+[Home](README.en.md) · [Supported FUNC instructions](../supported-functions.md)
 
 This page summarizes the public capabilities and boundaries of v1.0.0. For exact schemas and operand restrictions, use `get_capabilities`, `list_instruction_families`, and `get_instruction_capabilities`.
 
@@ -44,7 +44,7 @@ Supported forms are grouped as follows:
 
 Support applies only to the documented operand combinations and modes. Unsampled D/P forms, indirect addressing, CPU-specific variants, and other combinations are not implied. CALL is decode-only; JMP generation is restricted to the confirmed complete sample form.
 
-See the [supported FUNC table](docs/supported-functions.md) for instruction numbers and high-level status. Use `get_instruction_capabilities` for exact operands, modes, limits, and evidence.
+See the [supported FUNC table](../supported-functions.md) for instruction numbers and high-level status. Use `get_instruction_capabilities` for exact operands, modes, limits, and evidence.
 
 ## Reading and analysis
 

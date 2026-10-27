@@ -2,7 +2,7 @@
 
 **繁體中文** | [English](reference.en.md)
 
-[文件索引](README.md) · [功能總覽](../FEATURES.md)
+[文件索引](README.md) · [功能總覽](project/FEATURES.md)
 
 ## 控制配方
 

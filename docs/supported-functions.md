@@ -1,6 +1,6 @@
 # Supported native instructions / 原生指令支援表
 
-[繁體中文首頁](../README.md) · [English home](../README.en.md) · [中文功能總覽](../FEATURES.md) · [English features](../FEATURES.en.md)
+[繁體中文首頁](../README.md) · [English home](project/README.en.md) · [中文功能總覽](project/FEATURES.md) · [English features](project/FEATURES.en.md)
 
 本表是 GitHub 訪客可直接閱讀的精簡清單。`✅` 只表示目前 schema 與驗證允許的形式，不代表該 FUNC 的所有 D/P、間接定址、CPU 或 operand 變體。
 

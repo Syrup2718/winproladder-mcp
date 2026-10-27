@@ -1,6 +1,6 @@
 # 開發指南
 
-[文件索引](README.md) · [貢獻指南](../CONTRIBUTING.md)
+[文件索引](README.md) · [貢獻指南](project/CONTRIBUTING.md)
 
 ## 開發環境
 

@@ -2,7 +2,7 @@
 
 **繁體中文** | [English](CONTRIBUTING.en.md)
 
-[首頁](README.md) · [開發指南](docs/development.md)
+[首頁](../../README.md) · [開發指南](../development.md)
 
 ## 回報問題
 
@@ -10,7 +10,7 @@
 
 ## 修改與檢查
 
-遵守 [AGENTS.md](AGENTS.md)，修改後執行：
+遵守 [AGENTS.md](../../AGENTS.md)，修改後執行：
 
 ```powershell
 uv sync --locked

@@ -2,7 +2,7 @@
 
 **繁體中文** | [English](quickstart.en.md)
 
-[首頁](../README.md) · [安裝指南](installation.md) · [功能總覽](../FEATURES.md)
+[首頁](../README.md) · [安裝指南](installation.md) · [功能總覽](project/FEATURES.md)
 
 ## 1. 安裝
 
@@ -50,7 +50,7 @@ MCP 會檢查需求中允許的 X/Y，不會自行增加輸入、輸出或外部
 | --- | --- |
 | Client 看不到工具 | 重新執行安裝腳本，更新設定後重新連線 |
 | I/O 檢查失敗 | 核對位址、極性及 `io_contract` |
-| 指令不能產生或模擬 | 查閱[功能總覽](../FEATURES.md)；編碼與模擬範圍不同 |
+| 指令不能產生或模擬 | 查閱[功能總覽](project/FEATURES.md)；編碼與模擬範圍不同 |
 | 同名檔已存在 | 使用新的輸出檔名 |
 
 進階參數見[使用參考](reference.md)。

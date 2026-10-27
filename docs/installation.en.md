@@ -2,7 +2,7 @@
 
 [繁體中文](installation.md) | **English**
 
-[Home](../README.en.md) · [Quick start](quickstart.en.md)
+[Home](project/README.en.md) · [Quick start](quickstart.en.md)
 
 ## Requirements
 

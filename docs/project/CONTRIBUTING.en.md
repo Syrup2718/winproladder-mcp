@@ -2,7 +2,7 @@
 
 [繁體中文](CONTRIBUTING.md) | **English**
 
-[Home](README.en.md) · [Development guide](docs/development.md) (Traditional Chinese)
+[Home](README.en.md) · [Development guide](../development.md) (Traditional Chinese)
 
 ## Reporting a Problem
 
@@ -10,7 +10,7 @@ Include the version, environment, minimal reproduction, expected result, and act
 
 ## Changes and Checks
 
-Follow [AGENTS.md](AGENTS.md), then run:
+Follow [AGENTS.md](../../AGENTS.md), then run:
 
 ```powershell
 uv sync --locked

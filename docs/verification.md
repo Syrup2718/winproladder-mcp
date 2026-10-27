@@ -2,7 +2,7 @@
 
 **繁體中文** | [English](verification.en.md)
 
-[文件索引](README.md) · [功能清單](../FEATURES.md)
+[文件索引](README.md) · [功能清單](project/FEATURES.md)
 
 本專案將編碼、模型與實際軟體／設備驗證分開記錄。新功能不能因為通過 CRC 或沿用某個機型檔頭，就自動取得 GUI 或 PLC 驗證狀態。
 
@@ -41,4 +41,4 @@ uv run python -m winproladder_mcp.setup check
 
 `setup check` 使用暫存工作目錄。若需保存整合驗證產物，可依[開發指南](development.md)執行 `scripts/verify_release.py`；此腳本名稱不表示會打包或發布。
 
-研究文件中提到的 `artifacts/` 報告是本機歷史產物，不隨 Git 發布。可公開追溯的依據為儲存庫中的樣本、測試、IR 範例與已記錄雜湊。指令層級限制由[功能表](../FEATURES.md)及[研究索引](README.md)查閱。
+研究文件中提到的 `artifacts/` 報告是本機歷史產物，不隨 Git 發布。可公開追溯的依據為儲存庫中的樣本、測試、IR 範例與已記錄雜湊。指令層級限制由[功能表](project/FEATURES.md)及[研究索引](README.md)查閱。

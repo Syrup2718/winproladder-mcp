@@ -4,7 +4,7 @@
   <p>Read, inspect, compare, and safely modify existing files</p>
   <p>
     <a href="https://github.com/Syrup2718/winproladder-mcp/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Syrup2718/winproladder-mcp"></a>
-    <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/Syrup2718/winproladder-mcp"></a>
+    <a href="../../LICENSE"><img alt="License" src="https://img.shields.io/github/license/Syrup2718/winproladder-mcp"></a>
     <a href="https://www.python.org/"><img alt="Python" src="https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white"></a>
     <a href="https://github.com/Syrup2718/winproladder-mcp/stargazers">
     <img alt="GitHub Stars" src="https://img.shields.io/github/stars/Syrup2718/winproladder-mcp">
@@ -13,14 +13,14 @@
     <img alt="Repo Size" src="https://img.shields.io/github/repo-size/Syrup2718/winproladder-mcp">
     </a>
   </p>
-  <p><a href="README.md">繁體中文</a> · <strong>English</strong></p>
+  <p><a href="../../README.md">繁體中文</a> · <strong>English</strong></p>
 </div>
 
 <p align="center">
-  <a href="docs/quickstart.en.md">Quick start</a> ·
+  <a href="../quickstart.en.md">Quick start</a> ·
   <a href="FEATURES.en.md">Features</a> ·
-  <a href="docs/supported-functions.md">FUNC support</a> ·
-  <a href="docs/README.md">Documentation</a>
+  <a href="../supported-functions.md">FUNC support</a> ·
+  <a href="../README.md">Documentation</a>
 </p>
 
 > [!IMPORTANT]
@@ -35,7 +35,7 @@
 - Read, compare, analyze, and export `.ldr` files without overwriting the source.
 - Generate a separate CP950/Big5 component-comment `.txt` file when explicitly requested.
 
-See the [feature overview](FEATURES.en.md) and [supported FUNC table](docs/supported-functions.md) for the current scope.
+See the [feature overview](FEATURES.en.md) and [supported FUNC table](../supported-functions.md) for the current scope.
 
 ## Quick installation
 
@@ -53,7 +53,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 sh install.sh
 ```
 
-After installation, add the `winproladder` entry from `.install/mcp-config.json` or `.install/mcp-config.toml` to your MCP client, then reconnect it. See the [installation guide](docs/installation.en.md) for platform details and troubleshooting.
+After installation, add the `winproladder` entry from `.install/mcp-config.json` or `.install/mcp-config.toml` to your MCP client, then reconnect it. See the [installation guide](../installation.en.md) for platform details and troubleshooting.
 
 ## Example request
 
@@ -75,13 +75,13 @@ This project provides offline file generation, parsing, and validation. The user
 
 | Category | Documents |
 | --- | --- |
-| Getting started | [5-minute quick start](docs/quickstart.en.md) · [Installation](docs/installation.en.md) |
-| Features | [Feature overview](FEATURES.en.md) · [FUNC support table](docs/supported-functions.md) |
-| Reference | [User and parameter reference](docs/reference.en.md) · [Documentation index](docs/README.md) |
-| Verification and development | [Verification levels](docs/verification.en.md) · [Contributing](CONTRIBUTING.en.md) |
+| Getting started | [5-minute quick start](../quickstart.en.md) · [Installation](../installation.en.md) |
+| Features | [Feature overview](FEATURES.en.md) · [FUNC support table](../supported-functions.md) |
+| Reference | [User and parameter reference](../reference.en.md) · [Documentation index](../README.md) |
+| Verification and development | [Verification levels](../verification.en.md) · [Contributing](CONTRIBUTING.en.md) |
 
 See the [changelog](CHANGELOG.en.md) for version history.
 
 ## License
 
-Original source code and documentation are available under the [MIT License](LICENSE), Copyright © 2026 syrup2718.
+Original source code and documentation are available under the [MIT License](../../LICENSE), Copyright © 2026 syrup2718.

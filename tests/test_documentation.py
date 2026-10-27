@@ -13,7 +13,7 @@ from winproladder_mcp.server import build_server
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = [
     *ROOT.glob("*.md"),
-    *sorted((ROOT / "docs").glob("*.md")),
+    *sorted((ROOT / "docs").rglob("*.md")),
     *(ROOT / name / "README.md" for name in ["examples", "samples", "scripts", "tests"]),
 ]
 

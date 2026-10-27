@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | [快速開始](quickstart.md) | [Quick start](quickstart.en.md) | 產生第一個 `.ldr` 與元件註解檔 |
 | [安裝指南](installation.md) | [Installation](installation.en.md) | 平台、MCP client 設定與疑難排解 |
-| [功能總覽](../FEATURES.md) | [Features](../FEATURES.en.md) | 支援能力、限制與工具分組 |
+| [功能總覽](project/FEATURES.md) | [Features](project/FEATURES.en.md) | 支援能力、限制與工具分組 |
 | [FUNC 支援表](supported-functions.md) | 同頁中英對照 | 原生指令的解析、產生與模擬狀態 |
 | [使用參考](reference.md) | [Usage reference](reference.en.md) | 配方、順序控制、自訂 IR 與驗收 |
 | [驗證範圍](verification.md) | [Verification](verification.en.md) | 離線、GUI 與實體 PLC 驗證的差異 |
@@ -24,4 +24,4 @@
 | [手冊與 RTC](manual-limits-rtc.md) | 運算元範圍與萬年曆參考 |
 | [計時器](timer-evidence.md) | 普通 T 與 FUN87～89 的支援邊界 |
 
-版本變更見 [CHANGELOG](../CHANGELOG.md)（[English](../CHANGELOG.en.md)）。細部指令能力請使用 MCP 的 `list_instruction_families` 與 `get_instruction_capabilities` 查詢；回歸樣本與測試證據留在 `samples/`、`examples/` 與 `tests/`。
+版本變更見 [CHANGELOG](project/CHANGELOG.md)（[English](project/CHANGELOG.en.md)）。細部指令能力請使用 MCP 的 `list_instruction_families` 與 `get_instruction_capabilities` 查詢；回歸樣本與測試證據留在 `samples/`、`examples/` 與 `tests/`。

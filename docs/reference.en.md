@@ -2,7 +2,7 @@
 
 [繁體中文](reference.md) | **English**
 
-[Documentation index](README.md) · [Features](../FEATURES.en.md)
+[Documentation index](README.md) · [Features](project/FEATURES.en.md)
 
 ## Control Recipes
 

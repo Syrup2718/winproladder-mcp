@@ -2,7 +2,7 @@
 
 **繁體中文** | [English](FEATURES.en.md)
 
-[首頁](README.md) · [快速開始](docs/quickstart.md) · [參數參考](docs/reference.md)
+[首頁](../../README.md) · [快速開始](../quickstart.md) · [參數參考](../reference.md)
 
 本頁說明 v1.0.0 的公開能力與邊界。精確 schema 與個別指令限制請查詢 MCP 的
 `get_capabilities`、`list_instruction_families` 和 `get_instruction_capabilities`。
@@ -45,7 +45,7 @@
 
 「支援」只代表列出的 operand 與模式已有編解碼或模型。未取樣的 D/P、間接定址、CPU 專用形式及其他運算元組合不會自動視為可用。CALL 目前僅解析；JMP 只保留已確認的完整樣本形式。
 
-已支援的編號與主要狀態見 [FUNC 支援表](docs/supported-functions.md)。精確 operand、模式與證據狀態請查詢 `get_instruction_capabilities`。
+已支援的編號與主要狀態見 [FUNC 支援表](../supported-functions.md)。精確 operand、模式與證據狀態請查詢 `get_instruction_capabilities`。
 
 ## 讀取與分析
 
@@ -75,7 +75,7 @@ v1.0.0 提供 22 個工具，分為四組：
 - 讀取與修改：`inspect_ldr`、`read_ldr`、`analyze_ldr`、`compare_ldr`、`modify_network`、`export_ldr`、`get_ldr_artifact`
 - 說明與查詢：`get_capabilities`、`get_design_guide`、`list_instruction_families`、`get_instruction_capabilities`、`get_manual_reference`、`inspect_rtc_snapshot`
 
-詳細參數與選用方式見 [Agent 操作指南](docs/agent-guide.md)。
+詳細參數與選用方式見 [Agent 操作指南](../agent-guide.md)。
 
 ## 已知限制
 
@@ -85,4 +85,4 @@ v1.0.0 提供 22 個工具，分為四組：
 - 部分指令只支援特定樣本形式、只解析或只編碼。
 - 元件註解是獨立 `.txt`，不會嵌入 `.ldr`。
 
-目前保存 31 份原始 WinProLadder 匯出、共 219 個網路作為回歸證據。驗證層級與既有人工確認見[驗證說明](docs/verification.md)。
+目前保存 31 份原始 WinProLadder 匯出、共 219 個網路作為回歸證據。驗證層級與既有人工確認見[驗證說明](../verification.md)。

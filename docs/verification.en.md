@@ -2,7 +2,7 @@
 
 [繁體中文](verification.md) | **English**
 
-[Documentation index](README.md) · [Feature list](../FEATURES.en.md)
+[Documentation index](README.md) · [Feature list](project/FEATURES.en.md)
 
 This project records encoding, model, software, and hardware verification separately. Passing a CRC check or reusing a header from one PLC model does not automatically establish GUI or PLC verification for a new feature.
 
@@ -41,4 +41,4 @@ uv run python -m winproladder_mcp.setup check
 
 `setup check` uses a temporary workspace. To retain integration artifacts, run `scripts/verify_release.py` as described in the [development guide](development.md). The script name does not mean it builds or publishes a release.
 
-Historical `artifacts/` reports mentioned in research documents are local outputs and are not published with Git. Publicly traceable evidence consists of repository samples, tests, IR examples, and recorded hashes. See [Features](../FEATURES.en.md) and the [documentation index](README.md) for instruction-level limits.
+Historical `artifacts/` reports mentioned in research documents are local outputs and are not published with Git. Publicly traceable evidence consists of repository samples, tests, IR examples, and recorded hashes. See [Features](project/FEATURES.en.md) and the [documentation index](README.md) for instruction-level limits.

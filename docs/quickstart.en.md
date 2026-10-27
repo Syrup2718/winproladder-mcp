@@ -2,7 +2,7 @@
 
 [繁體中文](quickstart.md) | **English**
 
-[Home](../README.en.md) · [Installation](installation.en.md) · [Features](../FEATURES.en.md)
+[Home](project/README.en.md) · [Installation](installation.en.md) · [Features](project/FEATURES.en.md)
 
 ## 1. Install
 
@@ -48,7 +48,7 @@ Import the `.ldr` file into WinProLadder, confirm the PLC model, I/O, and timing
 | --- | --- |
 | The client cannot see the tools | Rerun the installer, update the client configuration, and reconnect. |
 | I/O validation fails | Check the addresses, polarity, and `io_contract`. |
-| An instruction cannot be generated or simulated | See [Features](../FEATURES.en.md); encoding and simulation coverage differ. |
+| An instruction cannot be generated or simulated | See [Features](project/FEATURES.en.md); encoding and simulation coverage differ. |
 | The output name already exists | Choose a new output filename. |
 
 See the [usage reference](reference.en.md) for advanced parameters.
