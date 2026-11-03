@@ -24,6 +24,9 @@ from .layout import expressions, lower_ladder, memory_used, needs_lowering
 from .ldr import FOOTER, MAX_SIZE, Document, LdrError, Record, parse
 from .pdw import PdwRung, as_ladder, replace_rungs
 from .pdw import parse as parse_pdw
+from .pdw_project import PdwSection
+from .pdw_project import build as build_pdw_project
+from .pdw_project import parse as parse_pdw_project
 from .profiles import default_header as default_header
 from .profiles import header_profile as header_profile
 
@@ -67,13 +70,110 @@ class Service:
             return stream.read(MAX_SIZE + 1)
 
     def inspect_pdw(self, path: str) -> dict[str, Any]:
-        project = parse_pdw(self.load_pdw(path))
+        project = parse_pdw_project(self.load_pdw(path))
+        try:
+            rungs = [r.model_dump() for r in parse_pdw(project.raw).rungs]
+        except ValueError:
+            rungs = None
         return {
-            "model": "FBs-60MC",
-            "rungs": [r.model_dump() for r in project.rungs],
+            **project.describe(),
+            "rungs": rungs,
             "size": len(project.raw),
             "sha256": hashlib.sha256(project.raw).hexdigest(),
             "scope": "Supported template layout only; not full-file integrity validation",
+        }
+
+    def generate_project_pdw(
+        self,
+        name: str,
+        template_path: str,
+        ladder: Ladder,
+        io_contract: IOContract,
+        acceptance: list[AcceptanceCase] | None = None,
+        *,
+        sections: list[PdwSection] | None = None,
+        comments: list[ComponentComment] | None = None,
+        require_acceptance: bool = False,
+    ) -> dict[str, Any]:
+        if ladder.profile != "FBs-60MC-test16":
+            raise ValueError("PDW template requires ladder.profile=FBs-60MC-test16")
+        if require_acceptance and not acceptance:
+            raise ValueError("PDW executable acceptance cases required; no file written")
+        self.architecture(ladder)
+        writer_report(ladder, strict=True)
+        check_io(set(device_references(list(enumerate(ladder.networks)))["devices"]), io_contract)
+        source_report = check_acceptance(ladder, acceptance) if acceptance is not None else None
+        if source_report is not None and not source_report["passed"]:
+            raise ValueError("PDW source acceptance failed; no file written")
+        lowered, layout = lower_ladder(ladder)
+        self.architecture(lowered)
+        self.check_layout(layout)
+        writer_report(lowered, strict=True)
+        if sections and len(lowered.networks) != len(ladder.networks):
+            raise ValueError("PDW section indexes require unchanged network count after lowering")
+        report = validation(lowered)
+        if not report["valid"]:
+            raise ValueError(str(report["errors"]))
+        payloads = [compile_network(n) for n in lowered.networks]
+        # Full-program relocation for control flow has not been verified in PDW.
+        forbidden = {"jmp", "call", "for", "next", "break", "lbl", "mc", "mce"}
+        if any(n.action is not None and n.action.type in forbidden for n in lowered.networks):
+            raise ValueError("PDW control-flow serialization is not verified; no file written")
+        metadata = sections or [PdwSection(network_index=0, name="MAIN")]
+        data, offsets = build_pdw_project(
+            self.load_pdw(template_path),
+            payloads,
+            metadata,
+            [n.comment for n in lowered.networks],
+            comments or [],
+        )
+        parsed = parse_pdw_project(data)
+        networks = []
+        for offset, payload in zip(offsets, payloads, strict=True):
+            raw = parsed.plain[offset : offset + len(payload)]
+            n = decode_network(raw)
+            if n is None or compile_network(n) != raw:
+                raise ValueError("PDW emitted instruction decode failed; no file written")
+            networks.append(n)
+        emitted = Ladder(profile=ladder.profile, networks=networks)
+        architecture = self.architecture(emitted)
+        writers = writer_report(emitted, strict=True)
+        io_report = check_io(
+            set(device_references(list(enumerate(emitted.networks)))["devices"]), io_contract
+        )
+        emitted_report = check_acceptance(emitted, acceptance) if acceptance is not None else None
+        if emitted_report is not None and not emitted_report["passed"]:
+            raise ValueError("PDW emitted acceptance failed; no file written")
+        target = self._new_output_path(name, ".pdw")
+        with target.open("xb") as stream:
+            stream.write(data)
+        return {
+            "path": str(target),
+            "size": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "format": "pdw",
+            "experimental": True,
+            "project": parsed.describe(),
+            "architecture": architecture,
+            "io_contract": io_report,
+            "writers": writers,
+            "layout": layout,
+            "acceptance": source_report,
+            "compiled_acceptance": emitted_report,
+            "network_offsets": offsets,
+            "timer_settings": timer_settings(list(enumerate(networks))),
+            "verification": {
+                "offline": "Decoded emitted PDW network bytes and known checksums",
+                "mcp_simulation": "passed" if acceptance else "not run",
+                "gui": "not verified for this artifact",
+                "real_plc": "not verified",
+            },
+            "warnings": [
+                "Sample-bound FBs-60MC container; opaque settings retained from template",
+                "Timer timing depends on retained project configuration",
+                "FUNC199 and control-flow generation are not implemented",
+                "Embedded SECT length extrapolation requires GUI verification for new text sizes",
+            ],
         }
 
     def generate_pdw(
@@ -94,7 +194,10 @@ class Service:
         source_acceptance = check_acceptance(source, acceptance) if acceptance is not None else None
         if source_acceptance is not None and not source_acceptance["passed"]:
             raise ValueError("PDW source acceptance failed; no file written")
-        data = replace_rungs(self.load_pdw(template_path), rungs)
+        template = self.load_pdw(template_path)
+        parse_pdw_project(template)
+        data = replace_rungs(template, rungs)
+        parse_pdw_project(data)
         emitted = as_ladder(list(parse_pdw(data).rungs))
         architecture = self.architecture(emitted)
         writer_report(emitted, strict=True)
