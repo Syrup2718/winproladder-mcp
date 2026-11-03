@@ -20,6 +20,7 @@
 | [Agent 指南](agent-guide.md) | MCP 工具選擇與交付規則 |
 | [開發指南](development.md) | 環境、測試與新增指令流程 |
 | [LDR 格式](ldr-format.md) | 容器、record、CRC 與未知資料保留 |
+| [PDW 格式與產生器](pdw-format.md) | 未發佈的本機範本產生功能與驗證限制 |
 | [邏輯最佳化](logic-optimization.md) | 接圖簡化及安全限制 |
 | [手冊與 RTC](manual-limits-rtc.md) | 運算元範圍與萬年曆參考 |
 | [計時器](timer-evidence.md) | 普通 T 與 FUN87～89 的支援邊界 |

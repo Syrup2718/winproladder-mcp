@@ -22,6 +22,8 @@ from .ir import (
 )
 from .layout import expressions, lower_ladder, memory_used, needs_lowering
 from .ldr import FOOTER, MAX_SIZE, Document, LdrError, Record, parse
+from .pdw import PdwRung, as_ladder, replace_rungs
+from .pdw import parse as parse_pdw
 from .profiles import default_header as default_header
 from .profiles import header_profile as header_profile
 
@@ -54,6 +56,81 @@ class Service:
 
     def architecture_policy(self) -> dict[str, Any]:
         return load_policy(self.root).model_dump()
+
+    def load_pdw(self, path: str) -> bytes:
+        target = (self.root / path).resolve(strict=True)
+        if not target.is_relative_to(self.root) or target.suffix.lower() != ".pdw":
+            raise ValueError("PDW template must be an .pdw file inside workspace")
+        if not target.is_file() or target.stat().st_size > MAX_SIZE:
+            raise ValueError("PDW template is not a file or exceeds 16 MiB")
+        with target.open("rb") as stream:
+            return stream.read(MAX_SIZE + 1)
+
+    def inspect_pdw(self, path: str) -> dict[str, Any]:
+        project = parse_pdw(self.load_pdw(path))
+        return {
+            "model": "FBs-60MC",
+            "rungs": [r.model_dump() for r in project.rungs],
+            "size": len(project.raw),
+            "sha256": hashlib.sha256(project.raw).hexdigest(),
+            "scope": "Supported template layout only; not full-file integrity validation",
+        }
+
+    def generate_pdw(
+        self,
+        name: str,
+        template_path: str,
+        rungs: list[PdwRung],
+        io_contract: IOContract,
+        acceptance: list[AcceptanceCase] | None = None,
+    ) -> dict[str, Any]:
+        if not 1 <= len(rungs) <= 2:
+            raise ValueError("PDW supports one or two rungs only; no file written")
+        source = as_ladder(rungs)
+        self.architecture(source)
+        writers = writer_report(source, strict=True)
+        used: set[str] = {name for r in rungs for name in (r.input, r.output)}
+        io_report = check_io(used, io_contract)
+        source_acceptance = check_acceptance(source, acceptance) if acceptance is not None else None
+        if source_acceptance is not None and not source_acceptance["passed"]:
+            raise ValueError("PDW source acceptance failed; no file written")
+        data = replace_rungs(self.load_pdw(template_path), rungs)
+        emitted = as_ladder(list(parse_pdw(data).rungs))
+        architecture = self.architecture(emitted)
+        writer_report(emitted, strict=True)
+        emitted_acceptance = (
+            check_acceptance(emitted, acceptance) if acceptance is not None else None
+        )
+        if emitted_acceptance is not None and not emitted_acceptance["passed"]:
+            raise ValueError("PDW emitted acceptance failed; no file written")
+        target = self._new_output_path(name, ".pdw")
+        with target.open("xb") as stream:
+            stream.write(data)
+        return {
+            "path": str(target),
+            "size": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "format": "pdw",
+            "model": "FBs-60MC",
+            "experimental": True,
+            "rungs": [r.model_dump() for r in rungs],
+            "io_contract": io_report,
+            "architecture": architecture,
+            "writers": writers,
+            "acceptance": source_acceptance,
+            "compiled_acceptance": emitted_acceptance,
+            "artifact_validation": {"emitted_bytes_decoded": True, "lowering": "not required"},
+            "verification": {
+                "offline": "Structure and emitted instructions checked",
+                "mcp_simulation": "acceptance cases passed" if acceptance else "not run",
+                "gui": "not verified for this artifact",
+                "real_plc": "not verified",
+            },
+            "warnings": [
+                "Sample-bound template replacement, not general PDW generation",
+                "Other project settings are retained from the local template",
+            ],
+        }
 
     def architecture(self, ladder: Ladder, *, enforce: bool = True) -> dict[str, Any]:
         policy = load_policy(self.root)

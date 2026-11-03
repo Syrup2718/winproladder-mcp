@@ -5,6 +5,7 @@ from typing import Any
 from . import __version__
 from .design import design_guide
 from .ir import Ladder, Network, block_catalog, start_stop
+from .pdw import capabilities as pdw_capabilities
 from .runtime import simulation_capabilities
 
 
@@ -35,6 +36,7 @@ def instruction_matrix() -> list[dict[str, Any]]:
 def capabilities() -> dict[str, Any]:
     return {
         "version": __version__,
+        "pdw": pdw_capabilities(),
         "profile": "Exact sampled headers: FBs-20MC, FBs-24MA (test6), FBs-24MA-test7, "
         "FBs-32MA-test11, FBs-40MA-test12, FBs-44MN-test13, FBs-60MC-test16, FBn-26MC-test17, "
         "FBe-20MA-test19, FBe-40MC-test21, FB-28MA-test22, HB1-32M-test23, "
@@ -560,6 +562,7 @@ def capability_summary() -> dict[str, Any]:
     full = capabilities()
     keys = {
         "version",
+        "pdw",
         "profile",
         "transport",
         "simulation",

@@ -24,6 +24,9 @@
 | `get_instruction_capabilities` | 查詢單一指令族群 |
 | `get_design_guide` | 設計流程、範例與 schema |
 | `get_ldr_artifact` | 下載生成的 `.ldr` |
+| `get_pdw_artifact` | 下載生成的 `.pdw`（未發佈） |
+| `inspect_pdw` | 檢查支援的本機 FBs-60MC 範本（未發佈） |
+| `generate_pdw` | 範本一／兩列 X→Y 等長替換（未發佈） |
 | `generate_component_comments` | 產生元件註解 `.txt` |
 | `generate_control_ldr` | 單一控制配方 |
 | `generate_system_ldr` | 多個獨立配方 |
@@ -41,6 +44,10 @@
 | `create_ldr` | 底層建立工具 |
 
 ## 交付規則
+
+PDW 需使用範本專屬的 `generate_pdw`，支援範圍見 [PDW 文件](pdw-format.md)。
+私人範本留在 repository 外，將 MCP 的 root 設為私人資料夾；不要為了讀取範本
+放寬路徑限制，也不要把 `.ldr` 的指令支援範圍套用到 PDW。
 
 - `.ldr`、設計 sidecar 與元件註解檔都使用新的檔名，不覆寫。
 - 使用 MCP 回傳的 ResourceLink，不自行拼接下載 URI。
