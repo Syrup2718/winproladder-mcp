@@ -14,9 +14,15 @@ from .component_comments import ComponentComment
 from .ldr import FOOTER, MAX_SIZE
 from .logic import bit_address
 from .pdw import MAGIC, PERIOD, SIZE, START, TAIL_START
+from .pdw_modules import parse_modules
 
 MAX_PROGRAM = 4094  # Keep the mask-recovery region outside compiled code.
 SECOND_START, SECOND_SIZE = 0xA126, 0x6100
+MODEL_PROFILES = {
+    "FBs-20MC": "FBs-20MC",
+    "FBs-40MC": "FBs-40MC-test27",
+    "FBs-60MC": "FBs-60MC-test16",
+}
 
 
 def word_sum(data: bytes | bytearray) -> int:
@@ -138,6 +144,19 @@ class Project:
     records: tuple[Record, ...]
 
     @property
+    def model(self) -> str:
+        return self.raw[160:176].rstrip(b"\0").decode("ascii")
+
+    @property
+    def module_payload(self) -> bytes:
+        entries = [r for r in self.records if r.tag == 0x1040]
+        if len(entries) != 1:
+            raise ValueError("PDW requires exactly one module-table record")
+        if entries[0].checksum != b"\0\0":
+            raise ValueError("Unsupported PDW module-table trailer; no checksum rule inferred")
+        return entries[0].payload
+
+    @property
     def program(self) -> bytes:
         count = int.from_bytes(self.plain[0x106:0x108], "little")
         return self.plain[0x200 : 0x200 + count * 2]
@@ -177,7 +196,12 @@ class Project:
             if self.program[i : i + 2] == b"\xf6\x7f":
                 markers.append(0x200 + i)
         return {
-            "model": "FBs-60MC",
+            "model": self.model,
+            "modules": [
+                {"index": i, "name": m.name}
+                for i, m in enumerate(parse_modules(self.module_payload))
+            ],
+            "module_parameters": "opaque bytes retained; no I/O mapping or compatibility claim",
             "program_bytes": len(self.program),
             "units": units,
             "network_comments": notes,
@@ -196,8 +220,8 @@ class Project:
 def parse(raw: bytes) -> Project:
     if len(raw) > MAX_SIZE or len(raw) < TAIL_START + 6 or not raw.startswith(MAGIC):
         raise ValueError("Unsupported or truncated PDW container")
-    if raw[160:176].rstrip(b"\0") != b"FBs-60MC":
-        raise ValueError("PDW currently recognizes the sampled FBs-60MC layout only")
+    if raw[160:176].rstrip(b"\0").decode("ascii", errors="replace") not in MODEL_PROFILES:
+        raise ValueError("PDW model is outside the sampled 20MC/40MC/60MC layouts")
     if raw[START - 4 : START] != bytes.fromhex("0a1800a0") or raw[
         0xA122:SECOND_START
     ] != bytes.fromhex("0b180061"):
@@ -286,7 +310,9 @@ def parse(raw: bytes) -> Project:
                 table_names[address] = name
     if table_names != memory_names:
         raise ValueError("PDW duplicate component-name representations disagree")
-    return Project(raw, plain, secondary, mask, other_mask, tuple(records))
+    project = Project(raw, plain, secondary, mask, other_mask, tuple(records))
+    parse_modules(project.module_payload)
+    return project
 
 
 def build(
@@ -295,6 +321,7 @@ def build(
     sections: list[PdwSection],
     notes: list[str],
     comments: list[ComponentComment],
+    module_payload: bytes | None = None,
 ) -> tuple[bytes, list[int]]:
     project = parse(template)
     if not payloads or len(notes) != len(payloads):
@@ -312,8 +339,18 @@ def build(
     if any(r.tag not in {0x1001, 0x1002, 0x1003, 0x1050, 0x1040, 0x1042} for r in project.records):
         raise ValueError("Cannot generate from a template with unknown record types")
     opaque = [r for r in project.records if r.tag not in {0x1001, 0x1002, 0x1003}]
-    if [(r.tag, len(r.payload)) for r in opaque] != [(0x1050, 32528), (0x1040, 0), (0x1042, 188)]:
+    if (
+        len(opaque) != 3
+        or opaque[0].tag != 0x1050
+        or len(opaque[0].payload) != 32528
+        or opaque[1].tag != 0x1040
+        or opaque[2].tag != 0x1042
+        or len(opaque[2].payload) != 188
+    ):
         raise ValueError("Unsupported PDW settings records")
+    if module_payload is not None:
+        parse_modules(module_payload)
+        opaque[1] = Record(0x1040, module_payload, opaque[1].checksum)
     section_map = {s.network_index: s for s in sections}
     program = b""
     units = []
