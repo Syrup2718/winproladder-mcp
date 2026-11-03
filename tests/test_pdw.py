@@ -23,6 +23,7 @@ from winproladder_mcp.pdw import (
     parse,
     replace_rungs,
 )
+from winproladder_mcp.pdw_project import unit, word_sum
 from winproladder_mcp.service import Service
 
 
@@ -42,13 +43,22 @@ def synthetic_template(count=1):
     plain[0x106:0x10A] = words.to_bytes(2, "little") + bytes((255 - words, 0x4E))
     plain[0x10A:0x110] = b"\x00\x02" + (0x202 + words * 2).to_bytes(2, "little") * 2
     plain[0x11E:0x120] = b"\xfe\xff"
+    plain[0x112:0x116] = bytes.fromhex("ffa700a8")
     plain[0x200 : 0x200 + count * 4] = bytes.fromhex("4000c100") * count
+    # Make the artificial header consistent with the newly validated full checksum,
+    # while retaining the legacy sampled checksum field used by the old API.
+    correction = (
+        int.from_bytes(plain[0xC8:0xCA], "little") - (word_sum(plain[0x100:0x200]) - 24)
+    ) & 65535
+    plain[0x120:0x122] = ((65535 + correction) & 65535).to_bytes(2, "little")
     mask = bytes((i * 37 + i // 256) % 256 for i in range(PERIOD))
     raw[START : START + SIZE] = bytes(x ^ mask[i % PERIOD] for i, x in enumerate(plain))
     secondary = bytearray(b"\xff" * 0x6100)
     secondary[0x5FFE] = 0
     raw[0xA126 : 0xA126 + 0x6100] = bytes(x ^ mask[i % PERIOD] for i, x in enumerate(secondary))
-    for tag, size in [(0x1001, 14), (0x1001, 14), (0x1050, 32528), (0x1040, 0), (0x1042, 188)]:
+    raw += unit(0x200, "MAIN0001").encode()
+    raw += unit(0x202 + count * 4, "SUB00001").encode()
+    for tag, size in [(0x1050, 32528), (0x1040, 0), (0x1042, 188)]:
         raw += tag.to_bytes(2, "little") + size.to_bytes(2, "little") + b"\0" * (size + 2)
     return bytes(raw) + bytes.fromhex("ffff00000000")
 

@@ -30,6 +30,7 @@ from .layout import lower_ladder
 from .ldr import MAX_SIZE
 from .manual_reference import analyze_rtc_snapshot, manual_reference
 from .pdw import PdwRung
+from .pdw_project import PdwSection
 from .runtime import MODEL_SCOPE, Scalar, simulate_runtime
 from .sequence import SequenceSpec, sequence_ladder
 from .service import Service, capabilities
@@ -174,6 +175,7 @@ def build_server(
             keys = {
                 "version",
                 "pdw",
+                "pdw_project",
                 "generation",
                 "address_subset",
                 "simulation_model",
@@ -341,8 +343,43 @@ def build_server(
 
     @mcp.tool(annotations=read)
     def inspect_pdw(path: str) -> dict[str, Any]:
-        """Inspect supported FBs-60MC PDW templates inside workspace; reject unknown layouts."""
+        """Inspect PDW sections, Chinese comments and known checksums; FUNC199 stays opaque."""
         return service.inspect_pdw(path)
+
+    @mcp.tool(annotations=write)
+    def generate_project_pdw(
+        output_name: str,
+        template_path: str,
+        ladder: Ladder,
+        io_contract: IOContract,
+        acceptance: list[AcceptanceCase] | None = None,
+        sections: list[PdwSection] | None = None,
+        comments: list[ComponentComment] | None = None,
+        require_acceptance: bool = False,
+    ) -> CallToolResult:
+        """Compile Ladder IR to a variable-length FBs-60MC PDW with sections and CP950 comments.
+
+        Use profile FBs-60MC-test16. Template must be inside workspace. Existing program and
+        annotations are replaced by the explicit request; opaque project settings are retained.
+        Network.comment supports CR/LF. Section indexes refer to zero-based source networks.
+        Optional embedded SECT text uses only the sampled even-byte encoding. FUNC199 and
+        control flow are not generated. New files only, no PLC connection or GUI guarantee.
+        """
+        result = service.generate_project_pdw(
+            output_name,
+            template_path,
+            ladder,
+            io_contract,
+            acceptance,
+            sections=sections,
+            comments=comments,
+            require_acceptance=require_acceptance,
+        )
+        return artifact_result(
+            result,
+            artifact_bytes(output_name, frozenset({".pdw"})),
+            description="Download the compiled WinProLadder PDW project.",
+        )
 
     @mcp.tool(annotations=write)
     def generate_pdw(

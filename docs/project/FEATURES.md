@@ -7,8 +7,9 @@
 本頁說明 v1.0.0 的公開能力與邊界。精確 schema 與個別指令限制請查詢 MCP 的
 `get_capabilities`、`list_instruction_families` 和 `get_instruction_capabilities`。
 
-未發佈更新：原始碼新增 `inspect_pdw`、`generate_pdw`、`get_pdw_artifact`。
-僅支援本機 FBs-60MC 範本的一／兩列接點線圈等長替換，詳見
+未發佈更新：新增 `inspect_pdw`、`generate_pdw`、`generate_project_pdw`、`get_pdw_artifact`。
+新專案工具共用 Ladder 編譯器，支援本機 FBs-60MC 的可變長度程式、分區與中文註解；
+舊工具保留一／兩列等長替換。FUNC199 僅不透明辨識，詳見
 [PDW 範圍與驗證限制](../pdw-format.md)。此更新未升版本或重新打包。
 
 ## 產出內容

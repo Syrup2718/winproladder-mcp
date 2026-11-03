@@ -38,7 +38,8 @@
 完整範圍請看[功能總覽](docs/project/FEATURES.md)與 [FUNC 支援表](docs/supported-functions.md)。
 
 原始碼未發佈更新：新增實驗性的 [`.pdw` 專案產生器](docs/pdw-format.md)，
-使用本機 FBs-60MC 範本等長替換一／兩列 X→Y 程式。尚未包含在 v1.0.0 安裝包。
+使用本機 FBs-60MC 範本，支援共用 Ladder 編譯、可變長度程式、分區與中文註解；
+仍有格式及指令驗證限制。尚未包含在 v1.0.0 安裝包。
 
 ## 快速安裝
 

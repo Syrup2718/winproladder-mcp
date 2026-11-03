@@ -38,6 +38,7 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
                 "get_pdw_artifact",
                 "inspect_pdw",
                 "generate_pdw",
+                "generate_project_pdw",
                 "generate_component_comments",
                 "inspect_ldr",
                 "read_ldr",

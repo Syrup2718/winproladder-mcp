@@ -37,6 +37,22 @@ def capabilities() -> dict[str, Any]:
     return {
         "version": __version__,
         "pdw": pdw_capabilities(),
+        "pdw_project": {
+            "tool": "generate_project_pdw",
+            "inspection_tool": "inspect_pdw",
+            "status": "experimental_sample_bound",
+            "model": "FBs-60MC",
+            "compiler": "shared Ladder IR and native instruction compiler",
+            "max_program_bytes": 4094,
+            "variable_network_count": True,
+            "sections": "network-indexed main sections; empty subprogram only",
+            "text": "CP950/Big5; section and network comments support CR/LF",
+            "component_comments": "project table and duplicate memory updated together",
+            "func199": "opaque inspection only; no generation or simulation",
+            "control_flow": "not verified for PDW; rejected",
+            "gui_verification": "exact prior example only; new artifacts require GUI checks",
+            "real_plc_verified": False,
+        },
         "profile": "Exact sampled headers: FBs-20MC, FBs-24MA (test6), FBs-24MA-test7, "
         "FBs-32MA-test11, FBs-40MA-test12, FBs-44MN-test13, FBs-60MC-test16, FBn-26MC-test17, "
         "FBe-20MA-test19, FBe-40MC-test21, FB-28MA-test22, HB1-32M-test23, "
@@ -563,6 +579,7 @@ def capability_summary() -> dict[str, Any]:
     keys = {
         "version",
         "pdw",
+        "pdw_project",
         "profile",
         "transport",
         "simulation",
