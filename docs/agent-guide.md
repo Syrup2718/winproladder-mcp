@@ -25,7 +25,7 @@
 | `get_design_guide` | 設計流程、範例與 schema |
 | `get_ldr_artifact` | 下載生成的 `.ldr` |
 | `get_pdw_artifact` | 下載生成的 `.pdw`（未發佈） |
-| `inspect_pdw` | 檢查支援的本機 FBs-60MC 範本（未發佈） |
+| `inspect_pdw` | 檢查取樣主機、模組、分區與註解（未發佈） |
 | `generate_pdw` | 範本一／兩列 X→Y 等長替換（未發佈） |
 | `generate_project_pdw` | 共用 Ladder 編譯器，產生可變長度 PDW、分區及註解（未發佈） |
 | `generate_component_comments` | 產生元件註解 `.txt` |

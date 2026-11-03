@@ -356,14 +356,20 @@ def build_server(
         sections: list[PdwSection] | None = None,
         comments: list[ComponentComment] | None = None,
         require_acceptance: bool = False,
+        module_order: list[str] | None = None,
+        module_template_paths: list[str] | None = None,
     ) -> CallToolResult:
-        """Compile Ladder IR to a variable-length FBs-60MC PDW with sections and CP950 comments.
+        """Compile Ladder IR to sampled FBs-20MC/40MC/60MC PDW layouts with local module records.
 
-        Use profile FBs-60MC-test16. Template must be inside workspace. Existing program and
+        Match ladder.profile to the template CPU. Template must be inside workspace. Program and
         annotations are replaced by the explicit request; opaque project settings are retained.
         Network.comment supports CR/LF. Section indexes refer to zero-based source networks.
         Optional embedded SECT text uses only the sampled even-byte encoding. FUNC199 and
         control flow are not generated. New files only, no PLC connection or GUI guarantee.
+        module_order=null preserves all modules; [] removes them explicitly. Names copy exact
+        records from the template and optional workspace-scoped module_template_paths. Order and
+        duplicates are retained. Missing or conflicting records are rejected. No automatic I/O
+        allocation, module parameter editing, slot-capacity or hardware compatibility validation.
         """
         result = service.generate_project_pdw(
             output_name,
@@ -374,6 +380,8 @@ def build_server(
             sections=sections,
             comments=comments,
             require_acceptance=require_acceptance,
+            module_order=module_order,
+            module_template_paths=module_template_paths,
         )
         return artifact_result(
             result,

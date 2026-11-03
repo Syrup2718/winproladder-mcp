@@ -24,7 +24,8 @@ from .layout import expressions, lower_ladder, memory_used, needs_lowering
 from .ldr import FOOTER, MAX_SIZE, Document, LdrError, Record, parse
 from .pdw import PdwRung, as_ladder, replace_rungs
 from .pdw import parse as parse_pdw
-from .pdw_project import PdwSection
+from .pdw_modules import select_modules
+from .pdw_project import MODEL_PROFILES, PdwSection
 from .pdw_project import build as build_pdw_project
 from .pdw_project import parse as parse_pdw_project
 from .profiles import default_header as default_header
@@ -94,9 +95,22 @@ class Service:
         sections: list[PdwSection] | None = None,
         comments: list[ComponentComment] | None = None,
         require_acceptance: bool = False,
+        module_order: list[str] | None = None,
+        module_template_paths: list[str] | None = None,
     ) -> dict[str, Any]:
-        if ladder.profile != "FBs-60MC-test16":
-            raise ValueError("PDW template requires ladder.profile=FBs-60MC-test16")
+        template = self.load_pdw(template_path)
+        project = parse_pdw_project(template)
+        expected_profile = MODEL_PROFILES[project.model]
+        if ladder.profile != expected_profile:
+            raise ValueError(f"PDW template requires ladder.profile={expected_profile}")
+        if module_template_paths and module_order is None:
+            raise ValueError("Module catalogs require an explicit module_order")
+        module_payload = None
+        if module_order is not None:
+            catalogs = [project.module_payload]
+            for path in module_template_paths or []:
+                catalogs.append(parse_pdw_project(self.load_pdw(path)).module_payload)
+            module_payload = select_modules(catalogs, module_order)
         if require_acceptance and not acceptance:
             raise ValueError("PDW executable acceptance cases required; no file written")
         self.architecture(ladder)
@@ -121,11 +135,12 @@ class Service:
             raise ValueError("PDW control-flow serialization is not verified; no file written")
         metadata = sections or [PdwSection(network_index=0, name="MAIN")]
         data, offsets = build_pdw_project(
-            self.load_pdw(template_path),
+            template,
             payloads,
             metadata,
             [n.comment for n in lowered.networks],
             comments or [],
+            module_payload,
         )
         parsed = parse_pdw_project(data)
         networks = []
@@ -169,7 +184,8 @@ class Service:
                 "real_plc": "not verified",
             },
             "warnings": [
-                "Sample-bound FBs-60MC container; opaque settings retained from template",
+                "Sample-bound CPU layout; opaque settings and module parameters retained",
+                "Module order is serialized only; hardware compatibility and capacity not verified",
                 "Timer timing depends on retained project configuration",
                 "FUNC199 and control-flow generation are not implemented",
                 "Embedded SECT length extrapolation requires GUI verification for new text sizes",

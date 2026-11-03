@@ -8,7 +8,8 @@
 `get_capabilities`、`list_instruction_families` 和 `get_instruction_capabilities`。
 
 未發佈更新：新增 `inspect_pdw`、`generate_pdw`、`generate_project_pdw`、`get_pdw_artifact`。
-新專案工具共用 Ladder 編譯器，支援本機 FBs-60MC 的可變長度程式、分區與中文註解；
+新專案工具共用 Ladder 編譯器，支援本機 FBs-20MC／40MC／60MC 的可變長度程式、
+分區、中文註解與已有模組紀錄的保留／選用；
 舊工具保留一／兩列等長替換。FUNC199 僅不透明辨識，詳見
 [PDW 範圍與驗證限制](../pdw-format.md)。此更新未升版本或重新打包。
 
