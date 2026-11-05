@@ -4,10 +4,18 @@
 
 This file lists only user-facing changes. Git history and automated tests retain implementation details and encoding evidence.
 
-## Unreleased
+## 1.1.0 — 2026-11-05
 
+- Added experimental `.pdw` inspection, template-based generation, and binary delivery, bringing the MCP tool count to 26.
+- Added variable-length PDW generation through the shared Ladder compiler for local FBs-20MC/40MC/60MC templates.
+- Added main-program sections, section/network comments, and CP950/Big5 component comments and descriptions.
+- Added preservation, selection, ordering, and duplication of existing local expansion-module records; unknown parameters remain opaque.
+- Check source, lowered programs, and decoded emitted bytes before writing, including I/O contracts, workspace policy, and acceptance cases.
+- Private PDW templates are supplied locally; the repository includes no private PDW samples or masks.
 - Added an English README, feature overview, core usage documentation, and the shared bilingual FUNC support table.
 - Adjust some text layout.
+
+PDW remains experimental: supplied 24MC/32MC samples are not yet integrated. FUNC199 is opaque inspection only. Control-flow generation, initialization of unknown module parameters, and hardware compatibility checks are not provided. User-reported GUI checks apply to specific artifacts, not all new outputs; physical PLC verification is pending.
 
 ## 1.0.0 — 2026-10-21
 

@@ -4,20 +4,21 @@
 
 [首頁](../../README.md) · [快速開始](../quickstart.md) · [參數參考](../reference.md)
 
-本頁說明 v1.0.0 的公開能力與邊界。精確 schema 與個別指令限制請查詢 MCP 的
+本頁說明 v1.1.0 的公開能力與邊界。精確 schema 與個別指令限制請查詢 MCP 的
 `get_capabilities`、`list_instruction_families` 和 `get_instruction_capabilities`。
 
-未發佈更新：新增 `inspect_pdw`、`generate_pdw`、`generate_project_pdw`、`get_pdw_artifact`。
+v1.1.0 新增實驗工具 `inspect_pdw`、`generate_pdw`、`generate_project_pdw`、`get_pdw_artifact`。
 新專案工具共用 Ladder 編譯器，支援本機 FBs-20MC／40MC／60MC 的可變長度程式、
 分區、中文註解與已有模組紀錄的保留／選用；
 舊工具保留一／兩列等長替換。FUNC199 僅不透明辨識，詳見
-[PDW 範圍與驗證限制](../pdw-format.md)。此更新未升版本或重新打包。
+[PDW 範圍與驗證限制](../pdw-format.md)。
 
 ## 產出內容
 
 | 產物 | 用途 |
 | --- | --- |
 | `.ldr` | WinProLadder 階梯圖檔案 |
+| `.pdw` | 實驗性的本機範本專案生成，含分區、註解及模組紀錄 |
 | `.ldr.design.json` | 高階產生器的設計、假設與元件配置 |
 | `.txt` | 使用者明確要求時產生的元件註解表 |
 
@@ -74,10 +75,11 @@
 
 ## MCP 工具
 
-v1.0.0 提供 22 個工具，分為四組：
+v1.1.0 提供 26 個工具，分為五組：
 
 - 產生：`generate_control_ldr`、`generate_sequence_ldr`、`generate_system_ldr`、`generate_ldr`、`create_ldr`、`create_start_stop`、`generate_component_comments`
 - 驗證：`validate_ladder`、`simulate_ladder`
+- PDW（實驗）：`inspect_pdw`、`generate_pdw`、`generate_project_pdw`、`get_pdw_artifact`
 - 讀取與修改：`inspect_ldr`、`read_ldr`、`analyze_ldr`、`compare_ldr`、`modify_network`、`export_ldr`、`get_ldr_artifact`
 - 說明與查詢：`get_capabilities`、`get_design_guide`、`list_instruction_families`、`get_instruction_capabilities`、`get_manual_reference`、`inspect_rtc_snapshot`
 
