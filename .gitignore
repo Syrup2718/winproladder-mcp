@@ -38,3 +38,5 @@ Thumbs.db
 artifacts/
 tmp/
 *.hexdump
+# Local project templates and generated projects may contain private plant data.
+*.pdw

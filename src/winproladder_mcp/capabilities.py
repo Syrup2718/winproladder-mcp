@@ -5,6 +5,7 @@ from typing import Any
 from . import __version__
 from .design import design_guide
 from .ir import Ladder, Network, block_catalog, start_stop
+from .pdw import capabilities as pdw_capabilities
 from .runtime import simulation_capabilities
 
 
@@ -35,6 +36,30 @@ def instruction_matrix() -> list[dict[str, Any]]:
 def capabilities() -> dict[str, Any]:
     return {
         "version": __version__,
+        "pdw": pdw_capabilities(),
+        "pdw_project": {
+            "tool": "generate_project_pdw",
+            "inspection_tool": "inspect_pdw",
+            "status": "experimental_sample_bound",
+            "models": ["FBs-20MC", "FBs-40MC", "FBs-60MC"],
+            "compiler": "shared Ladder IR and native instruction compiler",
+            "max_program_bytes": 4094,
+            "variable_network_count": True,
+            "sections": "network-indexed main sections; empty subprogram only",
+            "text": "CP950/Big5; section and network comments support CR/LF",
+            "component_comments": "project table and duplicate memory updated together",
+            "modules": {
+                "default": "preserve exact template module table",
+                "selection": "explicit order and duplicates; exact supplied local records only",
+                "record_bytes": 76,
+                "parameters": "opaque; editing and initialization not implemented",
+                "hardware_compatibility": "not verified; no automatic I/O allocation",
+            },
+            "func199": "opaque inspection only; no generation or simulation",
+            "control_flow": "not verified for PDW; rejected",
+            "gui_verification": "exact prior example only; new artifacts require GUI checks",
+            "real_plc_verified": False,
+        },
         "profile": "Exact sampled headers: FBs-20MC, FBs-24MA (test6), FBs-24MA-test7, "
         "FBs-32MA-test11, FBs-40MA-test12, FBs-44MN-test13, FBs-60MC-test16, FBn-26MC-test17, "
         "FBe-20MA-test19, FBe-40MC-test21, FB-28MA-test22, HB1-32M-test23, "
@@ -249,7 +274,7 @@ def capabilities() -> dict[str, Any]:
                 "constant L supported by GUI sample and manual example",
             },
             "test20_functions": {
-                "release_status": "included in 1.0.0 source; package not built",
+                "release_status": "included in 1.1.0 source",
                 "actions": "ascwr(94P MD=1), ramp(95), ramp2(98), reg_to_table(100)",
                 "ascwr": "enable/pause/abort; source S, work Pt8; active/error/done. "
                 "MD=1 is reserved in manual 7-87: encoding only, ASCII source extent "
@@ -270,7 +295,7 @@ def capabilities() -> dict[str, Any]:
                 "RAMP2 WR R15..R18 with table R10..R17: full generation rejected",
             },
             "test19_functions": {
-                "release_status": "included in 1.0.0 source; package not built",
+                "release_status": "included in 1.1.0 source",
                 "actions": "tpctl(86), accumulative_timer(87/88/89); call(67) decode-only",
                 "timer": "timing=TIM, enable=EN; unit_ms=10/100/1000; PV direct R/D count; "
                 "CV T0..255 or direct R/D including IR (instruction-specific manual 7-81). "
@@ -289,7 +314,7 @@ def capabilities() -> dict[str, Any]:
                 "per 20-45. CPU/edition compatibility remains unverified",
             },
             "test18_functions": {
-                "release_status": "included in 1.0.0 source; package not built",
+                "release_status": "included in 1.1.0 source",
                 "actions": "adcnv(32), mlc(34), bitrd(40), bitwr(41), lbl(65), jmp(66)",
                 "analog": "ADCNV sampled Pl=0, constant N=1..64; selector is F/T "
                 "(0=12-bit,1=14-bit). MLC constant Sl=1..64, register Tl=2..255 at runtime; "
@@ -306,7 +331,7 @@ def capabilities() -> dict[str, Any]:
                 "These are codec limits, not blanket PLC restrictions",
             },
             "test17_functions": {
-                "release_status": "included in 1.0.0 source; package not built",
+                "release_status": "included in 1.1.0 source",
                 "actions": "mean(25), sqrt(26), neg(27), abs(28), ext(29), crc16(31); "
                 "DIV48 single_input encoding and SUM additional export anchors",
                 "forms": "16-bit direct R/D; MEAN register N (runtime 2..256), "
@@ -322,7 +347,7 @@ def capabilities() -> dict[str, Any]:
                 "CRC16 MD=0 or register N, runtime simulation; no GUI/PLC verification",
             },
             "test16_functions": {
-                "release_status": "included in 1.0.0 source; package not built",
+                "release_status": "included in 1.1.0 source",
                 "actions": "div48 (23), sum (24), pid (30), wdt (90), rswdt (91), "
                 "hsctr (92), hsctw (93D)",
                 "spans": "DIV48 Sa/Sb/D each 3 words; SUM N=1..511 words; "
@@ -338,7 +363,7 @@ def capabilities() -> dict[str, Any]:
                 "runtime simulation. No generated-file GUI or PLC verification",
             },
             "test15_functions": {
-                "release_status": "included in 1.0.0 source; package not built",
+                "release_status": "included in 1.1.0 source",
                 "actions": "tkey (76), hkey (77), dsw (78), 7sgdl (79), muxi (80)",
                 "forms": "Sampled 16-bit forms; other parameters and status coils inferred. "
                 "No D/P forms",
@@ -354,7 +379,7 @@ def capabilities() -> dict[str, Any]:
                 "No generated-file GUI or PLC verification; transistor output hardware must match.",
             },
             "test14_functions": {
-                "release_status": "included in 1.0.0 source; package not built",
+                "release_status": "included in 1.1.0 source",
                 "float_operations": "log (base 10), pow, asin, acos, atan (FUN216..220)",
                 "power_order": "pow: sa=Sy exponent, sb=Sx base; result=sb**sa",
                 "inverse_angles": "binary32 source and result in radians; asin/acos input -1..1",
@@ -368,7 +393,7 @@ def capabilities() -> dict[str, Any]:
                 "unsupported": "No P/indirect, runtime simulation, GUI or PLC verification",
             },
             "test13_functions": {
-                "release_status": "included in 1.0.0 source; package not built",
+                "release_status": "included in 1.1.0 source",
                 "operations": "float_operation sin/cos/tan/neg/abs/ln/exp (FUN209..215)",
                 "angles": "Sa is one signed 16-bit word or integral constant -18000..18000; "
                 "unit=0.01 degrees, not radians or binary32. D is two words.",
@@ -383,7 +408,7 @@ def capabilities() -> dict[str, Any]:
                 "Normal ERR wiring for eligible operations is available via test14",
             },
             "test12_functions": {
-                "release_status": "included in 1.0.0 source; package not built",
+                "release_status": "included in 1.1.0 source",
                 "float_arithmetic": "FUN205 FDIV and FUN208 FSQR: float_operation div/sqrt. "
                 "Arithmetic accepts register or finite binary32 immediate sources; "
                 "I->F/F->I still require register source",
@@ -560,6 +585,8 @@ def capability_summary() -> dict[str, Any]:
     full = capabilities()
     keys = {
         "version",
+        "pdw",
+        "pdw_project",
         "profile",
         "transport",
         "simulation",

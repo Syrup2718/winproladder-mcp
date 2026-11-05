@@ -37,6 +37,11 @@
 
 完整範圍請看[功能總覽](docs/project/FEATURES.md)與 [FUNC 支援表](docs/supported-functions.md)。
 
+v1.1.0 新增實驗性的 [`.pdw` 專案產生器](docs/pdw-format.md)，
+使用本機 FBs-20MC／40MC／60MC 範本，支援共用 Ladder 編譯、可變長度程式、
+分區、中文註解與已有模組紀錄的保留／選用；
+仍有格式及指令驗證限制。舊的 v1.0.0 安裝包不包含這些功能，需更新並重新啟動 MCP server。
+
 ## 快速安裝
 
 下載原始碼並在專案目錄執行：

@@ -4,13 +4,16 @@
 
 [Home](README.en.md) · [Supported FUNC instructions](../supported-functions.md)
 
-This page summarizes the public capabilities and boundaries of v1.0.0. For exact schemas and operand restrictions, use `get_capabilities`, `list_instruction_families`, and `get_instruction_capabilities`.
+This page summarizes the public capabilities and boundaries of v1.1.0. For exact schemas and operand restrictions, use `get_capabilities`, `list_instruction_families`, and `get_instruction_capabilities`.
+
+v1.1.0 adds experimental template-based PDW inspection and generation for FBs-20MC, FBs-40MC, and FBs-60MC. The project generator shares the Ladder compiler and supports variable-length programs, sections, CP950 comments, and preservation or selection of existing local module records. FUNC199 is opaque inspection only; PDW control-flow generation is rejected. See the [PDW scope and limitations](../pdw-format.md). 24MC/32MC samples have been supplied but are not integrated into this release.
 
 ## Outputs
 
 | Artifact | Purpose |
 | --- | --- |
 | `.ldr` | WinProLadder ladder-diagram file |
+| `.pdw` | Experimental local-template project generation with sections, comments, and module records |
 | `.ldr.design.json` | Design decisions, assumptions, and device allocation from high-level generators |
 | `.txt` | Optional component-comment table generated only when explicitly requested |
 
@@ -67,10 +70,11 @@ Workspace rules are defined by `.winproladder-policy.json`; this repository enab
 
 ## MCP tools
 
-v1.0.0 provides 22 tools in four groups:
+v1.1.0 provides 26 tools in five groups:
 
 - Generation: `generate_control_ldr`, `generate_sequence_ldr`, `generate_system_ldr`, `generate_ldr`, `create_ldr`, `create_start_stop`, `generate_component_comments`
 - Validation: `validate_ladder`, `simulate_ladder`
+- PDW (experimental): `inspect_pdw`, `generate_pdw`, `generate_project_pdw`, `get_pdw_artifact`
 - Reading and modification: `inspect_ldr`, `read_ldr`, `analyze_ldr`, `compare_ldr`, `modify_network`, `export_ldr`, `get_ldr_artifact`
 - Help and discovery: `get_capabilities`, `get_design_guide`, `list_instruction_families`, `get_instruction_capabilities`, `get_manual_reference`, `inspect_rtc_snapshot`
 
