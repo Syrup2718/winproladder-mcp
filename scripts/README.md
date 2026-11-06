@@ -16,7 +16,7 @@
 
 測試與型別檢查命令見[開發指南](../docs/development.md)。安裝包與版本變更須由使用者明確要求。
 
-[audit_workspace.py](audit_workspace.py) 可盤點檔案、重複內容、文件連結、JSON／Python 語法及 LDR CRC；只寫入新報告，不搬移或刪除檔案：
+[audit_workspace.py](audit_workspace.py) 可盤點檔案、重複內容、文件連結、JSON／Python 語法及 LDR CRC；只寫入新報告，不搬移或刪除檔案。摘要會將原始內容的失效連結與 `artifacts/`、`dist/`、`tmp/` 內的本機產物分開，完整報告仍保留兩類明細：
 
 ```powershell
 uv run python scripts/audit_workspace.py --output tmp/workspace-audit-new.json

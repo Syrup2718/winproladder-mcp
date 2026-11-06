@@ -26,4 +26,4 @@
 | [手冊與 RTC](manual-limits-rtc.md) | 運算元範圍與萬年曆參考 |
 | [計時器](timer-evidence.md) | 普通 T 與 FUN87～89 的支援邊界 |
 
-版本變更見 [CHANGELOG](project/CHANGELOG.md)（[English](project/CHANGELOG.en.md)）。細部指令能力請使用 MCP 的 `list_instruction_families` 與 `get_instruction_capabilities` 查詢；回歸樣本與測試證據留在 `samples/`、`examples/` 與 `tests/`。
+版本變更見 [CHANGELOG](project/CHANGELOG.md)（[English](project/CHANGELOG.en.md)）。細部指令能力請使用 MCP 的 `get_instruction_capabilities` 查詢；未指定 family 時會先列出可用族群。回歸樣本與測試證據留在 `samples/`、`examples/` 與 `tests/`。

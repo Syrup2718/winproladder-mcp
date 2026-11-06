@@ -4,8 +4,8 @@
 
 [首頁](../../README.md) · [快速開始](../quickstart.md) · [參數參考](../reference.md)
 
-本頁說明 v1.1.0 的公開能力與邊界。精確 schema 與個別指令限制請查詢 MCP 的
-`get_capabilities`、`list_instruction_families` 和 `get_instruction_capabilities`。
+本頁說明目前原始碼的公開能力與邊界。精確 schema 與個別指令限制請查詢 MCP 的
+`get_capabilities` 和 `get_instruction_capabilities`；後者未指定 family 時會列出族群。
 
 v1.1.0 新增實驗工具 `inspect_pdw`、`generate_pdw`、`generate_project_pdw`、`get_pdw_artifact`。
 新專案工具共用 Ladder 編譯器，支援本機 FBs-20MC／40MC／60MC 的可變長度程式、
@@ -75,13 +75,13 @@ v1.1.0 新增實驗工具 `inspect_pdw`、`generate_pdw`、`generate_project_pdw
 
 ## MCP 工具
 
-v1.1.0 提供 26 個工具，分為五組：
+目前原始碼提供 23 個工具，分為五組：
 
-- 產生：`generate_control_ldr`、`generate_sequence_ldr`、`generate_system_ldr`、`generate_ldr`、`create_ldr`、`create_start_stop`、`generate_component_comments`
+- 產生：`generate_control_ldr`、`generate_sequence_ldr`、`generate_system_ldr`、`generate_ldr`、`generate_component_comments`
 - 驗證：`validate_ladder`、`simulate_ladder`
 - PDW（實驗）：`inspect_pdw`、`generate_pdw`、`generate_project_pdw`、`get_pdw_artifact`
 - 讀取與修改：`inspect_ldr`、`read_ldr`、`analyze_ldr`、`compare_ldr`、`modify_network`、`export_ldr`、`get_ldr_artifact`
-- 說明與查詢：`get_capabilities`、`get_design_guide`、`list_instruction_families`、`get_instruction_capabilities`、`get_manual_reference`、`inspect_rtc_snapshot`
+- 說明與查詢：`get_capabilities`、`get_design_guide`、`get_instruction_capabilities`、`get_manual_reference`、`inspect_rtc_snapshot`
 
 詳細參數與選用方式見 [Agent 操作指南](../agent-guide.md)。
 

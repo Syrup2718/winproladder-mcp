@@ -139,7 +139,6 @@ def test_mcp_generation_requires_separate_customer_io_contract(tmp_path):
         tools = {t.name: t for t in await server.list_tools()}
         for name in (
             "generate_ldr",
-            "create_ldr",
             "generate_control_ldr",
             "generate_system_ldr",
             "generate_sequence_ldr",

@@ -87,14 +87,26 @@ async def check(root: Path) -> None:
             "get_capabilities",
             "get_ldr_artifact",
             "generate_component_comments",
-            "create_start_stop",
             "read_ldr",
             "analyze_ldr",
             "compare_ldr",
         }
         if not required.issubset({tool.name for tool in tools}):
             raise RuntimeError("Missing required MCP tools")
-        result = await session.call_tool("create_start_stop", {"output_name": "self-check.ldr"})
+        result = await session.call_tool(
+            "generate_control_ldr",
+            {
+                "output_name": "self-check.ldr",
+                "io_contract": {"inputs": ["X0", "X1"], "outputs": ["Y0"]},
+                "spec": {
+                    "requirement": "X0 starts Y0 and X1 stops it",
+                    "kind": "start_stop",
+                    "signal": "X0",
+                    "stop": "X1",
+                    "output": 0,
+                },
+            },
+        )
         if result.isError:
             raise RuntimeError(str(result.content))
         data = (root / "artifacts/self-check.ldr").read_bytes()

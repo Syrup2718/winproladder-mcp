@@ -59,7 +59,7 @@ sh install.sh
 ```
 
 安裝完成後，將 `.install/mcp-config.json` 或 `.install/mcp-config.toml` 中的
-`winproladder` 設定加   入 MCP client，再重新連線。詳細說明見[安裝指南](docs/installation.md)。
+`winproladder` 設定加入 MCP client，再重新連線。詳細說明見[安裝指南](docs/installation.md)。
 
 ## 使用範例
 

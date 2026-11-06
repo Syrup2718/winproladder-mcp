@@ -37,7 +37,20 @@ async def main() -> None:
         await session.initialize()
         names = [t.name for t in (await session.list_tools()).tools]
         print(json.dumps({"tools": names}))
-        result = await session.call_tool("create_start_stop", {"output_name": args.output_name})
+        result = await session.call_tool(
+            "generate_control_ldr",
+            {
+                "output_name": args.output_name,
+                "io_contract": {"inputs": ["X0", "X1"], "outputs": ["Y0"]},
+                "spec": {
+                    "requirement": "X0 starts Y0 and X1 stops it",
+                    "kind": "start_stop",
+                    "signal": "X0",
+                    "stop": "X1",
+                    "output": 0,
+                },
+            },
+        )
         if result.isError:
             raise RuntimeError(str(result.content))
         print(result.content[0].text)

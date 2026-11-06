@@ -12,6 +12,12 @@ from urllib.parse import unquote
 
 from winproladder_mcp.ldr import parse
 
+LOCAL_OUTPUT_ROOTS = {"artifacts", "dist", "tmp"}
+
+
+def _is_local_output(path: str) -> bool:
+    return Path(path).parts[0] in LOCAL_OUTPUT_ROOTS
+
 
 def audit(root: Path) -> dict:
     root = root.resolve(strict=True)
@@ -94,6 +100,8 @@ def audit(root: Path) -> dict:
                             local_links.append({"document": rel, "target": target})
             except (OSError, ValueError, SyntaxError) as exc:
                 errors.append({"path": rel, "error": str(exc)})
+    source_broken_links = [item for item in links if not _is_local_output(item["document"])]
+    local_output_broken_links = [item for item in links if _is_local_output(item["document"])]
     return {
         "root": str(root),
         "scope": "All regular files counted; Git/venv/tool environments "
@@ -104,6 +112,8 @@ def audit(root: Path) -> dict:
         "duplicate_content": [v for v in duplicates.values() if len(v) > 1],
         "content_errors": errors,
         "broken_links": links,
+        "source_broken_links": source_broken_links,
+        "local_output_broken_links": local_output_broken_links,
         "local_only_links": local_links,
         "ldr_checks": ldrs,
     }
@@ -126,7 +136,8 @@ def main() -> None:
                 "report": str(args.output),
                 "files": sum(t["files"] for t in result["totals"].values()),
                 "content_errors": result["content_errors"],
-                "broken_links": result["broken_links"],
+                "source_broken_links": result["source_broken_links"],
+                "local_output_broken_link_count": len(result["local_output_broken_links"]),
                 "ldr_errors": [r for r in result["ldr_checks"] if "error" in r],
             },
             ensure_ascii=True,

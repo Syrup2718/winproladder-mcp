@@ -30,7 +30,6 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
             tools = (await session.list_tools()).tools
             assert {tool.name for tool in tools} == {
                 "get_capabilities",
-                "list_instruction_families",
                 "get_instruction_capabilities",
                 "get_manual_reference",
                 "inspect_rtc_snapshot",
@@ -43,8 +42,6 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
                 "inspect_ldr",
                 "read_ldr",
                 "validate_ladder",
-                "create_ldr",
-                "create_start_stop",
                 "export_ldr",
                 "modify_network",
                 "simulate_ladder",
@@ -56,12 +53,19 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
                 "analyze_ldr",
                 "compare_ldr",
             }
-            create = next(t for t in tools if t.name == "create_ldr")
-            assert "ladder" in create.inputSchema["properties"]
-            assert create.annotations.destructiveHint is False
+            generate = next(t for t in tools if t.name == "generate_ldr")
+            assert "ladder" in generate.inputSchema["properties"]
+            assert generate.annotations.destructiveHint is False
+            assert "custom Ladder IR" in generate.description
+            control = next(t for t in tools if t.name == "generate_control_ldr")
+            assert "common control functions" in control.description
+            instruction_detail = next(
+                t for t in tools if t.name == "get_instruction_capabilities"
+            )
+            assert "family" not in instruction_detail.inputSchema.get("required", [])
             caps = await session.call_tool("get_capabilities", {})
             assert not caps.isError
-            families = await session.call_tool("list_instruction_families", {})
+            families = await session.call_tool("get_instruction_capabilities", {})
             assert not families.isError and families.structuredContent["count"] > 0
             family = families.structuredContent["families"][0]["family"]
             family_detail = await session.call_tool(
@@ -119,8 +123,8 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
                 ("read_ldr", {"path": "samples/test3.ldr"}),
                 ("analyze_ldr", {"path": "samples/test3.ldr"}),
                 (
-                    "create_ldr",
-                    {"output_name": "timer.ldr", "ladder": block_ladder, "allow_unverified": True},
+                    "generate_ldr",
+                    {"output_name": "timer.ldr", "ladder": block_ladder},
                 ),
                 ("read_ldr", {"path": "artifacts/timer.ldr"}),
                 (
@@ -129,10 +133,9 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
                 ),
                 ("validate_ladder", {"ladder": start_stop().model_dump()}),
                 (
-                    "create_ldr",
+                    "generate_ldr",
                     {"output_name": "motor.ldr", "ladder": start_stop().model_dump()},
                 ),
-                ("create_start_stop", {"output_name": "motor-template.ldr"}),
                 ("export_ldr", {"path": "samples/test3.ldr", "output_name": "copy.ldr"}),
                 (
                     "modify_network",
@@ -146,17 +149,37 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
                     },
                 ),
             ]:
-                if name in {"generate_ldr", "create_ldr"}:
+                if name == "generate_ldr":
                     args["io_contract"] = {"inputs": ["X0", "X1"], "outputs": ["Y0"]}
                 result = await session.call_tool(name, args)
                 assert not result.isError, (name, result.content)
                 assert result.structuredContent is not None
             for name, args in [
                 ("simulate_ladder", {"ladder": block_ladder, "inputs": [{}]}),
-                ("create_ldr", {"output_name": "timer-denied.ldr", "ladder": block_ladder}),
-                ("create_start_stop", {"output_name": "motor.ldr"}),
-                ("create_start_stop", {"output_name": "../escape.ldr"}),
-                ("create_ldr", {"output_name": "bad.ldr", "ladder": {"networks": []}}),
+                (
+                    "generate_ldr",
+                    {
+                        "output_name": "motor.ldr",
+                        "ladder": start_stop().model_dump(),
+                        "io_contract": {"inputs": ["X0", "X1"], "outputs": ["Y0"]},
+                    },
+                ),
+                (
+                    "generate_ldr",
+                    {
+                        "output_name": "../escape.ldr",
+                        "ladder": start_stop().model_dump(),
+                        "io_contract": {"inputs": ["X0", "X1"], "outputs": ["Y0"]},
+                    },
+                ),
+                (
+                    "generate_ldr",
+                    {
+                        "output_name": "bad.ldr",
+                        "ladder": {"networks": []},
+                        "io_contract": {"inputs": [], "outputs": []},
+                    },
+                ),
                 ("inspect_ldr", {"path": "missing.ldr"}),
             ]:
                 assert (await session.call_tool(name, args)).isError
@@ -167,7 +190,4 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
     asyncio.run(asyncio.wait_for(run(), timeout=60))
     assert (tmp_path / "artifacts/copy.ldr").read_bytes() == (
         tmp_path / "samples/test3.ldr"
-    ).read_bytes()
-    assert (tmp_path / "artifacts/motor.ldr").read_bytes() == (
-        tmp_path / "artifacts/motor-template.ldr"
     ).read_bytes()

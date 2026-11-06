@@ -70,14 +70,14 @@ def capabilities() -> dict[str, Any]:
         "simulation_model": simulation_capabilities(),
         "instruction_matrix": instruction_matrix(),
         "file_operations": [
-            "inspect",
-            "read",
-            "create",
-            "export",
-            "replace",
-            "insert",
-            "delete",
-            "component_comments",
+            "inspect_file",
+            "read_file",
+            "generate_new_file",
+            "export_new_file",
+            "replace_network_in_new_file",
+            "insert_network_in_new_file",
+            "delete_network_in_new_file",
+            "generate_component_comments_file",
         ],
         "ir": "Prefer condition Boolean expressions; legacy steps use left-fold semantics.",
         "address_subset": {
@@ -605,8 +605,9 @@ def capability_summary() -> dict[str, Any]:
         **{key: value for key, value in full.items() if key in keys},
         "instruction_family_count": len(native),
         "instruction_discovery": {
-            "list_tool": "list_instruction_families",
-            "detail_tool": "get_instruction_capabilities",
+            "tool": "get_instruction_capabilities",
+            "list_usage": "Omit family to list available instruction families",
+            "detail_usage": "Pass one returned family for limits and evidence",
         },
     }
 

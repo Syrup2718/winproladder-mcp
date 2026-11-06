@@ -20,8 +20,7 @@
 | `get_manual_reference` | 手冊範圍、版本差異與 RTC 程序 |
 | `inspect_rtc_snapshot` | 檢查提供的 RTC 值，不連線 PLC |
 | `get_capabilities` | 能力、限制與工作區政策 |
-| `list_instruction_families` | 列出指令族群 |
-| `get_instruction_capabilities` | 查詢單一指令族群 |
+| `get_instruction_capabilities` | 未指定 family 時列出族群；指定後查詢詳細限制 |
 | `get_design_guide` | 設計流程、範例與 schema |
 | `get_ldr_artifact` | 下載生成的 `.ldr` |
 | `get_pdw_artifact` | 下載生成的 `.pdw`（v1.1.0 實驗功能） |
@@ -41,8 +40,6 @@
 | `compare_ldr` | 比較兩份檔案 |
 | `modify_network` | 修改網路並另存 |
 | `export_ldr` | 無損另存 |
-| `create_start_stop` | 固定 X0/X1/Y0 自保持模板 |
-| `create_ldr` | 底層建立工具 |
 
 ## 交付規則
 

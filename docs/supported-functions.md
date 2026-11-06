@@ -56,6 +56,6 @@ This is a compact public list. `✅` means only the forms accepted by the curren
 - Offline model means a bounded deterministic scan model, not PLC emulation / 離線模型是有限且確定性的掃描模型，不是 PLC 模擬器。
 - GUI import and physical PLC execution remain user verification steps / GUI 匯入與實體 PLC 執行仍由使用者驗證。
 
-For exact operands, device ranges, status pins, work areas, and evidence, call `list_instruction_families` and then `get_instruction_capabilities` for the selected family.
+For exact operands, device ranges, status pins, work areas, and evidence, call `get_instruction_capabilities` without a family to list choices, then call it again with the selected family.
 
-若要查詢精確運算元、元件範圍、狀態腳位、工作區與證據，請先呼叫 `list_instruction_families`，再對指定家族呼叫 `get_instruction_capabilities`。
+若要查詢精確運算元、元件範圍、狀態腳位、工作區與證據，請先不指定 family 呼叫 `get_instruction_capabilities` 列出族群，再指定族群查詢詳細資料。

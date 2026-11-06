@@ -13,7 +13,10 @@ This file lists only user-facing changes. Git history and automated tests retain
 - Check source, lowered programs, and decoded emitted bytes before writing, including I/O contracts, workspace policy, and acceptance cases.
 - Private PDW templates are supplied locally; the repository includes no private PDW samples or masks.
 - Added an English README, feature overview, core usage documentation, and the shared bilingual FUNC support table.
-- Adjust some text layout.
+- Adjusted some text layout.
+- The workspace audit summary now separates broken source links from local-output links.
+- Updated the locked `certifi` and `PyJWT` transitive dependencies to address known security advisories.
+- Reduced the public MCP surface from 22 tools to 19: removed `create_ldr` and `create_start_stop`, which are superseded by the high-level generators, and folded instruction-family listing into `get_instruction_capabilities`.
 
 PDW remains experimental: supplied 24MC/32MC samples are not yet integrated. FUNC199 is opaque inspection only. Control-flow generation, initialization of unknown module parameters, and hardware compatibility checks are not provided. User-reported GUI checks apply to specific artifacts, not all new outputs; physical PLC verification is pending.
 

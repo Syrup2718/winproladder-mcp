@@ -16,7 +16,7 @@ def test_instruction_capabilities_are_queryable_without_full_document():
     summary = capability_summary()
     families = instruction_families()
     assert summary["instruction_family_count"] == len(families)
-    assert summary["instruction_discovery"]["detail_tool"] == "get_instruction_capabilities"
+    assert summary["instruction_discovery"]["tool"] == "get_instruction_capabilities"
     assert "schema" not in summary and "design_guide" not in summary
     selected = instruction_capabilities(families[0]["family"])
     assert selected["family"] == families[0]["family"]

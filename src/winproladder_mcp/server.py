@@ -25,7 +25,7 @@ from .component_comments import ComponentComment
 from .control import ControlSpec, control_ladder
 from .design import design_guide
 from .io_contract import IOContract
-from .ir import Ladder, Network, start_stop, validation
+from .ir import Ladder, Network, validation
 from .layout import lower_ladder
 from .ldr import MAX_SIZE
 from .manual_reference import analyze_rtc_snapshot, manual_reference
@@ -49,7 +49,8 @@ def build_server(
             "Never invent physical I/O or external clocks. Require signal and output addresses. "
             "Ordinary T and sampled FUN87/88/89 accumulative timers are supported. "
             "Use get_design_guide only when guidance is needed; detail=true expands notes. "
-            "Use list_instruction_families then get_instruction_capabilities for focused limits. "
+            "Call get_instruction_capabilities without a family to list families, then pass one "
+            "family for focused limits. "
             "Honor its workspace architecture policy; forbidden M-to-M chains must be "
             "redesigned using native instructions, not renamed or hidden in helpers. "
             "Call generate_ldr for an actual file; inferred encodings are enabled. "
@@ -155,7 +156,7 @@ def build_server(
 
     @mcp.tool(annotations=read)
     def get_capabilities(detail: bool = False) -> dict[str, Any]:
-        """Get support and limits. Use detail=true for full schema/evidence in compact mode."""
+        """Get server-wide support, policies and limits; not individual instruction details."""
         base = capabilities() if detail or not compact_responses else capability_summary()
         result = {
             **base,
@@ -195,14 +196,11 @@ def build_server(
         return result
 
     @mcp.tool(annotations=read)
-    def list_instruction_families() -> dict[str, Any]:
-        """List compact instruction families; use this before requesting detailed capabilities."""
-        families = instruction_families()
-        return {"families": families, "count": len(families)}
-
-    @mcp.tool(annotations=read)
-    def get_instruction_capabilities(family: str) -> dict[str, Any]:
-        """Get support, limits and evidence for one family returned by list_instruction_families."""
+    def get_instruction_capabilities(family: str | None = None) -> dict[str, Any]:
+        """List instruction families, or get limits and evidence for one selected family."""
+        if family is None:
+            families = instruction_families()
+            return {"families": families, "count": len(families)}
         return instruction_capabilities(family)
 
     @mcp.tool(annotations=read)
@@ -325,10 +323,10 @@ def build_server(
         require_acceptance: bool = False,
         strict_writers: bool = False,
     ) -> CallToolResult:
-        """Preferred generation tool: compile conditions/blocks to an actual .ldr file.
+        """Compile caller-supplied custom Ladder IR to an actual .ldr file.
 
-        Inferred encodings are enabled without a separate flag. Return design summary,
-        SHA-256, binary resource link and verification warnings. Never overwrite existing files.
+        Use generate_control_ldr for common controls and generate_sequence_ldr for ordered steps.
+        Returns SHA-256, a binary resource link and verification warnings. Never overwrites files.
         """
         return artifact_result(
             service.generate(
@@ -458,17 +456,17 @@ def build_server(
 
     @mcp.tool(annotations=read)
     def inspect_ldr(path: str) -> dict[str, Any]:
-        """Inspect framing, raw bytes, offsets and CRC validity. Read paths are workspace-scoped."""
+        """Inspect binary framing, raw bytes, offsets and CRC only; does not explain logic."""
         return service.inspect(path)
 
     @mcp.tool(annotations=read)
     def read_ldr(path: str) -> dict[str, Any]:
-        """Read logic in display order; unknown payloads stay opaque. Reject bad CRC."""
+        """Decode Ladder networks in display order; unknown payloads stay opaque. Reject bad CRC."""
         return service.read(path)
 
     @mcp.tool(annotations=read)
     def analyze_ldr(path: str) -> dict[str, Any]:
-        """Explain networks and device reads/writes. Opaque networks mark analysis incomplete."""
+        """Analyze decoded network meaning and device reads/writes; not a raw-byte inspection."""
         return service.analyze(path)
 
     @mcp.tool(annotations=read)
@@ -499,29 +497,6 @@ def build_server(
             "optimized_ladder": lowered.model_dump(),
         }
 
-    @mcp.tool(annotations=write)
-    def create_ldr(
-        output_name: str,
-        ladder: Ladder,
-        io_contract: IOContract,
-        allow_unverified: bool = False,
-        acceptance: list[AcceptanceCase] | None = None,
-        require_acceptance: bool = False,
-        strict_writers: bool = False,
-    ) -> CallToolResult:
-        """Create a new file from IR with sampled header and fresh CRC. Never overwrite files."""
-        return artifact_result(
-            service.create(
-                output_name,
-                ladder,
-                allow_unverified,
-                acceptance=acceptance,
-                io_contract=io_contract,
-                require_acceptance=require_acceptance,
-                strict_writers=strict_writers,
-            )
-        )
-
     @mcp.tool(annotations=read)
     def simulate_ladder(
         ladder: Ladder,
@@ -540,15 +515,6 @@ def build_server(
             "trace": simulate_runtime(ladder, inputs, initial or {}, scan_ms),
             "scope": MODEL_SCOPE,
         }
-
-    @mcp.tool(annotations=write)
-    def create_start_stop(
-        output_name: str, stop_input_active_high: bool = True, allow_unverified: bool = False
-    ) -> CallToolResult:
-        """Create X0/Y0 self-hold. True: X1=1 stops (verified). False: X1=0 stops (candidate)."""
-        return artifact_result(
-            service.create(output_name, start_stop(stop_input_active_high), allow_unverified)
-        )
 
     @mcp.tool(annotations=write)
     def export_ldr(path: str, output_name: str) -> CallToolResult:

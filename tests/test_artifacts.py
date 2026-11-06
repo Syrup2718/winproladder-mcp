@@ -36,7 +36,18 @@ def test_binary_artifact_delivery_and_scope(tmp_path: Path) -> None:
             templates = (await session.list_resource_templates()).resourceTemplates
             assert any(t.uriTemplate == "winproladder://artifacts/{name}" for t in templates)
             for name in ["motor.ldr", "馬達 控制 #100%23.ldr"]:
-                result = await session.call_tool("create_start_stop", {"output_name": name})
+                arguments = {
+                    "output_name": name,
+                    "io_contract": {"inputs": ["X0", "X1"], "outputs": ["Y0"]},
+                    "spec": {
+                        "requirement": "X0 starts Y0 and X1 stops it",
+                        "kind": "start_stop",
+                        "signal": "X0",
+                        "stop": "X1",
+                        "output": 0,
+                    },
+                }
+                result = await session.call_tool("generate_control_ldr", arguments)
                 assert not result.isError, result.content
                 assert result.structuredContent is not None
                 metadata = result.structuredContent
@@ -59,7 +70,7 @@ def test_binary_artifact_delivery_and_scope(tmp_path: Path) -> None:
                 assert isinstance(embedded.resource, BlobResourceContents)
                 assert base64.b64decode(embedded.resource.blob, validate=True) == data
                 assert via_tool.structuredContent["artifact"] == metadata["artifact"]
-                duplicate = await session.call_tool("create_start_stop", {"output_name": name})
+                duplicate = await session.call_tool("generate_control_ldr", arguments)
                 assert duplicate.isError
                 assert (output / name).read_bytes() == data
             (output / "notes.txt").write_text("not an LDR", encoding="utf-8")
