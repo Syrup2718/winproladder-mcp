@@ -72,7 +72,6 @@ def system_ladder(spec: SystemSpec) -> tuple[Ladder, dict[str, Any]]:
         # controls into seemingly explicit FALSE conditions.
         resolved = control.model_copy(update=allocated)
         ladder, design = control_ladder(resolved)
-        design["defaults_used"] = sorted(set(ControlSpec.model_fields) - control.model_fields_set)
         design["automatically_allocated"] = allocated
         networks.extend(ladder.networks)
         symbols.update(ladder.symbols)
@@ -87,5 +86,8 @@ def system_ladder(spec: SystemSpec) -> tuple[Ladder, dict[str, Any]]:
             "Input signals may intentionally be shared.",
             "For dependent multi-step processes use the sequence tool instead.",
         ],
-        "gui_import_verified": False,
+        "evidence": {
+            "gui": {"exact_artifact": False, "exact_payload_anchor": False},
+            "plc": {"exact_artifact": False},
+        },
     }
