@@ -2676,6 +2676,12 @@ def validation(ladder: Ladder) -> dict[str, object]:
     warnings = validation_warnings(
         ladder, import_verified=verified, repeated_coils=len(coils) != len(set(coils))
     )
+    anchor_scope = (
+        "User-reported WinProLadder import of the exact X1-NC start/stop payload; "
+        "the current artifact and PLC runtime were not verified."
+        if verified
+        else None
+    )
     return {
         "valid": not errors,
         "errors": errors,
@@ -2688,11 +2694,14 @@ def validation(ladder: Ladder) -> dict[str, object]:
             for observed, _, source in block_catalog()
             if network == observed
         ],
-        "import_verified": verified,
-        "verification_scope": (
-            "User reported successful import of exact X1-NC start/stop payload; "
-            "no PLC runtime verification."
-        ),
+        "evidence": {
+            "gui": {
+                "exact_artifact": False,
+                "exact_payload_anchor": verified,
+                "anchor_scope": anchor_scope,
+            },
+            "plc": {"exact_artifact": False},
+        },
     }
 
 

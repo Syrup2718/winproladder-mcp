@@ -28,6 +28,7 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
         ):
             await session.initialize()
             tools = (await session.list_tools()).tools
+            assert sum(len(tool.description or "") for tool in tools) < 8000
             assert {tool.name for tool in tools} == {
                 "get_capabilities",
                 "get_instruction_capabilities",

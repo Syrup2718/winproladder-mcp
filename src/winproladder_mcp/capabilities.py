@@ -1,5 +1,6 @@
 """Current client-facing capabilities, supported forms and evidence boundaries."""
 
+from pathlib import Path
 from typing import Any
 
 from . import __version__
@@ -7,6 +8,24 @@ from .design import design_guide
 from .ir import Ladder, Network, block_catalog, start_stop
 from .pdw import capabilities as pdw_capabilities
 from .runtime import simulation_capabilities
+
+
+def build_identity() -> dict[str, str | None]:
+    """Identify a source checkout without invoking Git or requiring it in installations."""
+    git = Path(__file__).resolve().parents[2] / ".git"
+    commit = None
+    if git.is_dir():
+        head = (git / "HEAD").read_text(encoding="ascii").strip()
+        if head.startswith("ref: "):
+            ref = git / head.removeprefix("ref: ")
+            if ref.is_file():
+                commit = ref.read_text(encoding="ascii").strip()
+        elif len(head) >= 7:
+            commit = head
+    return {
+        "commit": commit,
+        "distribution_state": "source_checkout_unreleased" if git.is_dir() else "packaged_release",
+    }
 
 
 def instruction_matrix() -> list[dict[str, Any]]:
@@ -36,6 +55,7 @@ def instruction_matrix() -> list[dict[str, Any]]:
 def capabilities() -> dict[str, Any]:
     return {
         "version": __version__,
+        "build": build_identity(),
         "pdw": pdw_capabilities(),
         "pdw_project": {
             "tool": "generate_project_pdw",
@@ -512,7 +532,7 @@ def capabilities() -> dict[str, Any]:
                     "indirect operands",
                     "connected status flags",
                 ],
-                "import_verified": False,
+                "gui_exact_artifact_verified": False,
             },
             "LCNV": {
                 "fun": 33,
@@ -527,7 +547,7 @@ def capabilities() -> dict[str, Any]:
                     "table initialization",
                     "runtime simulation",
                 ],
-                "import_verified": False,
+                "gui_exact_artifact_verified": False,
             },
             "other_FUN_numbers": "Cannot derive opcodes by incrementing FUN numbers",
         },
@@ -585,6 +605,7 @@ def capability_summary() -> dict[str, Any]:
     full = capabilities()
     keys = {
         "version",
+        "build",
         "pdw",
         "pdw_project",
         "profile",

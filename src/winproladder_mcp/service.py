@@ -4,7 +4,7 @@ import hashlib
 import json
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from .acceptance import AcceptanceCase, check_acceptance
 from .analysis import describe, device_references, timer_settings
@@ -372,7 +372,7 @@ class Service:
                 {
                     "index": index,
                     "offset": record.offset + 6,
-                    "status": "decoded_subset" if decoded else "opaque",
+                    "status": "decoded_supported" if decoded else "opaque",
                     "logic": decoded.model_dump() if decoded else None,
                     "description": describe(decoded)
                     if decoded
@@ -498,6 +498,7 @@ class Service:
         require_acceptance: bool = False,
         strict_writers: bool = False,
     ) -> dict[str, Any]:
+        profile_explicit = "profile" in ladder.model_fields_set
         if require_acceptance and acceptance is None:
             raise ValueError("Executable acceptance cases are required; no file written")
         source_acceptance = check_acceptance(ladder, acceptance) if acceptance is not None else None
@@ -520,7 +521,8 @@ class Service:
         result = validation(ladder)
         if not result["valid"]:
             raise ValueError(str(result["errors"]))
-        if not result["import_verified"] and not allow_unverified:
+        evidence = cast(dict[str, Any], result["evidence"])
+        if not evidence["gui"]["exact_payload_anchor"] and not allow_unverified:
             raise ValueError(
                 "Composition not import-verified; validate_ladder first "
                 "and explicitly set allow_unverified=true for a candidate"
@@ -541,15 +543,32 @@ class Service:
         emitted_report = check_acceptance(emitted, acceptance) if acceptance is not None else None
         if emitted_report is not None and not emitted_report["passed"]:
             raise ValueError(f"Compiled acceptance failed; no file written: {emitted_report}")
+        emitted_timer_settings = timer_settings(list(enumerate(emitted.networks)))
+        profile_selection = (
+            {"target_profile": ladder.profile}
+            if profile_explicit
+            else {
+                "assumed_profile": ladder.profile,
+                "profile_warning": (
+                    "No target profile was supplied; generated with the default sampled profile."
+                    + (
+                        " Timer time-base configuration is not verified."
+                        if emitted_timer_settings is not None
+                        else ""
+                    )
+                ),
+            }
+        )
         return {
             **self.write(name, document),
             "validation": result,
             "architecture": architecture,
             "profile": ladder.profile,
+            **profile_selection,
             "layout_normalized_networks": layout["normalized_networks"],
             "layout": layout,
             "io_contract": io_report,
-            "timer_settings": timer_settings(list(enumerate(emitted.networks))),
+            "timer_settings": emitted_timer_settings,
             "symbols": ladder.symbols,
             "network_notes": [
                 {"index": i, "comment": n.comment, "logic": describe(n)}
@@ -706,6 +725,9 @@ class Service:
                 raise ValueError(str(check["errors"]))
         return {
             **self.write(name, Document(document.header, tuple(reversed(records)), document.tail)),
-            "import_verified": False,
+            "evidence": {
+                "gui": {"exact_artifact": False, "exact_payload_anchor": False},
+                "plc": {"exact_artifact": False},
+            },
             "unchanged_networks_preserved": True,
         }

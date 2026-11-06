@@ -77,4 +77,5 @@ uv run python -m winproladder_mcp.setup config --format json
 | Client 無法啟動 | 確認設定中的絕對路徑仍存在，重新安裝並連線 |
 | 中文顯示異常 | 設定檔為 UTF-8；請用支援 UTF-8 的編輯器查看 |
 
-安裝設定預設啟用 `--compact-responses`，只精簡回覆內容，不縮減 schema 或驗證步驟。
+server 本身預設使用 compact 回應；安裝設定仍明確帶入 `--compact-responses`，只精簡
+回覆內容，不縮減 schema 或驗證步驟。除錯時可用 `--full-responses` 明確要求完整內容。

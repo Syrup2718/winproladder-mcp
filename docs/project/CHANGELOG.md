@@ -6,6 +6,15 @@
 
 ## 未發行
 
+- compact 回應改為程式預設，並在能力、設計與 artifact 回應標示 `response_mode`；
+  可用 `--full-responses` 明確要求完整內容。
+- 驗證證據拆分為本次 artifact、既有 payload anchor 與實體 PLC 三個層級，移除容易
+  誤讀的泛稱 `import_verified`。
+- 產檔錯誤提供穩定錯誤碼與 `written=false`；同名檔案另提供建議名稱。
+- 高階控制回報只列出該 recipe 實際參與編譯的欄位與假設；無 timer 時不再回傳
+  timer 設定警語。
+- 高階產生工具接受 `target_profile`；未指定時在精簡摘要前置顯示假設 profile，timer
+  程式另標示時間基準尚未驗證。
 - 將使用者提供的 FBs-32MC 回存樣本版面整合至 PDW 型號白名單，並對應既有
   `FBs-32MC-test30` Ladder profile；新增解析、重建及完整專案產生回歸測試。
 

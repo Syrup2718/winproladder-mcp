@@ -73,12 +73,14 @@ def test_high_level_tools_produce_files_and_disclose_defaults(tmp_path):
                     },
                 )
                 assert not result.isError, result.content
-                data = json.loads(result.content[0].text)
-                assert data["design"]["assumptions"]
+                data = result.structuredContent
+                assert data is not None
                 report = tmp_path / "artifacts" / f"{tool}.ldr.design.json"
                 assert report.is_file()
-                assert json.loads(report.read_text(encoding="utf-8"))["sha256"] == data["sha256"]
-                assert not data["design"]["gui_import_verified"]
+                full = json.loads(report.read_text(encoding="utf-8"))
+                assert full["sha256"] == data["sha256"]
+                assert full["design"]["assumptions"]
+                assert not full["design"]["evidence"]["gui"]["exact_artifact"]
                 assert (tmp_path / "artifacts" / f"{tool}.ldr").is_file()
 
     asyncio.run(asyncio.wait_for(run(), timeout=60))

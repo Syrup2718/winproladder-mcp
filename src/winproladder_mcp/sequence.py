@@ -206,5 +206,8 @@ def sequence_ladder(spec: SequenceSpec) -> tuple[Ladder, dict[str, Any]]:
             "No power-loss retention guarantee.",
             "No GUI or PLC verification is implied.",
         ],
-        "gui_import_verified": False,
+        "evidence": {
+            "gui": {"exact_artifact": False, "exact_payload_anchor": False},
+            "plc": {"exact_artifact": False},
+        },
     }

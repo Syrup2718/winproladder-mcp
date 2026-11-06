@@ -2,6 +2,7 @@
 
 import argparse
 import base64
+import functools
 import hashlib
 import json
 from pathlib import Path
@@ -31,6 +32,7 @@ from .ldr import MAX_SIZE
 from .manual_reference import analyze_rtc_snapshot, manual_reference
 from .pdw import PdwRung
 from .pdw_project import PdwSection
+from .profiles import HeaderProfile
 from .runtime import MODEL_SCOPE, Scalar, simulate_runtime
 from .sequence import SequenceSpec, sequence_ladder
 from .service import Service, capabilities
@@ -38,7 +40,7 @@ from .system import SystemSpec, system_ladder
 
 
 def build_server(
-    root: Path, output_dir: Path | None = None, *, compact_responses: bool = False
+    root: Path, output_dir: Path | None = None, *, compact_responses: bool = True
 ) -> FastMCP:
     service = Service(root, output_dir)
     mcp = FastMCP(
@@ -68,6 +70,55 @@ def build_server(
     )
     read = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
     write = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False)
+
+    def error_result(error: Exception, output_name: str | None = None) -> CallToolResult:
+        message = str(error)
+        if isinstance(error, FileExistsError):
+            code = "ARTIFACT_ALREADY_EXISTS"
+            filename = output_name or Path(error.filename or "artifact").name
+            stem, suffix = Path(filename).stem, Path(filename).suffix
+            suggested_name = f"{stem}-2{suffix}" if suffix else f"{stem}-2"
+            user_message = f"Will not overwrite existing artifact {filename}"
+            details: dict[str, Any] = {"suggested_name": suggested_name}
+        elif "Undeclared physical I/O" in message:
+            code = "IO_CONTRACT_VIOLATION"
+            user_message = message
+            details = {}
+        elif "architecture" in message.lower() or "M-to-M" in message:
+            code = "ARCHITECTURE_POLICY_VIOLATION"
+            user_message = message
+            details = {}
+        else:
+            code = "VALIDATION_ERROR"
+            user_message = message
+            details = {}
+        payload = {
+            "error": {
+                "code": code,
+                "message": user_message,
+                **details,
+                "written": False,
+            },
+            "response_mode": "compact" if compact_responses else "full",
+        }
+        return CallToolResult(
+            isError=True,
+            content=[TextContent(type="text", text=json.dumps(payload, ensure_ascii=False))],
+            structuredContent=payload,
+        )
+
+    def structured_write_errors(function: Any) -> Any:
+        @functools.wraps(function)
+        def wrapped(*args: Any, **kwargs: Any) -> Any:
+            try:
+                return function(*args, **kwargs)
+            except (FileExistsError, ValueError) as error:
+                output_name = kwargs.get("output_name")
+                if output_name is None and args:
+                    output_name = args[0]
+                return error_result(error, output_name)
+
+        return wrapped
 
     def artifact_path(name: str, suffixes: frozenset[str] = frozenset({".ldr"})) -> Path:
         if (
@@ -102,6 +153,10 @@ def build_server(
         mime_type: str = "application/octet-stream",
         description: str = "Download the generated WinProLadder ladder resource file.",
     ) -> CallToolResult:
+        result = {
+            **result,
+            "response_mode": "compact" if compact_responses else "full",
+        }
         if compact_responses:
             assumptions = result.get("design", {}).get("assumptions")
             result = {
@@ -123,11 +178,22 @@ def build_server(
                 "sha256": result["sha256"],
             },
         }
+        summary = {
+            "artifact": metadata["artifact"],
+            "response_mode": metadata["response_mode"],
+            "assumed_profile": metadata.get("assumed_profile"),
+            "profile_warning": metadata.get("profile_warning"),
+            "warnings": metadata.get("warnings", []),
+        }
         response = CallToolResult(
             content=[
                 TextContent(
                     type="text",
-                    text=json.dumps(metadata, ensure_ascii=False, separators=(",", ":")),
+                    text=json.dumps(
+                        summary if compact_responses else metadata,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    ),
                 ),
                 ResourceLink(
                     type="resource_link",
@@ -160,6 +226,7 @@ def build_server(
         base = capabilities() if detail or not compact_responses else capability_summary()
         result = {
             **base,
+            "response_mode": "full" if detail or not compact_responses else "compact",
             "workspace": str(service.root),
             "architecture_policy": service.architecture_policy(),
             "output_directory": str(service.output),
@@ -175,6 +242,8 @@ def build_server(
         if compact_responses and not detail:
             keys = {
                 "version",
+                "build",
+                "transport",
                 "pdw",
                 "pdw_project",
                 "generation",
@@ -188,6 +257,7 @@ def build_server(
                 "instruction_discovery",
                 "no_plc_connection",
                 "writes",
+                "response_mode",
             }
             return {
                 **{k: v for k, v in result.items() if k in keys},
@@ -218,6 +288,7 @@ def build_server(
         """Get design guidance. Use detail=true for instruction notes and full examples."""
         if compact_responses and not detail:
             return {
+                "response_mode": "compact",
                 "control_recipes": design_guide()["control_recipes"],
                 "architecture_policy": service.architecture_policy(),
                 "workflow": [
@@ -231,12 +302,14 @@ def build_server(
                 "more": "Use detail=true for instruction-specific notes, examples and schema.",
             }
         return {
+            "response_mode": "full",
             **design_guide(),
             "architecture_policy": service.architecture_policy(),
             "ladder_schema": Ladder.model_json_schema(),
         }
 
     @mcp.tool(annotations=write)
+    @structured_write_errors
     def generate_system_ldr(
         output_name: str,
         spec: SystemSpec,
@@ -244,11 +317,14 @@ def build_server(
         acceptance: list[AcceptanceCase] | None = None,
         require_acceptance: bool = False,
         strict_writers: bool = True,
+        target_profile: HeaderProfile | None = None,
     ) -> CallToolResult:
         """Generate independent controls with automatic internal M/T/C allocation.
         Explicit overlapping resources are rejected, not silently reassigned. Inputs can be shared.
         """
         ladder, design = system_ladder(spec)
+        if target_profile is not None:
+            ladder = ladder.model_copy(update={"profile": target_profile})
         return artifact_result(
             service.generate_design(
                 output_name,
@@ -262,6 +338,7 @@ def build_server(
         )
 
     @mcp.tool(annotations=write)
+    @structured_write_errors
     def generate_control_ldr(
         output_name: str,
         spec: ControlSpec,
@@ -269,12 +346,15 @@ def build_server(
         acceptance: list[AcceptanceCase] | None = None,
         require_acceptance: bool = False,
         strict_writers: bool = True,
+        target_profile: HeaderProfile | None = None,
     ) -> CallToolResult:
         """Generate common control functions from customer requirements translated by the host.
         Physical I/O must be explicit and within io_contract. Supports latch, toggle, edges, delays,
         pulse, counter, interlocked direction and star/delta; returns actual .ldr + assumptions.
         """
         ladder, design = control_ladder(spec)
+        if target_profile is not None:
+            ladder = ladder.model_copy(update={"profile": target_profile})
         return artifact_result(
             service.generate_design(
                 output_name,
@@ -288,6 +368,7 @@ def build_server(
         )
 
     @mcp.tool(annotations=write)
+    @structured_write_errors
     def generate_sequence_ldr(
         output_name: str,
         spec: SequenceSpec,
@@ -295,6 +376,7 @@ def build_server(
         acceptance: list[AcceptanceCase] | None = None,
         require_acceptance: bool = False,
         strict_writers: bool = True,
+        target_profile: HeaderProfile | None = None,
     ) -> CallToolResult:
         """Generate ordered steps using native T timers, with no automatic X/Y additions.
           Native pause/resume uses FUN87 with register state and no relay copy chains.
@@ -302,6 +384,8 @@ def build_server(
         Return symbols and actual .ldr; not GUI or PLC verified.
         """
         ladder, design = sequence_ladder(spec)
+        if target_profile is not None:
+            ladder = ladder.model_copy(update={"profile": target_profile})
         return artifact_result(
             service.generate_design(
                 output_name,
@@ -315,6 +399,7 @@ def build_server(
         )
 
     @mcp.tool(annotations=write)
+    @structured_write_errors
     def generate_ldr(
         output_name: str,
         ladder: Ladder,
@@ -345,6 +430,7 @@ def build_server(
         return service.inspect_pdw(path)
 
     @mcp.tool(annotations=write)
+    @structured_write_errors
     def generate_project_pdw(
         output_name: str,
         template_path: str,
@@ -390,6 +476,7 @@ def build_server(
         )
 
     @mcp.tool(annotations=write)
+    @structured_write_errors
     def generate_pdw(
         output_name: str,
         template_path: str,
@@ -423,6 +510,7 @@ def build_server(
         )
 
     @mcp.tool(annotations=write)
+    @structured_write_errors
     def generate_component_comments(
         output_name: str, entries: list[ComponentComment]
     ) -> CallToolResult:
@@ -519,11 +607,13 @@ def build_server(
         }
 
     @mcp.tool(annotations=write)
+    @structured_write_errors
     def export_ldr(path: str, output_name: str) -> CallToolResult:
         """Re-encode to a NEW file, preserving opaque bytes and any original invalid CRC."""
         return artifact_result(service.export(path, output_name))
 
     @mcp.tool(annotations=write)
+    @structured_write_errors
     def modify_network(
         path: str,
         output_name: str,
@@ -556,9 +646,20 @@ def build_server(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--compact-responses", action="store_true", help="Omit repeated design metadata and schemas"
+    response_group = parser.add_mutually_exclusive_group()
+    response_group.add_argument(
+        "--compact-responses",
+        dest="compact_responses",
+        action="store_true",
+        help="Use compact responses (default)",
     )
+    response_group.add_argument(
+        "--full-responses",
+        dest="compact_responses",
+        action="store_false",
+        help="Include repeated design metadata and full schemas",
+    )
+    parser.set_defaults(compact_responses=True)
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="Workspace allowed for reads")
     parser.add_argument(
         "--output-dir", type=Path, help="Absolute output subdirectory (default ROOT/artifacts)"

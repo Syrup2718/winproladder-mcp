@@ -52,7 +52,10 @@ def test_binary_artifact_delivery_and_scope(tmp_path: Path) -> None:
                 assert result.structuredContent is not None
                 metadata = result.structuredContent
                 assert isinstance(result.content[0], TextContent)
-                assert json.loads(result.content[0].text) == metadata
+                summary = json.loads(result.content[0].text)
+                assert summary["artifact"] == metadata["artifact"]
+                assert summary["response_mode"] == "compact"
+                assert "validation" not in summary
                 link = next(item for item in result.content if isinstance(item, ResourceLink))
                 assert link.name == name
                 assert link.mimeType == "application/octet-stream"

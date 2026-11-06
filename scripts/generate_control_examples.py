@@ -21,10 +21,12 @@ async def main() -> None:
     )
     async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
         await session.initialize()
-        guide_result = await session.call_tool("get_design_guide", {})
+        guide_result = await session.call_tool("get_design_guide", {"detail": True})
         if guide_result.isError:
             raise RuntimeError(str(guide_result.content))
-        guide = json.loads(guide_result.content[0].text)
+        guide = guide_result.structuredContent
+        if guide is None:
+            raise RuntimeError("get_design_guide returned no structured content")
         requests = [
             (
                 kind,
@@ -80,7 +82,9 @@ async def main() -> None:
                     )
                     continue
                 raise RuntimeError(str(result.content))
-            data = json.loads(result.content[0].text)
+            data = result.structuredContent
+            if data is None:
+                raise RuntimeError(f"{tool} returned no structured content")
             if "design_report" not in data:
                 raise RuntimeError(data.get("design_report_warning", "Missing design report"))
             print(

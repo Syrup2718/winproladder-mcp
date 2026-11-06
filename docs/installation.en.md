@@ -77,4 +77,6 @@ uv run python -m winproladder_mcp.setup config --format json
 | The client cannot start the server | Confirm the configured absolute paths still exist, reinstall, and reconnect. |
 | Chinese text displays incorrectly | Configuration files use UTF-8; open them with a UTF-8-capable editor. |
 
-Installation enables `--compact-responses` by default. It shortens response content without reducing schemas or validation.
+The server defaults to compact responses, and installation still passes `--compact-responses`
+explicitly. This shortens response content without reducing schemas or validation. Use
+`--full-responses` when complete diagnostic metadata is needed.

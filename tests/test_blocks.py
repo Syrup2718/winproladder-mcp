@@ -28,7 +28,7 @@ def test_block_matches_independent_sample(network: Network, payload: bytes, sour
     assert decode_network(record.payload) == network
     report = validation(Ladder(networks=[network]))
     assert report["valid"]
-    assert report["import_verified"] is False
+    assert report["evidence"]["gui"]["exact_payload_anchor"] is False
     assert report["block_evidence"] == [
         {"network_index": 0, "source": source, "status": "observed_export"}
     ]

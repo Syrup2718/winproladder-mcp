@@ -136,7 +136,7 @@ def test_inferred_blocks_accept_new_parameters_and_conditions() -> None:
         assert compile_network(decoded) == payload
         report = validation(Ladder(networks=[network]))
         assert report["valid"]
-        assert not report["import_verified"]
+        assert not report["evidence"]["gui"]["exact_payload_anchor"]
 
 
 def test_generated_interlock_both_start_forward_priority() -> None:

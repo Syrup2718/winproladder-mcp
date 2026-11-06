@@ -37,11 +37,30 @@
 
 完整範圍請看[功能總覽](docs/project/FEATURES.md)與 [FUNC 支援表](docs/supported-functions.md)。
 
-v1.1.0 新增實驗性的 [`.pdw` 專案產生器](docs/pdw-format.md)，
-使用本機 FBs-20MC／40MC／60MC 範本，支援共用 Ladder 編譯、可變長度程式、
-分區、中文註解與已有模組紀錄的保留／選用；
-仍有格式及指令驗證限制。舊的 v1.0.0 安裝包不包含這些功能，需更新並重新啟動 MCP server。
-目前未發行的原始碼另已整合使用者提供的 FBs-32MC 範本版面。
+## 版本與執行中能力
+
+### Latest packaged release
+
+最新套件版本是 **v1.1.0**。版本內容與下載請見
+[Releases](https://github.com/Syrup2718/winproladder-mcp/releases/latest) 與
+[CHANGELOG](docs/project/CHANGELOG.md)。
+
+### Current source / unreleased
+
+目前原始碼在 v1.1.0 基礎上持續整改 MCP 回應介面，未改版本號；另已整合使用者提供的
+FBs-32MC 範本版面。這些是未發行變更，不代表既有安裝包已包含。
+
+### Experimental features
+
+[`.pdw` 專案產生器](docs/pdw-format.md)仍屬實驗功能。它使用本機
+FBs-20MC／32MC／40MC／60MC 範本，支援共用 Ladder 編譯、可變長度程式、分區、
+中文註解與已有模組紀錄的保留／選用，但仍有格式及指令驗證限制。
+
+### 查詢目前 server
+
+呼叫 `get_capabilities` 可查看執行中 server 的 `version`、`build.commit`、
+`build.distribution_state` 與 `response_mode`。預設是精簡回應；只有需要完整 schema 與
+證據細節時才傳入 `detail=true`，或以 `--full-responses` 啟動。
 
 ## 快速安裝
 

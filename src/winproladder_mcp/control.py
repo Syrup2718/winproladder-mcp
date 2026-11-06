@@ -32,6 +32,29 @@ ControlKind = Literal[
     "star_delta",
 ]
 
+_COMMON_FIELDS = {"requirement", "kind", "signal", "output"}
+_KIND_FIELDS: dict[str, set[str]] = {
+    "start_stop": {"stop"},
+    "set_reset": {"reset"},
+    "toggle": {"reset", "memory"},
+    "rising_edge": {"reset", "memory"},
+    "falling_edge": {"reset", "memory"},
+    "on_delay": {"reset", "timer", "delay_ms"},
+    "off_delay": {"reset", "memory", "register_base", "timer", "delay_ms"},
+    "pulse": {"reset", "memory", "register_base", "timer", "delay_ms"},
+    "counter": {"reset", "counter", "count"},
+    "forward_reverse": {"stop", "reverse"},
+    "star_delta": {
+        "stop",
+        "reset",
+        "memory",
+        "register_base",
+        "timer",
+        "delay_ms",
+        "gap_ms",
+    },
+}
+
 
 class ControlSpec(Model):
     requirement: str = Field(min_length=1, max_length=16000)
@@ -188,22 +211,40 @@ def control_ladder(spec: ControlSpec) -> tuple[Ladder, dict[str, Any]]:
     for n in ns:
         if n.coils:
             n.comment = "; ".join(symbols.get(f"{c.device}{c.address}", "") for c in n.coils)
+    relevant_fields = _COMMON_FIELDS | _KIND_FIELDS[spec.kind]
+    resolved = spec.model_dump(include=relevant_fields)
+    defaults_used = sorted(relevant_fields - spec.model_fields_set)
+    assumptions = [
+        "Offline candidate, not certified or commissioned equipment control.",
+        "Signal and output must be explicit. Absent optional controls are FALSE.",
+        "Input expressions describe PLC bit polarity; physical NC wiring is not inferred.",
+    ]
+    if spec.kind in {"on_delay", "off_delay", "pulse", "star_delta"}:
+        assumptions.append(
+            "Timers assume default T0..T49 .01s configuration; destination timing "
+            "configuration is not verified from LDR."
+        )
+    if spec.kind in {"off_delay", "pulse", "star_delta"}:
+        assumptions.append("Allocated R state must start at zero or be explicitly reset.")
+    if spec.kind in {"rising_edge", "falling_edge", "toggle"}:
+        assumptions.append(
+            "Single-X edges without reset use native contacts; compound/reset-gated edges "
+            "use DIFU/DIFD; toggle uses native TOGG."
+        )
+    if spec.kind == "forward_reverse":
+        assumptions.append("Forward/reverse favors forward on simultaneous starts when stopped.")
+    if spec.kind == "star_delta":
+        assumptions.append(
+            "Y(base)=main, Y(base+1)=star, Y(base+2)=delta; hardware interlocks required."
+        )
     return Ladder(networks=ns, symbols=symbols), {
         "requirement": spec.requirement,
         "kind": spec.kind,
-        "resolved_spec": spec.model_dump(),
-        "defaults_used": sorted(set(ControlSpec.model_fields) - spec.model_fields_set),
-        "assumptions": [
-            "Offline candidate, not certified or commissioned equipment control.",
-            "Signal and output must be explicit. Absent optional controls are FALSE.",
-            "Input expressions describe PLC bit polarity; physical NC wiring is not inferred.",
-            "Timers assume default T0..T49 .01s configuration; R/Y startup states must be "
-            "zero or explicitly reset.",
-            "Single-X edges without reset use native contacts, with no helper M. "
-            "Compound/reset-gated edges use DIFU/DIFD; toggle uses native TOGG.",
-            "Forward/reverse favors forward on simultaneous starts when stopped.",
-            "Star/delta: Y(base)=main, Y(base+1)=star, Y(base+2)=delta; "
-            "hardware interlocks required.",
-        ],
-        "gui_import_verified": False,
+        "resolved_spec": resolved,
+        "defaults_used": defaults_used,
+        "assumptions": assumptions,
+        "evidence": {
+            "gui": {"exact_artifact": False, "exact_payload_anchor": False},
+            "plc": {"exact_artifact": False},
+        },
     }

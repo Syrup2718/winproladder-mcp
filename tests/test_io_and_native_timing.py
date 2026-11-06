@@ -152,9 +152,9 @@ def test_mcp_generation_requires_separate_customer_io_contract(tmp_path):
                 "ladder": {"networks": [{"condition": "X4", "coils": [{"address": 71}]}]},
             },
         )
-        assert "Undeclared physical I/O" in str(result)
+        assert result.isError
+        assert result.structuredContent["error"]["code"] == "IO_CONTRACT_VIOLATION"
+        assert result.structuredContent["error"]["written"] is False
 
-    # FastMCP's direct call API raises on errors (stdio converts them to isError).
-    with pytest.raises(Exception, match="Undeclared physical I/O"):
-        asyncio.run(run())
+    asyncio.run(run())
     assert not (tmp_path / "artifacts").exists()

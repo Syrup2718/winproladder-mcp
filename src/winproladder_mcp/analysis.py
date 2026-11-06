@@ -214,43 +214,47 @@ def describe(network: Network) -> str:
     return f"{expression_text(network_expression(network))} -> {outputs}"
 
 
-def timer_settings(networks: list[tuple[int, Network | None]]) -> dict[str, Any]:
+def timer_settings(networks: list[tuple[int, Network | None]]) -> dict[str, Any] | None:
     """Keep preset counts separate from milliseconds and disclose the profile assumption.
 
     The supported LDR timer payload contains a preset, not a verified destination
     project's timer allocation. Do not present inferred timing as measured runtime.
     """
+    accumulative = [
+        {
+            "network_index": index,
+            "cv": network.action.cv,
+            "pv_register": network.action.pv,
+            "time_base_ms": network.action.unit_ms,
+            "nominal_duration_ms": None,
+            "behavior": "EN=0 clears CV; EN=1/TIM=0 retains CV; EN=1/TIM=1 counts",
+            "runtime_verified": False,
+        }
+        for index, network in networks
+        if network is not None and isinstance(network.action, AccumulativeTimer)
+    ]
+    timers = [
+        {
+            "network_index": index,
+            "device": f"T{network.block.address}",
+            "preset_ticks": network.block.preset,
+            "assumed_time_base_ms": 10 if network.block.address < 50 else None,
+            "nominal_duration_ms": network.block.preset * 10
+            if network.block.address < 50
+            else None,
+        }
+        for index, network in networks
+        if network is not None and isinstance(network.block, Timer)
+    ]
+    if not accumulative and not timers:
+        return None
     return {
         "configuration_verified": False,
         "scope": "Assumes destination T0..T49 use .01S (10 ms) time base; "
         "destination project configuration is not verified from this LDR.",
         "formula": "nominal_duration_ms = preset_ticks * time_base_ms",
-        "accumulative_timers": [
-            {
-                "network_index": index,
-                "cv": network.action.cv,
-                "pv_register": network.action.pv,
-                "time_base_ms": network.action.unit_ms,
-                "nominal_duration_ms": None,
-                "behavior": "EN=0 clears CV; EN=1/TIM=0 retains CV; EN=1/TIM=1 counts",
-                "runtime_verified": False,
-            }
-            for index, network in networks
-            if network is not None and isinstance(network.action, AccumulativeTimer)
-        ],
-        "timers": [
-            {
-                "network_index": index,
-                "device": f"T{network.block.address}",
-                "preset_ticks": network.block.preset,
-                "assumed_time_base_ms": 10 if network.block.address < 50 else None,
-                "nominal_duration_ms": network.block.preset * 10
-                if network.block.address < 50
-                else None,
-            }
-            for index, network in networks
-            if network is not None and isinstance(network.block, Timer)
-        ],
+        "accumulative_timers": accumulative,
+        "timers": timers,
     }
 
 

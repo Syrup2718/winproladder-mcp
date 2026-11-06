@@ -404,8 +404,7 @@ def require(condition: bool, message: str) -> None:
 
 def result_json(result: Any) -> dict[str, Any]:
     require(not result.isError, f"MCP tool failed: {result.content}")
-    require(bool(result.content), "MCP returned no content")
-    data = json.loads(result.content[0].text)
+    data = result.structuredContent
     require(isinstance(data, dict), "Expected JSON object in first text content")
     return data
 
@@ -617,7 +616,7 @@ async def verify_release(root: Path) -> Path:
             require(
                 "get_ldr_artifact" in manifest["tools"], "MCP artifact delivery tool is missing"
             )
-            guide = result_json(await session.call_tool("get_design_guide", {}))
+            guide = result_json(await session.call_tool("get_design_guide", {"detail": True}))
             cases = release_cases()
             recipes = {
                 case["arguments"]["spec"]["kind"]

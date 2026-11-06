@@ -23,8 +23,9 @@ from winproladder_mcp.ldr import parse
 def test_exact_import_verified_start_stop() -> None:
     ladder = start_stop()
     assert compile_network(ladder.networks[0]) == bytes.fromhex("4100a0009001c100")
-    assert validation(ladder)["import_verified"] is True
-    assert validation(start_stop(False))["import_verified"] is False
+    assert validation(ladder)["evidence"]["gui"]["exact_payload_anchor"] is True
+    assert validation(start_stop(False))["evidence"]["gui"]["exact_payload_anchor"] is False
+    assert validation(ladder)["evidence"]["gui"]["exact_artifact"] is False
     for start, stop, previous in product([False, True], repeat=3):
         value = simulate(ladder, [{"X0": start, "X1": stop}], {"Y0": previous})[0]["Y0"]
         assert value == (not stop and (start or previous))

@@ -6,6 +6,11 @@ This file lists only user-facing changes. Git history and automated tests retain
 
 ## Unreleased
 
+- Made compact responses the program default and exposed `response_mode`; added
+  `--full-responses` for explicit full diagnostics.
+- Split validation evidence into exact artifact, prior payload anchor, and physical PLC levels.
+- Added stable structured generation errors, recipe-relevant resolved fields and assumptions,
+  optional high-level `target_profile`, and prominent assumed-profile/timer warnings.
 - Integrated the user-supplied FBs-32MC saved-project layout into the PDW model allowlist and
   mapped it to the existing `FBs-32MC-test30` Ladder profile, with parse, rebuild, and full
   project-generation regressions.

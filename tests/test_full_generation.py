@@ -1,7 +1,6 @@
 """End-to-end example and negative acceptance matrix over actual MCP stdio."""
 
 import asyncio
-import json
 import sys
 
 from mcp import ClientSession, StdioServerParameters
@@ -32,9 +31,10 @@ def test_every_design_example_over_stdio(tmp_path):
                     }
                 result = await session.call_tool(name, arguments)
                 assert not result.isError, result.content
-                return json.loads(result.content[0].text)
+                assert result.structuredContent is not None
+                return result.structuredContent
 
-            guide = await call("get_design_guide", {})
+            guide = await call("get_design_guide", {"detail": True})
             for name, ladder in guide["examples"].items():
                 arguments = {"output_name": f"{name}.ldr", "ladder": ladder}
                 if name == "self_hold_stop_active_high":

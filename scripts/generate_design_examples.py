@@ -24,10 +24,12 @@ async def main() -> None:
     )
     async with stdio_client(parameters) as (read, write), ClientSession(read, write) as session:
         await session.initialize()
-        result = await session.call_tool("get_design_guide", {})
+        result = await session.call_tool("get_design_guide", {"detail": True})
         if result.isError:
             raise RuntimeError(str(result.content))
-        guide = json.loads(result.content[0].text)
+        guide = result.structuredContent
+        if guide is None:
+            raise RuntimeError("get_design_guide returned no structured content")
         for name, ladder in guide["examples"].items():
             # These are explicit guide fixtures, not an inferred customer's I/O contract.
             program = Ladder.model_validate(ladder)
@@ -59,13 +61,17 @@ async def main() -> None:
                     )
                     continue
                 raise RuntimeError(str(result.content))
-            created = json.loads(result.content[0].text)
+            created = result.structuredContent
+            if created is None:
+                raise RuntimeError("generate_ldr returned no structured content")
             print(
                 json.dumps(
                     {
                         "path": created["path"],
                         "valid": created["validation"]["valid"],
-                        "import_verified": created["validation"]["import_verified"],
+                        "gui_payload_anchor": created["validation"]["evidence"]["gui"][
+                            "exact_payload_anchor"
+                        ],
                         "acceptance": created["acceptance"],
                     }
                 )
