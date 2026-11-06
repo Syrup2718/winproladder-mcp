@@ -20,6 +20,7 @@ MAX_PROGRAM = 4094  # Keep the mask-recovery region outside compiled code.
 SECOND_START, SECOND_SIZE = 0xA126, 0x6100
 MODEL_PROFILES = {
     "FBs-20MC": "FBs-20MC",
+    "FBs-32MC": "FBs-32MC-test30",
     "FBs-40MC": "FBs-40MC-test27",
     "FBs-60MC": "FBs-60MC-test16",
 }
@@ -221,7 +222,7 @@ def parse(raw: bytes) -> Project:
     if len(raw) > MAX_SIZE or len(raw) < TAIL_START + 6 or not raw.startswith(MAGIC):
         raise ValueError("Unsupported or truncated PDW container")
     if raw[160:176].rstrip(b"\0").decode("ascii", errors="replace") not in MODEL_PROFILES:
-        raise ValueError("PDW model is outside the sampled 20MC/40MC/60MC layouts")
+        raise ValueError("PDW model is outside the sampled 20MC/32MC/40MC/60MC layouts")
     if raw[START - 4 : START] != bytes.fromhex("0a1800a0") or raw[
         0xA122:SECOND_START
     ] != bytes.fromhex("0b180061"):
