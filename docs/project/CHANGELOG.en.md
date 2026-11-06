@@ -4,6 +4,12 @@
 
 This file lists only user-facing changes. Git history and automated tests retain implementation details and encoding evidence.
 
+## Unreleased
+
+- Integrated the user-supplied FBs-32MC saved-project layout into the PDW model allowlist and
+  mapped it to the existing `FBs-32MC-test30` Ladder profile, with parse, rebuild, and full
+  project-generation regressions.
+
 ## 1.1.0 — 2026-11-05
 
 - Added experimental `.pdw` inspection, template-based generation, and binary delivery, bringing the MCP tool count to 26.

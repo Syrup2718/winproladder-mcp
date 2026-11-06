@@ -133,6 +133,31 @@ def test_service_catalogs_profiles_io_and_preservation(tmp_path):
     assert not (tmp_path / "artifacts/bad.pdw").exists()
 
 
+def test_fbs32mc_project_generation_uses_matching_profile(tmp_path):
+    (tmp_path / "fbs32mc.pdw").write_bytes(module_template("FBs-32MC"))
+    ladder = Ladder(
+        profile="FBs-32MC-test30",
+        networks=[Network(condition="X0", coils=[Coil(address=0)])],
+    )
+    result = Service(tmp_path).generate_project_pdw(
+        "fbs32mc-output.pdw",
+        "fbs32mc.pdw",
+        ladder,
+        IOContract(inputs=["X0"], outputs=["Y0"]),
+    )
+
+    assert result["project"]["model"] == "FBs-32MC"
+    emitted = parse((tmp_path / "artifacts/fbs32mc-output.pdw").read_bytes())
+    assert emitted.model == "FBs-32MC"
+    with pytest.raises(ValueError, match="FBs-32MC-test30"):
+        Service(tmp_path).generate_project_pdw(
+            "wrong-profile.pdw",
+            "fbs32mc.pdw",
+            ladder.model_copy(update={"profile": "FBs-20MC"}),
+            IOContract(inputs=["X0"], outputs=["Y0"]),
+        )
+
+
 def test_module_selection_mcp(tmp_path):
     (tmp_path / "main.pdw").write_bytes(module_template())
 

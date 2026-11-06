@@ -357,7 +357,9 @@ def build_server(
         module_order: list[str] | None = None,
         module_template_paths: list[str] | None = None,
     ) -> CallToolResult:
-        """Compile Ladder IR to sampled FBs-20MC/40MC/60MC PDW layouts with local module records.
+        """Compile Ladder IR to sampled FBs-20MC/32MC/40MC/60MC PDW layouts.
+
+        Module records come from local templates.
 
         Match ladder.profile to the template CPU. Template must be inside workspace. Program and
         annotations are replaced by the explicit request; opaque project settings are retained.

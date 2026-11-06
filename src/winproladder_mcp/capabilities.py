@@ -41,7 +41,7 @@ def capabilities() -> dict[str, Any]:
             "tool": "generate_project_pdw",
             "inspection_tool": "inspect_pdw",
             "status": "experimental_sample_bound",
-            "models": ["FBs-20MC", "FBs-40MC", "FBs-60MC"],
+            "models": ["FBs-20MC", "FBs-32MC", "FBs-40MC", "FBs-60MC"],
             "compiler": "shared Ladder IR and native instruction compiler",
             "max_program_bytes": 4094,
             "variable_network_count": True,
