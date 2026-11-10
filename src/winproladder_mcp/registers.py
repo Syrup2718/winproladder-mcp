@@ -12,11 +12,16 @@ def register_bank(name: str) -> tuple[int, int, int]:
         return address, 0, 3839
     if name[0] == "R" and address <= 3903:
         return address, 3840, 3903
+    if name[0] == "R" and address <= 3967:
+        return address, 3904, 3967
     if name[0] == "R" and 5000 <= address <= 8071:
         return address, 5000, 8071
     if name[0] == "D" and address <= 4095:
         return address, 0, 4095
-    raise ValueError("Supported inferred banks: R0..3839, R3840..3903, R5000..8071, D0..4095")
+    raise ValueError(
+        "Supported inferred banks: R0..3839, R3840..3903, R3904..3967, "
+        "R5000..8071, D0..4095"
+    )
 
 
 def register_span(name: str, count: int, *, writable: bool = False) -> set[str]:
@@ -36,6 +41,8 @@ def encode_register(name: str) -> bytes:
         value = 0x2800 + 2 * (address - 5000)
     elif low == 3840:
         value = 0x100 + 2 * (address - 3840)
+    elif low == 3904:
+        value = 0x180 + 2 * (address - 3904)
     else:
         value = 0xA00 + 2 * address
     return value.to_bytes(2, "big")
@@ -49,6 +56,8 @@ def decode_register(raw: bytes) -> str:
         raise ValueError("Unaligned word operand")
     if 0x100 <= value <= 0x17E:
         return f"R{3840 + (value - 0x100) // 2}"
+    if 0x180 <= value <= 0x1FE:
+        return f"R{3904 + (value - 0x180) // 2}"
     if 0xA00 <= value <= 0x27FE:
         return f"R{(value - 0xA00) // 2}"
     if 0x2800 <= value <= 0x3FFE:

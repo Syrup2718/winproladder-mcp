@@ -11,6 +11,7 @@ from winproladder_mcp.io_contract import IOContract
 from winproladder_mcp.ir import (
     Coil,
     Ladder,
+    Network,
     ProcessFunction,
     compile_network,
     decode_network,
@@ -180,3 +181,15 @@ def test_payload_truncations_rejected():
     for raw in TEST24_PAYLOADS.values():
         payload = bytes.fromhex(raw)
         assert decode_network(payload[:-1]) is None
+
+
+def test_mov_supports_common_or_bank_from_r3904_anchor():
+    network = Network(
+        action=ProcessFunction(type="move_word", source="R2501", destination="R3940")
+    )
+    payload = compile_network(network)
+    assert payload.hex() == "4fe8f4ac1d8a01c8"
+    assert decode_network(payload) == network
+    refs = device_references([(0, network)])["devices"]
+    assert refs["R2501"]["reads"] == [0]
+    assert refs["R3940"]["writes"] == [0]

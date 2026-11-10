@@ -94,12 +94,47 @@ def test_inferred_conditions_registers_and_constant_address_collision(operation)
     assert all(d in ladder.symbols for d in layout["helper_devices"])
 
 
+def test_gui_exported_register_add_and_or_destination_oracles():
+    register_add = Network(
+        action=Arithmetic(operation="add", sa="R3840", sb="R2301", destination="R2401")
+    )
+    or_destination = Network(
+        action=Arithmetic(operation="add", sa="R2501", sb=0, destination="R3904")
+    )
+    assert compile_network(register_add).hex() == "4fe87fe8f46201001bfa1cc2"
+    assert compile_network(or_destination).hex() == "4fe87fe8f6621d8a00000180"
+    decoded_register = decode_network(compile_network(register_add))
+    decoded_or = decode_network(compile_network(or_destination))
+    assert decoded_register.action.model_dump(exclude={"enable"}) == register_add.action.model_dump(
+        exclude={"enable"}
+    )
+    assert decoded_or.action.model_dump(exclude={"enable"}) == or_destination.action.model_dump(
+        exclude={"enable"}
+    )
+    assert compile_network(decoded_register) == compile_network(register_add)
+    assert compile_network(decoded_or) == compile_network(or_destination)
+    refs = device_references([(0, register_add), (1, or_destination)])["devices"]
+    assert refs["R2301"]["reads"] == [0]
+    assert refs["R3904"]["writes"] == [1]
+
+
+def test_register_add_runtime_uses_signed_or_unsigned_operands():
+    signed_add = Ladder(
+        networks=[
+            Network(action=Arithmetic(operation="add", sa="R0", sb="R1", destination="R2"))
+        ]
+    )
+    assert timed_simulate(signed_add, [{}], {"R0": 1, "R1": 0xFFFF}, 10)[0]["R2"] == 0
+    signed_add.networks[0].action.unsigned_when = "TRUE"
+    assert timed_simulate(signed_add, [{}], {"R0": 1, "R1": 0xFFFF}, 10)[0]["R2"] == 0
+
+
 @pytest.mark.parametrize(
     "options",
     [
         {"sa": 3840},
         {"sa": "@R0"},
-        {"sb": "R1"},
+        {"operation": "sub", "sb": "R1"},
         {"sb": True},
         {"sb": -1},
         {"sb": 32768},
@@ -122,7 +157,7 @@ def test_unestablished_forms_and_invalid_operands_rejected(options):
     "raw",
     [
         "4fe87fe8f66a0100000540c8",  # Incrementing opcode cannot establish FUN15.
-        "4fe87fe8f4620100000540c8",  # Register/register hypothesis is not enabled.
+        "4fe87fe8f4640100010240c8",  # Register-Sb SUB still lacks a GUI export anchor.
         "4fe87fe8f6620100ffff40c8",  # Negative constant encoding not established.
         "4fe87fe8f6680100000040c8",  # Zero divisor.
         "4fe87fe8f6620100000540c8c100",  # Connected status outputs unknown.

@@ -242,7 +242,7 @@ def capabilities() -> dict[str, Any]:
                 "MOV uses basic manual D0..3071; MOV/ IR R3840..3847. Other word banks, "
                 "dynamic lengths, D/P and indirect encoding remain unresolved. "
                 "TOGG Y0..255/M0..999; other legal bit families not yet encoded. "
-                "WY8 writes Y8..Y23, all must be in IO contract. Direct R/D MOV and TOGG "
+                "WY8 writes Y8..Y23, all must be in IO contract. Direct R/D/OR MOV and TOGG "
                 "are modeled; other forms are not",
             },
             "test23_functions": {
@@ -518,13 +518,15 @@ def capabilities() -> dict[str, Any]:
                 "fun": [11, 12, 13, 14],
                 "action_type": "arithmetic",
                 "operations": ["add", "sub", "mul", "div"],
-                "source": "test7.ldr + screenshot",
-                "observed": "16-bit, register Sa, positive immediate Sb, EN=TRUE, U/S=FALSE",
-                "inferred": "Direct R/D operands; Sb=0..32767; Boolean EN/unsigned_when",
+                "source": "test7.ldr + screenshot; user-provided add_fix.ldr",
+                "observed": "16-bit ADD with register Sb; ADD with constant Sb and OR "
+                "destination; constant-Sb SUB/MUL/DIV; EN=TRUE, U/S=FALSE",
+                "inferred": "Common direct R/D/OR encoding; constant Sb=0..32767; Boolean "
+                "EN/unsigned_when; MOV to OR uses the common direct-word bank",
                 "unsigned_when": "FALSE=signed (sampled); TRUE=unsigned (inferred wiring)",
                 "destination_words": {"add": 1, "sub": 1, "mul": 2, "div": 2},
                 "unsupported": [
-                    "register Sb",
+                    "register Sb for SUB/MUL/DIV",
                     "constant Sa",
                     "negative Sb",
                     "32-bit D form",
@@ -564,8 +566,8 @@ def capabilities() -> dict[str, Any]:
             "constant offset, integer scaling, quotient and remainder via FUN11..14. "
             "Arithmetic status/overflow semantics remain those of FUN11..14, not FUN15/16.",
             "candidates_not_enabled": [
-                "Register Sb might change F6 to F4; needs same-operation exported comparison",
-                "MOV and D/P modifiers still need independent exported evidence",
+                "Register Sb on SUB/MUL/DIV still needs same-operation exported comparisons",
+                "D/P modifiers still need independent exported evidence",
             ],
             "corrected_hypothesis": "test8 disproves FUN15=F46A/FUN16=F46C; actual F496/F498. "
             "F46A is CMP. Do not increment FUN numbers to guess opcode families.",

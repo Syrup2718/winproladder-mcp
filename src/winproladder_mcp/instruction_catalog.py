@@ -30,6 +30,13 @@ ARITHMETIC_PAYLOADS = {
     4: "4fe87fe8f6680102001440d2",
 }
 
+# User-provided WinProLadder export add_fix.ldr. N000 establishes register Sb for
+# FUN11 ADD; N001 anchors the common OR bank at R3904 == 0x0180.
+ARITHMETIC_FIX_PAYLOADS = {
+    0: "4fe87fe8f46201001bfa1cc2",
+    1: "4fe87fe8f6621d8a00000180",
+}
+
 EDGE_PAYLOADS = {
     "e0004000c101": "test4.ldr N005 / test7.ldr N000",
     "e0005001c103": "test4.ldr N006",
@@ -114,6 +121,8 @@ ARITHMETIC_OPCODES = {
     "mul": b"\xf6\x66",
     "div": b"\xf6\x68",
 }
+
+ARITHMETIC_REGISTER_OPCODES = {"add": b"\xf4\x62"}
 
 COMPARISON_FIRST_CODES = {"eq": 0x15, "gt": 0x16, "lt": 0x17, "ne": 0x18, "ge": 0x19, "le": 0x1A}
 

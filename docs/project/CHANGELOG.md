@@ -6,6 +6,10 @@
 
 ## 未發行
 
+- 依使用者提供的 WinProLadder `add_fix.ldr` 匯出補上 FUN11 暫存器 `Sb` 編解碼，並將
+  OR 區 `R3904～R3967` 納入共用直接暫存器編碼；FUN8 MOV 可直接寫入 OR 區，離線模型、
+  元件讀寫追蹤與精確 payload 回歸測試同步更新。
+
 ## 1.1.1 — 2026-11-10
 
 - compact 回應改為程式預設，並在能力、設計與 artifact 回應標示 `response_mode`；

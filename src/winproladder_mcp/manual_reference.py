@@ -405,16 +405,18 @@ def manual_reference() -> dict[str, Any]:
             "timer_factory_bases_seconds": {"T0..49": 0.01, "T50..199": 0.1, "T200..255": 1},
         },
         "compiler_boundary": {
-            "direct_words": "R0..3839, read-only R3840..3903, R5000..8071, D0..4095; "
-            "full spans checked. High-bank encoding inferred from test11/test12 anchors. "
+            "direct_words": "R0..3839, read-only R3840..3903, R3904..3967, "
+            "R5000..8071, D0..4095; full spans checked. OR encoding is anchored by "
+            "add_fix.ldr R3904; high-bank encoding is inferred from test11/test12 anchors. "
             "D capacity depends on CPU/manual edition; header alone does not validate hardware.",
             "M": "M0..1911: ordinary relay range, address extension inferred. "
             "Automatic helper allocation remains M0..255. M-to-M remains forbidden.",
-            "not_encoded": "Special M1912..2001, R3904..4167 (except peripheral R3999), "
+            "not_encoded": "Special M1912..2001, R3968..4167 (except peripheral R3999), "
             "S and arbitrary "
             "word groups are manual-defined but not yet implemented in the binary codec.",
-            "forms": "Per-instruction K/register permissions apply. Integer Sb constants are "
-            "still 0..32767 in the implemented opcode form; negative/32-bit/P/indirect forms "
+            "forms": "Per-instruction K/register permissions apply. FUN11 ADD supports register "
+            "Sb; integer Sb constants remain 0..32767. Register Sb for FUN12..14 and "
+            "negative/32-bit/P/indirect forms "
             "require their own encoding. Do not label them illegal PLC operands.",
             "timing": "Manual factory time bases do not override the user's current project "
             "timing contract or GUI millisecond entry. No automatic scaling change.",

@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 from .conversion_functions import CODES as CONVERSION_CODES
 from .instruction_catalog import (
+    ARITHMETIC_FIX_PAYLOADS,
     ARITHMETIC_PAYLOADS,
     EDGE_PAYLOADS,
     LCNV_PAYLOADS,
@@ -409,6 +410,15 @@ def collect_instruction_evidence(
                 None,
             )
         )
+        if source is None:
+            source = next(
+                (
+                    f"add_fix.ldr N{i:03}"
+                    for i, raw in ARITHMETIC_FIX_PAYLOADS.items()
+                    if payload.hex() == raw
+                ),
+                None,
+            )
         instruction_evidence.append(
             {
                 "network_index": index,
@@ -548,7 +558,7 @@ WARNING_RULES: tuple[tuple[Predicate, str], ...] = (
         lambda ladder: _process(ladder, set(TRANSFER_CODES)),
         "test24: sampled 16-bit non-P forms and constant lengths. TOGG uses rising edges. Matrix "
         "L counts words; MBCNT writes one word. Z-WR N is literal, 1..511. WY8 writes Y8..Y23. "
-        "Direct R/D MOV and TOGG have a bounded model; other forms do not. No GUI or PLC "
+        "Direct R/D/OR MOV and TOGG have a bounded model; other forms do not. No GUI or PLC "
         "verification.",
     ),
     (
@@ -605,9 +615,10 @@ WARNING_RULES: tuple[tuple[Predicate, str], ...] = (
     ),
     (
         lambda ladder: _action(ladder, Arithmetic),
-        "Arithmetic: test7 observes register Sa, positive constant Sb, EN=TRUE, U/S=FALSE. "
-        "Changed operands/EN/U/S are inferred. MUL/DIV write two consecutive words. Bounded "
-        "direct R/D arithmetic model; no connected status outputs or GUI/PLC verification.",
+        "Arithmetic: test7 observes register Sa and positive constant Sb; add_fix.ldr observes "
+        "FUN11 register Sb and an OR destination. Changed operands/EN/U/S are inferred. "
+        "MUL/DIV write two consecutive words. Bounded direct R/D/OR arithmetic model; no "
+        "connected status outputs or GUI/PLC verification.",
     ),
     (
         lambda ladder: _action(ladder, (ExclusiveLogic, WordConversion, ZoneCompare)),

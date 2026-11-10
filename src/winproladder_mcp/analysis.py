@@ -333,6 +333,8 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
                 reads |= register_span(network.action.table, network.action.table_words)
             elif isinstance(network.action, Arithmetic):
                 reads |= {network.action.sa}
+                if isinstance(network.action.sb, str):
+                    reads.add(network.action.sb)
                 reads |= contacts(parse_expression(network.action.unsigned_when))
             elif isinstance(network.action, RegisterStep):
                 reads.add(network.action.destination)

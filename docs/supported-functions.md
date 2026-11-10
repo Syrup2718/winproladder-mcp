@@ -13,8 +13,8 @@ This is a compact public list. `✅` means only the forms accepted by the curren
 | — | FOR / BREAK / NEXT | ✅ | ✅ | — | Matched loop structure / 迴圈結構必須配對 |
 | 07P | UDCTR | ✅ | ✅ | — | 16-bit sampled form / 已取樣的 16 位元形式 |
 | 06 | Bit shift / 位元移位 | ✅ | ✅ | — | Direct sampled form / 直接定址取樣形式 |
-| 08–10 | MOV, MOV/, TOGG | ✅ | ✅ | ✅ | Direct supported operands; TOGG Y/M / 直接定址；TOGG 使用 Y/M |
-| 11–14 | ADD, SUB, MUL, DIV | ✅ | ✅ | ✅ | 16-bit direct R/D subset / 16 位元直接 R/D 子集 |
+| 08–10 | MOV, MOV/, TOGG | ✅ | ✅ | ✅ | Direct operands including OR bank; TOGG Y/M / 直接定址含 OR 區；TOGG 使用 Y/M |
+| 11–14 | ADD, SUB, MUL, DIV | ✅ | ✅ | ✅ | ADD register/constant Sb; others constant Sb / ADD 支援暫存器或常數 Sb，其餘為常數 Sb |
 | 15–16 | INC, DEC | ✅ | ✅ | ✅ | Direct R/D destination / 直接 R/D 目的元件 |
 | 17 | CMP | ✅ | ✅ | ✅ | Direct register comparison / 直接暫存器比較 |
 | 18–19 | AND, OR | ✅ | ✅ | ✅ | Direct R/D operands / 直接 R/D 運算元 |

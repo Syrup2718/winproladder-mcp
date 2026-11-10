@@ -19,6 +19,9 @@ from .instruction_catalog import (
     ARITHMETIC_PAYLOADS as ARITHMETIC_PAYLOADS,
 )
 from .instruction_catalog import (
+    ARITHMETIC_REGISTER_OPCODES as ARITHMETIC_REGISTER_OPCODES,
+)
+from .instruction_catalog import (
     BLOCK_CASES as BLOCK_CASES,
 )
 from .instruction_catalog import (
@@ -147,12 +150,12 @@ class RegisterOr(Model):
 
 
 class Arithmetic(Model):
-    """test7: 16-bit register Sa, nonnegative immediate Sb, direct destination."""
+    """16-bit FUN11..14; FUN11 also supports the sampled register-Sb form."""
 
     type: Literal["arithmetic"] = "arithmetic"
     operation: Literal["add", "sub", "mul", "div"]
     sa: str
-    sb: Annotated[int, Field(strict=True, ge=0, le=32767)]
+    sb: str | Annotated[int, Field(strict=True, ge=0, le=32767)]
     destination: str
     enable: str = "always_on"
     unsigned_when: str = "FALSE"
@@ -164,6 +167,10 @@ class Arithmetic(Model):
     @model_validator(mode="after")
     def check_operands(self) -> "Arithmetic":
         register_span(self.sa, 1)
+        if isinstance(self.sb, str):
+            if self.operation != "add":
+                raise ValueError("Register Sb is currently established only for FUN11 ADD")
+            register_span(self.sb, 1)
         register_span(self.destination, self.destination_words, writable=True)
         if self.operation == "div" and self.sb == 0:
             raise ValueError("Constant division by zero is not supported")
@@ -906,6 +913,8 @@ class AccumulativeTimer(Model):
             encode_word(self.cv)
         else:
             # Manual 7-81 explicitly permits the IR bank for this instruction's CV.
+            if self.cv.startswith("R") and 3904 <= int(self.cv[1:]) <= 3967:
+                raise ValueError("Accumulative timer CV does not support the OR bank")
             register_span(self.cv, 1)
         register_span(self.pv, 1)
         parse_expression(self.timing)
@@ -1891,9 +1900,17 @@ def compile_network(network: Network) -> bytes:
                 return (
                     prefix
                     + compile_expression(parse_expression(action.unsigned_when), nested=True)
-                    + ARITHMETIC_OPCODES[action.operation]
+                    + (
+                        ARITHMETIC_REGISTER_OPCODES[action.operation]
+                        if isinstance(action.sb, str)
+                        else ARITHMETIC_OPCODES[action.operation]
+                    )
                     + encode_register(action.sa)
-                    + action.sb.to_bytes(2, "big")
+                    + (
+                        encode_register(action.sb)
+                        if isinstance(action.sb, str)
+                        else action.sb.to_bytes(2, "big")
+                    )
                     + encode_register(action.destination)
                 )
             if isinstance(action, LinearConversion):
@@ -2392,15 +2409,24 @@ def decode_network(payload: bytes) -> Network | None:
                 length=int.from_bytes(payload[-2:], "big"),
                 enable=expression_text(decode_expression(payload[:-12])),
             )
-        elif len(payload) >= 12 and payload[-8:-6] in ARITHMETIC_OPCODES.values():
+        elif len(payload) >= 12 and payload[-8:-6] in {
+            *ARITHMETIC_OPCODES.values(),
+            *ARITHMETIC_REGISTER_OPCODES.values(),
+        }:
             en, unsigned = decode_two_inputs(payload[:-8])
+            register_sb = payload[-8:-6] in ARITHMETIC_REGISTER_OPCODES.values()
+            opcodes = ARITHMETIC_REGISTER_OPCODES if register_sb else ARITHMETIC_OPCODES
             action = Arithmetic.model_validate(
                 {
                     "operation": next(
-                        k for k, v in ARITHMETIC_OPCODES.items() if v == payload[-8:-6]
+                        k for k, v in opcodes.items() if v == payload[-8:-6]
                     ),
                     "sa": decode_register(payload[-6:-4]),
-                    "sb": int.from_bytes(payload[-4:-2], "big"),
+                    "sb": (
+                        decode_register(payload[-4:-2])
+                        if register_sb
+                        else int.from_bytes(payload[-4:-2], "big")
+                    ),
                     "destination": decode_register(payload[-2:]),
                     "enable": expression_text(en),
                     "unsigned_when": expression_text(unsigned),

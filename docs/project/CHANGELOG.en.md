@@ -6,6 +6,11 @@ This file lists only user-facing changes. Git history and automated tests retain
 
 ## Unreleased
 
+- Used the user-supplied WinProLadder `add_fix.ldr` export to add FUN11 register-`Sb`
+  encode/decode support and the common OR register bank `R3904..R3967`. FUN8 MOV can now
+  write OR registers; the offline model, device references, and exact-payload regressions
+  were updated together.
+
 ## 1.1.1 — 2026-11-10
 
 - Made compact responses the program default and exposed `response_mode`; added
