@@ -59,11 +59,40 @@ def test_component_comment_rejects_invalid_fields(field: str, value: str) -> Non
         ComponentComment.model_validate(values)
 
 
+@pytest.mark.parametrize(
+    "value",
+    [
+        "1234567890123456",
+        "                ",
+        "中文中文中文中文",
+        "12345678901234中",
+    ],
+)
+def test_component_comment_accepts_exactly_16_cp950_bytes(value: str) -> None:
+    comment = ComponentComment(ref="X0", comment=value)
+    assert len(comment.comment.encode("cp950")) == 16
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "12345678901234567",
+        "中文中文中文中文中",
+        "123456789012345中",
+        "               中",
+    ],
+)
+def test_component_comment_rejects_more_than_16_cp950_bytes(value: str) -> None:
+    with pytest.raises(ValidationError, match="16"):
+        ComponentComment(ref="X0", comment=value)
+
+
 def test_component_comment_writer_is_scoped_and_never_overwrites(tmp_path: Path) -> None:
     service = Service(tmp_path)
     result = service.write_component_comments("comments.txt", SAMPLE_ENTRIES)
     assert Path(result["path"]).read_bytes() == SAMPLE_BYTES
     assert result["format"]["encoding"] == "CP950/Big5"
+    assert result["format"]["comment_max_bytes"] == 16
     with pytest.raises(FileExistsError):
         service.write_component_comments("comments.txt", SAMPLE_ENTRIES)
     with pytest.raises(ValueError, match=r"plain \.txt filename"):
@@ -105,5 +134,16 @@ def test_component_comment_stdio_generation_and_download(tmp_path: Path) -> None
             resource = downloaded.contents[0]
             assert isinstance(resource, BlobResourceContents)
             assert base64.b64decode(resource.blob, validate=True) == SAMPLE_BYTES
+
+            rejected = await session.call_tool(
+                "generate_component_comments",
+                {
+                    "output_name": "too-long.txt",
+                    "entries": [{"ref": "X0", "comment": "中文中文中文中文中"}],
+                },
+            )
+            assert rejected.isError
+            assert "16 bytes" in str(rejected.content)
+            assert not (tmp_path / "artifacts/too-long.txt").exists()
 
     asyncio.run(asyncio.wait_for(run(), timeout=60))

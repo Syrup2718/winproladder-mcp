@@ -120,6 +120,7 @@ def capabilities() -> dict[str, Any]:
             "artifact": "Separate .txt; not embedded into the .ldr",
             "columns": ["REF", "COMMENT", "DESCRIPTION"],
             "encoding": "CP950/Big5",
+            "comment_max_bytes": 16,
             "delimiter": "tab",
             "newline": "CRLF",
             "writes": "new files only; never overwrite",

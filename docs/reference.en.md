@@ -56,10 +56,10 @@ When the user explicitly asks to “add component comments,” call `generate_co
 | Field | Description |
 | --- | --- |
 | `ref` | Device reference, such as X0, Y0, M0, or D1 |
-| `comment` | Short comment; may be empty |
+| `comment` | Short comment; may be empty; at most 16 bytes in CP950/Big5 (spaces use 1 byte and Chinese characters typically use 2 bytes, so at most 8 Chinese characters) |
 | `description` | Additional description; may be empty |
 
-The result is a separate `.txt` file with `REF`, `COMMENT`, and `DESCRIPTION` columns, separated by tabs and encoded as CP950/Big5 with CRLF line endings. Duplicate references, control characters, and text that cannot be represented in CP950 are rejected.
+The result is a separate `.txt` file with `REF`, `COMMENT`, and `DESCRIPTION` columns, separated by tabs and encoded as CP950/Big5 with CRLF line endings. A `COMMENT` over 16 encoded bytes, duplicate references, control characters, and text that cannot be represented in CP950 are rejected.
 
 ## Simulation and Acceptance
 

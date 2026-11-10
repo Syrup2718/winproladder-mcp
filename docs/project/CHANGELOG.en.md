@@ -6,6 +6,8 @@ This file lists only user-facing changes. Git history and automated tests retain
 
 ## Unreleased
 
+- Component `COMMENT` values are now validated against WinProLadder's 16-byte CP950/Big5 limit;
+  spaces use 1 byte and Chinese characters typically use 2 bytes (at most 8 Chinese characters).
 - Added inferred FUN8 MOV signed 16-bit constant-source `F6AC` encode/decode support from the
   established `F4` register / `F6` constant operand-form rule and the user-provided WinProLadder
   screenshot. Offline modeling, references, boundaries, and exact-payload round-trip tests were

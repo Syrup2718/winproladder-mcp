@@ -55,10 +55,10 @@ Ladder／Network IR 的工具只公開輕量 object schema，但呼叫時仍以�
 | 欄位 | 說明 |
 | --- | --- |
 | `ref` | 元件編號，例如 X0、Y0、M0、D1 |
-| `comment` | 短註解，可留空 |
+| `comment` | 短註解，可留空；CP950／Big5 編碼後最多 16 bytes（空白 1 byte，一般中文字 2 bytes，最多 8 個中文字） |
 | `description` | 補充說明，可留空 |
 
-輸出是獨立 `.txt`：`REF`／`COMMENT`／`DESCRIPTION`、Tab 分隔、CRLF、CP950／Big5。重複 REF、控制字元或無法以 CP950 表示的文字會被拒絕。
+輸出是獨立 `.txt`：`REF`／`COMMENT`／`DESCRIPTION`、Tab 分隔、CRLF、CP950／Big5。`COMMENT` 超過 16 個編碼 bytes、重複 REF、控制字元或無法以 CP950 表示的文字會被拒絕。
 
 ## 模擬與 acceptance
 

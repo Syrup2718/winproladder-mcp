@@ -23,7 +23,7 @@ FBs-20MC／32MC／40MC／60MC 的可變長度程式、
 | `.ldr.design.json` | 高階產生器的設計、假設與元件配置 |
 | `.txt` | 使用者明確要求時產生的元件註解表 |
 
-元件註解檔固定使用 `REF`、`COMMENT`、`DESCRIPTION` 三欄，Tab 分隔、CRLF 換行及 CP950／Big5 編碼。
+元件註解檔固定使用 `REF`、`COMMENT`、`DESCRIPTION` 三欄，Tab 分隔、CRLF 換行及 CP950／Big5 編碼；`COMMENT` 編碼後最多 16 bytes（空白 1 byte，一般中文字 2 bytes）。
 
 ## 產生方式
 

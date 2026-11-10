@@ -323,6 +323,7 @@ class Service:
                 "delimiter": "tab",
                 "newline": "CRLF",
                 "encoding": "CP950/Big5",
+                "comment_max_bytes": 16,
             },
         }
 

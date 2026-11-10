@@ -17,7 +17,7 @@ v1.1.0 added experimental template-based PDW inspection and generation for FBs-2
 | `.ldr.design.json` | Design decisions, assumptions, and device allocation from high-level generators |
 | `.txt` | Optional component-comment table generated only when explicitly requested |
 
-Component-comment files use `REF`, `COMMENT`, and `DESCRIPTION` columns with tab delimiters, CRLF newlines, and CP950/Big5 encoding.
+Component-comment files use `REF`, `COMMENT`, and `DESCRIPTION` columns with tab delimiters, CRLF newlines, and CP950/Big5 encoding. `COMMENT` is limited to 16 encoded bytes (spaces use 1 byte and Chinese characters typically use 2 bytes).
 
 ## Generation methods
 

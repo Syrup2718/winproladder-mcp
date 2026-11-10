@@ -6,6 +6,8 @@
 
 ## 未發行
 
+- 元件 `COMMENT` 現依 WinProLadder 限制驗證 CP950／Big5 編碼後最多 16 bytes；
+  空白算 1 byte，一般中文字算 2 bytes（最多 8 個中文字）。
 - 依 FUN 指令既有的 `F4` 暫存器／`F6` 常數 operand-form 規則與使用者提供的 WinProLadder
   畫面，新增 FUN8 MOV 的有號 16 位元常數來源 `F6AC` 推估編解碼；同步加入離線模型、
   資源追蹤、邊界及 exact-payload round-trip 測試，並明確標示尚未取得 GUI bytes 驗證。

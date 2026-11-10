@@ -843,7 +843,9 @@ def build_server(
         ],
         entries: Annotated[
             list[ComponentComment],
-            Field(description="Component rows containing a device ref, comment and description."),
+            Field(
+                description="Rows with ref, description, and COMMENT (max 16 CP950/Big5 bytes)."
+            ),
         ],
     ) -> Annotated[CallToolResult, ArtifactToolOutput]:
         """Create only a separate CP950 WinProLadder component-comment import .txt file.
@@ -851,8 +853,8 @@ def build_server(
         Call this only when the user explicitly requests 新增元件註解 or component comments. It
         does not inspect, analyze, generate or modify ladder logic or PDW projects; use analyze_ldr
         to explain the logic and device references in an existing .ldr.
-        Each row has ref, comment and description. Output exactly follows the supplied sample:
-        REF/COMMENT/DESCRIPTION columns, tabs, CRLF and CP950/Big5. Never overwrites a file.
+        Rows use REF/COMMENT/DESCRIPTION, tabs, CRLF and CP950/Big5; COMMENT is at most 16
+        encoded bytes. Never overwrites a file.
         """
         result = service.write_component_comments(output_name, entries)
         data = artifact_bytes(output_name, frozenset({".txt"}))
