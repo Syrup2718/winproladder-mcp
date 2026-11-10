@@ -20,7 +20,7 @@
 
 ## 樣本與測試
 
-[樣本目錄](../samples/README.md)列出 **31 份匯出、219 個網路**。原始雜湊由 `tests/test_sample_integrity.py` 保護；格式往返、語意解碼、生成政策與 MCP 交付分別測試。樣本解碼覆蓋不等於全部樣本可通過生成政策。
+[樣本目錄](../samples/README.md)列出 **32 份匯出、225 個網路**。原始雜湊由 `tests/test_sample_integrity.py` 保護；格式往返、語意解碼、生成政策與 MCP 交付分別測試。樣本解碼覆蓋不等於全部樣本可通過生成政策。
 
 測試分類與命令見[測試導覽](../tests/README.md)。指令研究文件中的測試數屬於該次開發紀錄，不是持續更新的全套測試數；請重新執行測試取得所在 commit 的結果。
 
@@ -29,6 +29,7 @@
 - 自保持模板：`(Y0 OR X0) AND NOT X1 → Y0`，281 bytes，payload `4100A0009001C100`，record CRC `0x5048`。其他位址、極性或檔頭不自動繼承此狀態。
 - 交通燈匯入基準：`tests/fixtures/traffic_light-connected-verified.ldr`，25 網路、713 bytes，SHA-256 `a4694aa8db73737ada925742ebc6ba164aee52e56137bd5ae201017c203b3b94`。包含歷史輔助 M 結構，保留作缺陷與匯入對照，不代表符合現行生成政策。
 - 比較接點：FUN170～175 的指定試檔已確認首段與串聯位置；原始樣本及自動測試保留在 `samples/` 與 `tests/`。
+- 常數 MOV：使用者提供的 `MOV.ldr` 匯出確認 FUN8 常數來源 opcode 為 `F5AC`；樣本以 `samples/MOV_user_probe.ldr` 保存。GUI 匯出的 4 組取樣值為 3276、16383、0、100，目的暫存器為 `R2000～R2003`；其他常數／目的位址是依同一 operand form 延伸，不是各自的 GUI 匯出或實體 PLC 執行證據。
 
 其他 GUI 截圖用於辨識原始匯出，不能當成重建檔或新參數變體的匯入驗證。未記錄實體 PLC 驗證的項目不得標示為已驗證。
 

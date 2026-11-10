@@ -40,7 +40,14 @@ def test_lossless_roundtrip(path: Path) -> None:
         "test13.ldr": "FBs-44MN-test13",
         "test12.ldr": "FBs-40MA-test12",
     }.get(path.name, "FBs-20MC")
-    assert doc.header == default_header(profile)
+    if path.name == "MOV_user_probe.ldr":
+        # Preserve the user's exact header losslessly, but do not expose its
+        # unresolved byte-192 difference as a selectable CPU profile.
+        assert doc.header[160:168].rstrip(b"\x00") == b"FBs-32MC"
+        assert doc.header[176:178] == bytes.fromhex("4040")
+        assert doc.header[192:194] == bytes.fromhex("4a01")
+    else:
+        assert doc.header == default_header(profile)
 
 
 def test_unknown_payload_and_trailer_roundtrip() -> None:

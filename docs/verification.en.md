@@ -20,7 +20,7 @@ This project records encoding, model, software, and hardware verification separa
 
 ## Samples and Tests
 
-The [sample directory](../samples/README.md) contains **31 exports and 219 networks**. `tests/test_sample_integrity.py` protects the original hashes. Format round trips, semantic decoding, generation policy, and MCP delivery are tested separately. Sample decoding coverage does not mean every sample complies with the current generation policy.
+The [sample directory](../samples/README.md) contains **32 exports and 225 networks**. `tests/test_sample_integrity.py` protects the original hashes. Format round trips, semantic decoding, generation policy, and MCP delivery are tested separately. Sample decoding coverage does not mean every sample complies with the current generation policy.
 
 See the [test guide](../tests/README.md) for categories and commands. Test counts in instruction-research documents are snapshots from that work, not a continuously updated total. Rerun the tests for the current commit.
 
@@ -29,6 +29,7 @@ See the [test guide](../tests/README.md) for categories and commands. Test count
 - Self-hold template: `(Y0 OR X0) AND NOT X1 → Y0`, 281 bytes, payload `4100A0009001C100`, record CRC `0x5048`. Other addresses, polarities, and headers do not inherit this status automatically.
 - Traffic-light import baseline: `tests/fixtures/traffic_light-connected-verified.ldr`, 25 networks, 713 bytes, SHA-256 `a4694aa8db73737ada925742ebc6ba164aee52e56137bd5ae201017c203b3b94`. It contains historical helper-M structures and is retained for defect and import comparison; it does not represent current generation policy.
 - Comparison contacts: selected FUN170–175 files were confirmed in first-segment and series positions. Original samples and automated tests remain under `samples/` and `tests/`.
+- Constant MOV: the user-supplied `MOV.ldr` export establishes `F5AC` as the FUN8 constant-source opcode and is preserved as `samples/MOV_user_probe.ldr`. Its four GUI-exported samples use values 3276, 16383, 0, and 100 with destinations `R2000..R2003`. Other constants and destinations extend the same operand form; they are not independently GUI-exported or physically executed evidence.
 
 Other GUI screenshots help identify original exports but do not prove importability of reconstructed files or new parameter variants. Anything without recorded physical PLC verification must not be labeled as physically verified.
 

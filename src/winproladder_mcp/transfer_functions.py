@@ -71,7 +71,7 @@ LENGTHS = {
     "matrix_bit_count": (2, 256),
 }
 MOVES = {"move_word", "move_inverse"}
-CONSTANT_MOVE_CODE = "f6ac"  # Inferred constant-source form; screenshot-confirmed operands.
+CONSTANT_MOVE_CODE = "f5ac"  # Observed in user-supplied WinProLadder MOV.ldr export.
 
 
 def move_word(name: str, *, writable: bool = False) -> bytes:

@@ -8,6 +8,7 @@ from .instruction_catalog import (
     ARITHMETIC_PAYLOADS,
     EDGE_PAYLOADS,
     LCNV_PAYLOADS,
+    MOV_CONSTANT_PAYLOADS,
     TEST8_PAYLOADS,
     TEST9_PAYLOADS,
     TEST10_PAYLOADS,
@@ -235,8 +236,12 @@ def collect_instruction_evidence(
             anchors = TEST23_PAYLOADS
             evidence_name = "test23"
         if network.action.type in TRANSFER_CODES:
-            anchors = TEST24_PAYLOADS
-            evidence_name = "test24"
+            if network.action.type == "move_word" and isinstance(network.action.source, int):
+                anchors = MOV_CONSTANT_PAYLOADS
+                evidence_name = "MOV_user_probe"
+            else:
+                anchors = TEST24_PAYLOADS
+                evidence_name = "test24"
         if network.action.type in PACKING_CODES:
             anchors = TEST25_PAYLOADS
             evidence_name = "test25"
@@ -557,10 +562,10 @@ WARNING_RULES: tuple[tuple[Predicate, str], ...] = (
     (
         lambda ladder: _process(ladder, set(TRANSFER_CODES)),
         "test24: sampled 16-bit non-P forms and constant lengths. Constant-source MOV uses the "
-        "inferred F6AC operand form. TOGG uses rising edges. Matrix "
+        "GUI-exported F5AC operand form from MOV.ldr. TOGG uses rising edges. Matrix "
         "L counts words; MBCNT writes one word. Z-WR N is literal, 1..511. WY8 writes Y8..Y23. "
-        "Direct R/D/OR MOV and TOGG have a bounded model; other forms do not. No GUI or PLC "
-        "verification.",
+        "Direct R/D/OR MOV and TOGG have a bounded model; other forms do not. Source samples are "
+        "GUI exports; generated variants have no GUI-import or PLC-execution verification.",
     ),
     (
         lambda ladder: _process(ladder, set(MATRIX_CODES)),

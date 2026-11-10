@@ -2,20 +2,28 @@
 
 [繁體中文](CHANGELOG.md) | **English**
 
-This file lists only user-facing changes. Git history and automated tests retain implementation details and encoding evidence.
+This file lists only user-facing changes. Git history and automated tests retain implementation
+details. Entries involving `.ldr` encoding still state their evidence boundary so that a single GUI
+export is not mistaken for verification of every generated variant.
 
 ## Unreleased
 
-- Component `COMMENT` values are now validated against WinProLadder's 16-byte CP950/Big5 limit;
-  spaces use 1 byte and Chinese characters typically use 2 bytes (at most 8 Chinese characters).
-- Added inferred FUN8 MOV signed 16-bit constant-source `F6AC` encode/decode support from the
-  established `F4` register / `F6` constant operand-form rule and the user-provided WinProLadder
-  screenshot. Offline modeling, references, boundaries, and exact-payload round-trip tests were
-  added while explicitly retaining the lack of exported GUI-byte verification.
-- Used the user-supplied WinProLadder `add_fix.ldr` export to add FUN11 register-`Sb`
-  encode/decode support and the common OR register bank `R3904..R3967`. FUN8 MOV can now
-  write OR registers; the offline model, device references, and exact-payload regressions
-  were updated together.
+### Fixed
+
+- Component-comment `COMMENT` values are now checked before writing against WinProLadder's
+  16-byte CP950/Big5 limit. Spaces typically use 1 byte and Chinese characters typically use 2.
+- Corrected the FUN8 MOV signed 16-bit constant-source encoding. Four sampled operand sets in the
+  user-supplied WinProLadder `MOV.ldr` export establish `F5AC`, not the earlier `F6AC` inference.
+  Other constant values use the same operand form but have not each been GUI-exported or executed
+  on a physical PLC.
+
+### Added
+
+- Added FUN11 ADD register-`Sb` encode/decode support from the user-supplied WinProLadder
+  `add_fix.ldr` export, and enabled the common direct-register codec and FUN8 MOV to use the OR
+  bank `R3904..R3967`. The export anchors `R3904`; the remaining OR addresses extend the same
+  address formula. Newly generated variants still require separate GUI-import and physical-PLC
+  verification.
 
 ## 1.1.1 — 2026-11-10
 
@@ -52,9 +60,11 @@ This file lists only user-facing changes. Git history and automated tests retain
 - Check source, lowered programs, and decoded emitted bytes before writing, including I/O contracts, workspace policy, and acceptance cases.
 - Private PDW templates are supplied locally; the repository includes no private PDW samples or masks.
 - Added an English README, feature overview, core usage documentation, and the shared bilingual FUNC support table.
-- Adjusted some text layout.
 
-PDW remains experimental: supplied 24MC/32MC samples are not yet integrated. FUNC199 is opaque inspection only. Control-flow generation, initialization of unknown module parameters, and hardware compatibility checks are not provided. User-reported GUI checks apply to specific artifacts, not all new outputs; physical PLC verification is pending.
+At the 1.1.0 release, PDW remained experimental: supplied 24MC/32MC samples were not yet
+integrated. FUNC199 was opaque inspection only. Control-flow generation, initialization of unknown
+module parameters, and hardware compatibility checks were not provided. User-reported GUI checks
+applied to specific artifacts, not all new outputs; physical PLC verification was pending.
 
 ## 1.0.0 — 2026-10-21
 

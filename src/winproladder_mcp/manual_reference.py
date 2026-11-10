@@ -136,7 +136,7 @@ def manual_reference() -> dict[str, Any]:
             "TEST24_TRANSFER_MATRIX": {
                 "pages": "Basic 7-23..25; advanced 7-111..112, 7-122..124",
                 "MOV": "EN transfers one word; MOV/ bitwise inverts before writing. The codec "
-                "supports direct-word MOV and inferred signed 16-bit constant-source MOV. "
+                "supports direct-word MOV and GUI-exported signed 16-bit constant-source MOV. "
                 "WY8 spans Y8..Y23. Basic manual D max 3071, MOV/ IR max R3847; "
                 "newer advanced bank tables do not settle these MOV forms",
                 "TOGG": "Each TG 0-to-1 transition toggles destination; continuous high TG "

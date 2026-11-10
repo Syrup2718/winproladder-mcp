@@ -258,6 +258,15 @@ TEST24_PAYLOADS = {
     7: "400bf8e4081a",
 }
 
+# User-provided WinProLadder MOV.ldr export. These four records establish the
+# FUN8 signed 16-bit constant-source form and its operand order.
+MOV_CONSTANT_PAYLOADS = {
+    0: "4fe8f5ac0ccc19a0",
+    1: "4fe8f5ac3fff19a2",
+    2: "4fe8f5ac000019a4",
+    3: "4fe8f5ac006419a6",
+}
+
 
 TEST25_PAYLOADS = {
     0: "4fe8f4b008000a00000b0007",

@@ -42,8 +42,9 @@
 
 ### 最新版本
 
-目前原始碼已準備為 **v1.1.1**。此版改善 MCP 工具探索、精簡回應、警告傳遞與
-驗證證據表達，並納入 FBs-32MC 的 PDW 範本版面。版本內容與發布後下載請見
+最新發布版為 **v1.1.1**；目前 `main` 另含尚未發行的修正。v1.1.1 改善 MCP 工具探索、
+精簡回應、警告傳遞與驗證證據表達，並納入 FBs-32MC 的 PDW 範本版面。已發布內容、
+目前未發行變更與下載請見
 [Releases](https://github.com/Syrup2718/winproladder-mcp/releases/latest) 與
 [CHANGELOG](docs/project/CHANGELOG.md)。
 

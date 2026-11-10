@@ -198,14 +198,14 @@ def test_mov_supports_common_or_bank_from_r3904_anchor():
 @pytest.mark.parametrize(
     "value,destination,payload",
     [
-        (3276, "R2000", "4fe8f6ac0ccc19a0"),
-        (16383, "R2001", "4fe8f6ac3fff19a2"),
-        (0, "R2002", "4fe8f6ac000019a4"),
-        (100, "R2003", "4fe8f6ac006419a6"),
-        (-32768, "R2004", "4fe8f6ac800019a8"),
+        (3276, "R2000", "4fe8f5ac0ccc19a0"),
+        (16383, "R2001", "4fe8f5ac3fff19a2"),
+        (0, "R2002", "4fe8f5ac000019a4"),
+        (100, "R2003", "4fe8f5ac006419a6"),
+        (-32768, "R2004", "4fe8f5ac800019a8"),
     ],
 )
-def test_inferred_constant_mov_round_trip_and_runtime(value, destination, payload):
+def test_constant_mov_round_trip_and_runtime(value, destination, payload):
     network = Network(
         action=ProcessFunction(type="move_word", source=value, destination=destination)
     )
@@ -218,6 +218,12 @@ def test_inferred_constant_mov_round_trip_and_runtime(value, destination, payloa
     assert timed_simulate(Ladder(networks=[network]), [{}], {}, 10)[0][destination] == (
         value & 0xFFFF
     )
+    evidence = validation(Ladder(networks=[network]))["instruction_evidence"][0]
+    if value in {3276, 16383, 0, 100}:
+        assert evidence["status"] == "observed_export"
+        assert evidence["source"].startswith("MOV_user_probe.ldr N")
+    else:
+        assert evidence["status"] == "inferred_variant"
 
 
 @pytest.mark.parametrize("value", [-32769, 32768, True])

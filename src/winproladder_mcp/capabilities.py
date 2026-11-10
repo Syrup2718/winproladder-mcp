@@ -244,7 +244,7 @@ def capabilities() -> dict[str, Any]:
                 "dynamic lengths, D/P and indirect encoding remain unresolved. "
                 "TOGG Y0..255/M0..999; other legal bit families not yet encoded. "
                 "WY8 writes Y8..Y23, all must be in IO contract. MOV accepts a direct word "
-                "source or an inferred signed 16-bit constant source; direct R/D/OR MOV and "
+                "source or a GUI-exported signed 16-bit constant source; direct R/D/OR MOV and "
                 "TOGG are modeled; other forms are not",
             },
             "test23_functions": {

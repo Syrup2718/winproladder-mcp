@@ -86,4 +86,4 @@ The current source provides 23 tools in five groups:
 - Some instructions support only sampled forms, decoding, or encoding.
 - Component comments are a separate `.txt` file and are not embedded in `.ldr`.
 
-The repository preserves 31 original WinProLadder exports containing 219 networks as regression evidence. These checks do not replace GUI import or physical PLC verification.
+The repository preserves 32 original WinProLadder exports containing 225 networks as regression evidence. These checks do not replace GUI import or physical PLC verification.

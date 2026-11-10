@@ -1,15 +1,19 @@
-# v1.1.1 合併與發布
+# v1.1.1 發布紀錄
 
-目前準備的是 v1.1.1 原始碼版本，PDW 仍標為實驗功能。這份流程不建立 wheel、sdist
-或安裝程式；GitHub Release 只使用 GitHub 依標籤產生的原始碼封存。
-發布說明可直接採用 [CHANGELOG](CHANGELOG.md) 的 1.1.1 條目。
+v1.1.1 已於 2026-11-10 建立標籤；目前 `main` 的後續修正列在
+[CHANGELOG](CHANGELOG.md) 的「未發行」。本文件保留該版的發布步驟作維護紀錄，
+不是要求重新建立或移動既有標籤。未來版本可沿用檢查項目，但必須另行確認版本號、
+日期與發布內容。
+
+這份流程不建立 wheel、sdist 或安裝程式；GitHub Release 只使用 GitHub 依標籤產生的
+原始碼封存。v1.1.1 的發布說明採用 CHANGELOG 的同名條目，PDW 仍標為實驗功能。
 
 ## 1. 確認發布提交
 
 在專案根目錄確認目前分支、變更內容與私人檔案：
 
-  ```bash
-  git branch --show-current
+```bash
+git branch --show-current
 git status --short
 git diff --check
 git diff

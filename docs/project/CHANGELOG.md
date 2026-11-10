@@ -2,18 +2,25 @@
 
 **繁體中文** | [English](CHANGELOG.en.md)
 
-本文件只保留對使用者有影響的版本變更。細部修復與編碼證據由 Git 歷史及自動測試追蹤。
+本文件只保留對使用者有影響的版本變更。細部實作由 Git 歷史及自動測試追蹤；
+涉及 `.ldr` 編碼時，仍會註明證據範圍，避免把單一 GUI 匯出樣本誤解為所有變體皆已驗證。
 
 ## 未發行
 
-- 元件 `COMMENT` 現依 WinProLadder 限制驗證 CP950／Big5 編碼後最多 16 bytes；
-  空白算 1 byte，一般中文字算 2 bytes（最多 8 個中文字）。
-- 依 FUN 指令既有的 `F4` 暫存器／`F6` 常數 operand-form 規則與使用者提供的 WinProLadder
-  畫面，新增 FUN8 MOV 的有號 16 位元常數來源 `F6AC` 推估編解碼；同步加入離線模型、
-  資源追蹤、邊界及 exact-payload round-trip 測試，並明確標示尚未取得 GUI bytes 驗證。
-- 依使用者提供的 WinProLadder `add_fix.ldr` 匯出補上 FUN11 暫存器 `Sb` 編解碼，並將
-  OR 區 `R3904～R3967` 納入共用直接暫存器編碼；FUN8 MOV 可直接寫入 OR 區，離線模型、
-  元件讀寫追蹤與精確 payload 回歸測試同步更新。
+### 修正
+
+- 元件註解的 `COMMENT` 現在會在寫檔前依 WinProLadder 限制檢查 CP950／Big5 編碼長度，
+  超過 16 bytes 便拒絕；空白通常為 1 byte，中文字通常為 2 bytes。
+- 修正 FUN8 MOV 有號 16 位元常數來源的編碼：使用者提供的 WinProLadder `MOV.ldr`
+  匯出確認 4 組取樣 operand 使用 `F5AC`，而非先前推估的 `F6AC`。其他常數值沿用同一
+  operand form 產生，尚未逐值取得 GUI 匯出或實體 PLC 執行證據。
+
+### 新增
+
+- 依使用者提供的 WinProLadder `add_fix.ldr` 匯出，補上 FUN11 ADD 的暫存器 `Sb`
+  編解碼，並讓 FUN8 MOV 與共用直接暫存器編碼可使用 OR 區 `R3904～R3967`。
+  `R3904` 由 GUI 匯出錨定，其餘 OR 位址依同一位址公式延伸；新產生的變體仍需另行
+  GUI 匯入與實體 PLC 驗證。
 
 ## 1.1.1 — 2026-11-10
 
@@ -52,9 +59,8 @@
 - 寫檔前檢查來源、lowered program 與解碼後的實際輸出，保留 I/O、政策及 acceptance 檢查。
 - 私人範本由使用者本機提供；repository 不包含私人 PDW 樣本或遮罩。
 - 新增英文 README、英文功能總覽、英文使用文件及中英共用的 FUNC 支援表。
-- 調整一些文字排版。
 
-PDW 仍為實驗功能：24MC／32MC 已有樣本但尚未整合；FUNC199 僅不透明辨識，
+在 1.1.0 發布時，PDW 仍為實驗功能：24MC／32MC 已有樣本但尚未整合；FUNC199 僅不透明辨識，
 流程控制生成、未知模組參數初始化及硬體相容性驗證尚未提供。
 特定輸出已有使用者 GUI 開啟回報，不能推及所有新輸出；未完成實體 PLC 驗證。
 
