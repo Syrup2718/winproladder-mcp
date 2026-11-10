@@ -9,6 +9,7 @@ from .ldr import MAX_SIZE
 ENCODING = "cp950"
 HEADER = "REF\tCOMMENT\tDESCRIPTION"
 MAX_ENTRIES = 10_000
+MAX_COMMENT_BYTES = 16
 
 
 class ComponentComment(BaseModel):
@@ -17,7 +18,11 @@ class ComponentComment(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ref: str = Field(min_length=1, max_length=64)
-    comment: str = Field(default="", max_length=1000)
+    comment: str = Field(
+        default="",
+        max_length=MAX_COMMENT_BYTES,
+        description="Short comment; at most 16 bytes after CP950/Big5 encoding.",
+    )
     description: str = Field(default="", max_length=4000)
 
     @field_validator("ref")
@@ -37,6 +42,16 @@ class ComponentComment(BaseModel):
         except UnicodeEncodeError as error:
             message = "COMMENT and DESCRIPTION must be representable in CP950/Big5"
             raise ValueError(message) from error
+        return value
+
+    @field_validator("comment")
+    @classmethod
+    def comment_fits_winproladder(cls, value: str) -> str:
+        if len(value.encode(ENCODING, errors="strict")) > MAX_COMMENT_BYTES:
+            raise ValueError(
+                "COMMENT must be at most 16 bytes in CP950/Big5 "
+                "(spaces count as 1 byte; Chinese characters typically count as 2 bytes)"
+            )
         return value
 
 
