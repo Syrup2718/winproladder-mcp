@@ -7,8 +7,9 @@
 本頁說明目前原始碼的公開能力與邊界。精確 schema 與個別指令限制請查詢 MCP 的
 `get_capabilities` 和 `get_instruction_capabilities`；後者未指定 family 時會列出族群。
 
-v1.1.0 新增實驗工具 `inspect_pdw`、`generate_pdw`、`generate_project_pdw`、`get_pdw_artifact`。
-目前原始碼的新專案工具共用 Ladder 編譯器，支援本機 FBs-20MC／32MC／40MC／60MC 的可變長度程式、
+v1.1.0 新增實驗工具 `inspect_pdw`、`generate_pdw`、`generate_project_pdw`、`get_pdw_artifact`；
+v1.1.1 納入 FBs-32MC 範本版面。新專案工具共用 Ladder 編譯器，支援本機
+FBs-20MC／32MC／40MC／60MC 的可變長度程式、
 分區、中文註解與已有模組紀錄的保留／選用；
 舊工具保留一／兩列等長替換。FUNC199 僅不透明辨識，詳見
 [PDW 範圍與驗證限制](../pdw-format.md)。

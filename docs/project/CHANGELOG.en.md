@@ -6,6 +6,8 @@ This file lists only user-facing changes. Git history and automated tests retain
 
 ## Unreleased
 
+## 1.1.1 — 2026-11-10
+
 - Made compact responses the program default and exposed `response_mode`; added
   `--full-responses` for explicit full diagnostics.
 - Split validation evidence into exact artifact, prior payload anchor, and physical PLC levels.
@@ -14,6 +16,21 @@ This file lists only user-facing changes. Git history and automated tests retain
 - Integrated the user-supplied FBs-32MC saved-project layout into the PDW model allowlist and
   mapped it to the existing `FBs-32MC-test30` Ladder profile, with parse, rebuild, and full
   project-generation regressions.
+- Fixed compact artifact summaries dropping nested `.ldr` validation warnings. Text summaries,
+  top-level structured `warnings`, and `validation.warnings` now agree, with an arithmetic-warning
+  stdio regression.
+- Shortened global MCP instructions and completed tool purposes, selection boundaries, parameter
+  semantics, and output schemas. `get_design_guide(detail=true)` now owns the full Ladder/Network
+  IR schema instead of repeating large unions in `tools/list`; runtime Pydantic validation remains.
+- Added a named, range-constrained RTC register schema to `inspect_rtc_snapshot`, and clarified
+  design-guide detail defaults, full examples, and intended usage.
+- Clarified non-overwriting PDW creation and template-revision workflows and sharpened tool
+  boundaries used to avoid false shadowing matches.
+- Split workspace-audit reporting between broken source links and local-output links.
+- Updated the locked `certifi` and `PyJWT` transitive dependencies for known security advisories.
+- Reduced the public MCP surface from 22 to 19 base tools: removed `create_ldr` and
+  `create_start_stop`, which are superseded by high-level generators, and folded instruction-family
+  listing into `get_instruction_capabilities`. With four experimental PDW tools, 23 are exposed.
 
 ## 1.1.0 — 2026-11-05
 
@@ -25,9 +42,6 @@ This file lists only user-facing changes. Git history and automated tests retain
 - Private PDW templates are supplied locally; the repository includes no private PDW samples or masks.
 - Added an English README, feature overview, core usage documentation, and the shared bilingual FUNC support table.
 - Adjusted some text layout.
-- The workspace audit summary now separates broken source links from local-output links.
-- Updated the locked `certifi` and `PyJWT` transitive dependencies to address known security advisories.
-- Reduced the public MCP surface from 22 tools to 19: removed `create_ldr` and `create_start_stop`, which are superseded by the high-level generators, and folded instruction-family listing into `get_instruction_capabilities`.
 
 PDW remains experimental: supplied 24MC/32MC samples are not yet integrated. FUNC199 is opaque inspection only. Control-flow generation, initialization of unknown module parameters, and hardware compatibility checks are not provided. User-reported GUI checks apply to specific artifacts, not all new outputs; physical PLC verification is pending.
 

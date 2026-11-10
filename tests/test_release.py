@@ -2,12 +2,26 @@
 
 import hashlib
 import json
+import re
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from typing import get_args
 
+from winproladder_mcp import __version__
 from winproladder_mcp.control import ControlKind
+
+
+def test_release_version_metadata_matches():
+    root = Path(__file__).resolve().parents[1]
+    project_version = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))[
+        "project"
+    ]["version"]
+    lock = (root / "uv.lock").read_text(encoding="utf-8")
+    locked = re.search(r'\[\[package\]\]\s+name = "winproladder-mcp"\s+version = "([^"]+)"', lock)
+    assert locked is not None
+    assert project_version == __version__ == locked.group(1)
 
 
 def test_release_verifier_delivers_all_recipes_and_replays_decoded_files(tmp_path):

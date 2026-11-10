@@ -37,7 +37,7 @@
 
 See the [feature overview](FEATURES.en.md) and [supported FUNC table](../supported-functions.md) for the current scope.
 
-v1.1.0 adds an experimental [PDW project generator](../pdw-format.md) using local FBs-20MC/40MC/60MC templates. The current unreleased source also integrates the supplied FBs-32MC layout. It supports variable-length programs, sections, CP950 comments, and preservation or selection of existing module records. Format and instruction restrictions remain. Update and restart the MCP server to use these tools; v1.0.0 packages do not include them.
+v1.1.0 added an experimental [PDW project generator](../pdw-format.md) using local FBs-20MC/40MC/60MC templates; v1.1.1 integrates the supplied FBs-32MC layout. It supports variable-length programs, sections, CP950 comments, and preservation or selection of existing module records. Format and instruction restrictions remain. Update and restart the MCP server to use these tools; v1.0.0 packages do not include them.
 
 ## Quick installation
 

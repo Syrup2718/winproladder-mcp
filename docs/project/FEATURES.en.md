@@ -6,7 +6,7 @@
 
 This page summarizes the public capabilities and boundaries of the current source. For exact schemas and operand restrictions, use `get_capabilities` and `get_instruction_capabilities`; omit `family` to list the available instruction families.
 
-v1.1.0 added experimental template-based PDW inspection and generation for FBs-20MC, FBs-40MC, and FBs-60MC. The current source also integrates the supplied FBs-32MC layout as an unreleased change. The project generator shares the Ladder compiler and supports variable-length programs, sections, CP950 comments, and preservation or selection of existing local module records. FUNC199 is opaque inspection only; PDW control-flow generation is rejected. See the [PDW scope and limitations](../pdw-format.md). The supplied 24MC sample is not yet integrated.
+v1.1.0 added experimental template-based PDW inspection and generation for FBs-20MC, FBs-40MC, and FBs-60MC; v1.1.1 integrates the supplied FBs-32MC layout. The project generator shares the Ladder compiler and supports variable-length programs, sections, CP950 comments, and preservation or selection of existing local module records. FUNC199 is opaque inspection only; PDW control-flow generation is rejected. See the [PDW scope and limitations](../pdw-format.md). The supplied 24MC sample is not yet integrated.
 
 ## Outputs
 

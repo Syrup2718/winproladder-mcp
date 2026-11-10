@@ -34,21 +34,18 @@
 - 提供有限的離線掃描模型與 acceptance cases。
 - 讀取、比較、分析及安全地另存 `.ldr`。
 - 依使用者要求另產生 CP950／Big5 元件註解 `.txt`。
+- 使用本機範本檢查及產生實驗性的 `.pdw` 專案。
 
 完整範圍請看[功能總覽](docs/project/FEATURES.md)與 [FUNC 支援表](docs/supported-functions.md)。
 
 ## 版本與執行中能力
 
-### Latest packaged release
+### 最新版本
 
-最新套件版本是 **v1.1.0**。版本內容與下載請見
+目前原始碼已準備為 **v1.1.1**。此版改善 MCP 工具探索、精簡回應、警告傳遞與
+驗證證據表達，並納入 FBs-32MC 的 PDW 範本版面。版本內容與發布後下載請見
 [Releases](https://github.com/Syrup2718/winproladder-mcp/releases/latest) 與
 [CHANGELOG](docs/project/CHANGELOG.md)。
-
-### Current source / unreleased
-
-目前原始碼在 v1.1.0 基礎上持續整改 MCP 回應介面，未改版本號；另已整合使用者提供的
-FBs-32MC 範本版面。這些是未發行變更，不代表既有安裝包已包含。
 
 ### Experimental features
 
