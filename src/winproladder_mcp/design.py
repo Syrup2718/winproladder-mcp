@@ -34,7 +34,8 @@ def design_guide() -> dict[str, Any]:
             "up to 256 source words and 128 destination words. WX0/WY0 contracts include "
             "all 16 physical bits. Never invent addresses to make a sample pass.",
             "test24: toggle_bit uses trigger and bit_destination (native rising-edge TOGG). "
-            "move_word/move_inverse use source/destination/enable; WY8 touches all Y8..Y23. "
+            "move_word uses a direct word or signed 16-bit constant source; move_inverse keeps "
+            "a direct word source. Both use destination/enable; WY8 touches all Y8..Y23. "
             "table_sort uses ascending; zone_write and matrix_bit_count use ones; "
             "matrix_bit_shift uses input_bit and left, matrix_bit_rotate uses left. "
             "L counts words; matrix_bit_count writes one word. Z-WR length=N, 1..511. "

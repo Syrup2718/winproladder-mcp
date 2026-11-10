@@ -242,8 +242,9 @@ def capabilities() -> dict[str, Any]:
                 "MOV uses basic manual D0..3071; MOV/ IR R3840..3847. Other word banks, "
                 "dynamic lengths, D/P and indirect encoding remain unresolved. "
                 "TOGG Y0..255/M0..999; other legal bit families not yet encoded. "
-                "WY8 writes Y8..Y23, all must be in IO contract. Direct R/D/OR MOV and TOGG "
-                "are modeled; other forms are not",
+                "WY8 writes Y8..Y23, all must be in IO contract. MOV accepts a direct word "
+                "source or an inferred signed 16-bit constant source; direct R/D/OR MOV and "
+                "TOGG are modeled; other forms are not",
             },
             "test23_functions": {
                 "actions": "matrix_and(120), matrix_or(121), matrix_xor(122), matrix_xnr(123), "

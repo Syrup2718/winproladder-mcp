@@ -1105,7 +1105,7 @@ class ProcessFunction(Model):
     full: list[Coil] = Field(default_factory=list, max_length=32)
     mode: Literal[0, 1] | None = None
     pulse: Literal[True] | None = None
-    source: str | None = None
+    source: str | Annotated[int, Field(strict=True, ge=-32768, le=32767)] | None = None
     work: str | None = None
     preset: str | None = None
     timer: str | None = None
@@ -1269,6 +1269,12 @@ class ProcessFunction(Model):
         required = FIELDS[self.type]
         for name in set().union(*map(set, FIELDS.values())):
             if name in required:
+                if (
+                    self.type == "move_word"
+                    and name == "source"
+                    and isinstance(self.source, int)
+                ):
+                    continue
                 value = self.operand(name)
                 if self.type in memory_functions.CODES:
                     memory_functions.operand_check(self.type, name, value)

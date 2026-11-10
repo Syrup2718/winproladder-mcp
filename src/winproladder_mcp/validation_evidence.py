@@ -556,7 +556,8 @@ WARNING_RULES: tuple[tuple[Predicate, str], ...] = (
     ),
     (
         lambda ladder: _process(ladder, set(TRANSFER_CODES)),
-        "test24: sampled 16-bit non-P forms and constant lengths. TOGG uses rising edges. Matrix "
+        "test24: sampled 16-bit non-P forms and constant lengths. Constant-source MOV uses the "
+        "inferred F6AC operand form. TOGG uses rising edges. Matrix "
         "L counts words; MBCNT writes one word. Z-WR N is literal, 1..511. WY8 writes Y8..Y23. "
         "Direct R/D/OR MOV and TOGG have a bounded model; other forms do not. No GUI or PLC "
         "verification.",

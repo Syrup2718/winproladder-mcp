@@ -295,7 +295,11 @@ def simulate_runtime(
                         value = int(digits)
                     put(a.destination, value)
                 elif isinstance(a, ProcessFunction):
-                    value = word(a.operand("source"))
+                    value = (
+                        a.source & 0xFFFF
+                        if isinstance(a.source, int)
+                        else word(a.operand("source"))
+                    )
                     put(a.operand("destination"), ~value if a.type == "move_inverse" else value)
                 continue
             elif n.edge is not None:

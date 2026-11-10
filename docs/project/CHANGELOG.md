@@ -6,6 +6,9 @@
 
 ## 未發行
 
+- 依 FUN 指令既有的 `F4` 暫存器／`F6` 常數 operand-form 規則與使用者提供的 WinProLadder
+  畫面，新增 FUN8 MOV 的有號 16 位元常數來源 `F6AC` 推估編解碼；同步加入離線模型、
+  資源追蹤、邊界及 exact-payload round-trip 測試，並明確標示尚未取得 GUI bytes 驗證。
 - 依使用者提供的 WinProLadder `add_fix.ldr` 匯出補上 FUN11 暫存器 `Sb` 編解碼，並將
   OR 區 `R3904～R3967` 納入共用直接暫存器編碼；FUN8 MOV 可直接寫入 OR 區，離線模型、
   元件讀寫追蹤與精確 payload 回歸測試同步更新。

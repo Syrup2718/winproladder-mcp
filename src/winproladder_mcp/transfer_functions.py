@@ -71,6 +71,7 @@ LENGTHS = {
     "matrix_bit_count": (2, 256),
 }
 MOVES = {"move_word", "move_inverse"}
+CONSTANT_MOVE_CODE = "f6ac"  # Inferred constant-source form; screenshot-confirmed operands.
 
 
 def move_word(name: str, *, writable: bool = False) -> bytes:
@@ -106,7 +107,8 @@ def references(action: "ProcessFunction") -> tuple[set[str], set[str]]:
                 else word_references(name)
             )
 
-        return refs(action.operand("source")), refs(action.operand("destination"))
+        reads = set() if isinstance(action.source, int) else refs(action.operand("source"))
+        return reads, refs(action.operand("destination"))
     assert action.length is not None
     reads = (
         register_span(action.operand("source"), action.length)
@@ -128,11 +130,14 @@ def compile_operands(action: "ProcessFunction") -> bytes:
         elif field == "bit_destination":
             raw += bit_address(action.operand(field)).to_bytes(2, "big")
         else:
-            raw += (
-                move_word(action.operand(field))
-                if action.type in MOVES
-                else encode_word(action.operand(field))
-            )
+            if action.type == "move_word" and field == "source" and isinstance(action.source, int):
+                raw += (action.source & 0xFFFF).to_bytes(2, "big")
+            else:
+                raw += (
+                    move_word(action.operand(field))
+                    if action.type in MOVES
+                    else encode_word(action.operand(field))
+                )
     return raw
 
 

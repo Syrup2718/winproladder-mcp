@@ -6,6 +6,10 @@ This file lists only user-facing changes. Git history and automated tests retain
 
 ## Unreleased
 
+- Added inferred FUN8 MOV signed 16-bit constant-source `F6AC` encode/decode support from the
+  established `F4` register / `F6` constant operand-form rule and the user-provided WinProLadder
+  screenshot. Offline modeling, references, boundaries, and exact-payload round-trip tests were
+  added while explicitly retaining the lack of exported GUI-byte verification.
 - Used the user-supplied WinProLadder `add_fix.ldr` export to add FUN11 register-`Sb`
   encode/decode support and the common OR register bank `R3904..R3967`. FUN8 MOV can now
   write OR registers; the offline model, device references, and exact-payload regressions

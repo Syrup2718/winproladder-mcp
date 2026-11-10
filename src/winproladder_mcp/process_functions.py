@@ -113,6 +113,7 @@ if len(_OPERAND_CODECS) != sum(len(module.CODES) for module in _OPERAND_MODULES)
 _OPCODE_KINDS = {bytes.fromhex(code): kind for kind, code in CODES.items()}
 if len(_OPCODE_KINDS) != len(CODES):
     raise RuntimeError("Duplicate process function opcode")
+_OPCODE_KINDS[bytes.fromhex(transfer_functions.CONSTANT_MOVE_CODE)] = "move_word"
 if not (FIELDS.keys() == CONTROLS.keys() == CODES.keys() == STATUS.keys()):
     raise RuntimeError("Incomplete process function metadata")
 
@@ -152,7 +153,12 @@ def compile_process(action: "ProcessFunction") -> bytes:
     for index, name in enumerate(CONTROLS[action.type]):
         expr = parse_expression(getattr(action, name))
         raw += compile_expression(expr, nested=index > 0)
-    raw += bytes.fromhex(CODES[action.type])
+    code = (
+        transfer_functions.CONSTANT_MOVE_CODE
+        if action.type == "move_word" and isinstance(action.source, int)
+        else CODES[action.type]
+    )
+    raw += bytes.fromhex(code)
     if action.type in {"ramp", "ramp2"}:
         raw += b"\x00\x00"  # Reserved/sample form selector: never infer other modes.
     if action.type in _OPERAND_CODECS:
@@ -245,8 +251,18 @@ def decode_process(payload: bytes) -> "Network | None":
                     continue
                 tail = tail[2:]
             if kind in _OPERAND_CODECS:
-                operands, size = _OPERAND_CODECS[kind].decode_operands(kind, tail)
-                fields.update(operands)
+                if kind == "move_word" and payload[i : i + 2] == bytes.fromhex(
+                    transfer_functions.CONSTANT_MOVE_CODE
+                ):
+                    value = int.from_bytes(tail[:2], "big")
+                    fields.update(
+                        source=value - 0x10000 if value & 0x8000 else value,
+                        destination=decode_word(tail[2:4]),
+                    )
+                    size = 4
+                else:
+                    operands, size = _OPERAND_CODECS[kind].decode_operands(kind, tail)
+                    fields.update(operands)
             elif kind == "table_to_reg":
                 fields.update(
                     source=decode_register(tail[:2]),

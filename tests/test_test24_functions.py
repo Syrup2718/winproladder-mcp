@@ -193,3 +193,39 @@ def test_mov_supports_common_or_bank_from_r3904_anchor():
     refs = device_references([(0, network)])["devices"]
     assert refs["R2501"]["reads"] == [0]
     assert refs["R3940"]["writes"] == [0]
+
+
+@pytest.mark.parametrize(
+    "value,destination,payload",
+    [
+        (3276, "R2000", "4fe8f6ac0ccc19a0"),
+        (16383, "R2001", "4fe8f6ac3fff19a2"),
+        (0, "R2002", "4fe8f6ac000019a4"),
+        (100, "R2003", "4fe8f6ac006419a6"),
+        (-32768, "R2004", "4fe8f6ac800019a8"),
+    ],
+)
+def test_inferred_constant_mov_round_trip_and_runtime(value, destination, payload):
+    network = Network(
+        action=ProcessFunction(type="move_word", source=value, destination=destination)
+    )
+    assert compile_network(network).hex() == payload
+    decoded = decode_network(bytes.fromhex(payload))
+    assert decoded is not None and decoded.action == network.action
+    assert compile_network(decoded).hex() == payload
+    refs = device_references([(0, network)])["devices"]
+    assert refs[destination]["writes"] == [0]
+    assert timed_simulate(Ladder(networks=[network]), [{}], {}, 10)[0][destination] == (
+        value & 0xFFFF
+    )
+
+
+@pytest.mark.parametrize("value", [-32769, 32768, True])
+def test_constant_mov_boundaries(value):
+    with pytest.raises(ValueError):
+        ProcessFunction(type="move_word", source=value, destination="R2000")
+
+
+def test_constant_move_inverse_remains_unencoded():
+    with pytest.raises(ValueError):
+        ProcessFunction(type="move_inverse", source=100, destination="R2000")
