@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -28,7 +29,11 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
         ):
             await session.initialize()
             tools = (await session.list_tools()).tools
-            assert sum(len(tool.description or "") for tool in tools) < 8000
+            assert sum(len(tool.description or "") for tool in tools) < 12000
+            for tool in tools:
+                properties = tool.inputSchema.get("properties", {})
+                assert all(schema.get("description") for schema in properties.values()), tool.name
+                assert tool.outputSchema is not None, tool.name
             assert {tool.name for tool in tools} == {
                 "get_capabilities",
                 "get_instruction_capabilities",
@@ -59,11 +64,57 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
             assert generate.annotations.destructiveHint is False
             assert "custom Ladder IR" in generate.description
             control = next(t for t in tools if t.name == "generate_control_ldr")
-            assert "common control functions" in control.description
-            instruction_detail = next(
-                t for t in tools if t.name == "get_instruction_capabilities"
-            )
+            assert "common control function" in control.description
+            descriptions = {
+                tool.name: re.sub(r"\s+", " ", tool.description or "") for tool in tools
+            }
+            expected_boundaries = {
+                "get_capabilities": ("modify_network", "metadata only"),
+                "generate_system_ldr": ("simulate_ladder", "does not execute"),
+                "generate_control_ldr": ("generate_component_comments", "creates only"),
+                "generate_sequence_ldr": ("validate_ladder", "cannot derive"),
+                "generate_ldr": ("generate_component_comments", "cannot compile"),
+                "generate_project_pdw": ("generate_component_comments", "cannot create"),
+                "generate_pdw": ("generate_component_comments", "separate .txt"),
+                "generate_component_comments": ("analyze_ldr", "does not inspect"),
+                "compare_ldr": ("validate caller-supplied IR", "does not"),
+                "validate_ladder": ("compare_ldr", "without reading or writing"),
+                "simulate_ladder": ("compare_ldr", "neither generates"),
+                "modify_network": ("get_capabilities", "changes program content"),
+            }
+            for tool_name, boundary_phrases in expected_boundaries.items():
+                assert all(phrase in descriptions[tool_name] for phrase in boundary_phrases), (
+                    tool_name
+                )
+            instruction_detail = next(t for t in tools if t.name == "get_instruction_capabilities")
             assert "family" not in instruction_detail.inputSchema.get("required", [])
+            rtc = next(t for t in tools if t.name == "inspect_rtc_snapshot")
+            rtc_schema = rtc.inputSchema["$defs"]["RTCSnapshot"]
+            assert set(rtc_schema["required"]) == {
+                "R4128",
+                "R4129",
+                "R4130",
+                "R4131",
+                "R4132",
+                "R4133",
+                "R4134",
+            }
+            assert rtc_schema["additionalProperties"] is False
+            assert all(field["description"] for field in rtc_schema["properties"].values())
+            assert "no PLC-access tool" in rtc.description
+            assert "get_manual_reference" in rtc.description
+            guide = next(t for t in tools if t.name == "get_design_guide")
+            detail_schema = guide.inputSchema["properties"]["detail"]
+            assert detail_schema["default"] is False
+            assert "compact control recipes" in detail_schema["description"]
+            assert "Ladder IR schema" in detail_schema["description"]
+            for sibling in (
+                "get_capabilities",
+                "get_instruction_capabilities",
+                "get_manual_reference",
+            ):
+                assert sibling in guide.description
+            assert "does not validate IR or create a file" in re.sub(r"\s+", " ", guide.description)
             caps = await session.call_tool("get_capabilities", {})
             assert not caps.isError
             families = await session.call_tool("get_instruction_capabilities", {})

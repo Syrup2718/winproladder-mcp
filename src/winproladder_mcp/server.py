@@ -6,7 +6,7 @@ import functools
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from urllib.parse import quote, unquote
 
 from mcp.server.fastmcp import FastMCP
@@ -18,7 +18,7 @@ from mcp.types import (
     TextContent,
     ToolAnnotations,
 )
-from pydantic import AnyUrl, StrictBool, StrictInt
+from pydantic import AnyUrl, BaseModel, ConfigDict, Field, StrictBool, StrictInt
 
 from .acceptance import AcceptanceCase
 from .capabilities import capability_summary, instruction_capabilities, instruction_families
@@ -29,7 +29,7 @@ from .io_contract import IOContract
 from .ir import Ladder, Network, validation
 from .layout import lower_ladder
 from .ldr import MAX_SIZE
-from .manual_reference import analyze_rtc_snapshot, manual_reference
+from .manual_reference import RTCSnapshot, analyze_rtc_snapshot, manual_reference
 from .pdw import PdwRung
 from .pdw_project import PdwSection
 from .profiles import HeaderProfile
@@ -37,6 +37,40 @@ from .runtime import MODEL_SCOPE, Scalar, simulate_runtime
 from .sequence import SequenceSpec, sequence_ladder
 from .service import Service, capabilities
 from .system import SystemSpec, system_ladder
+
+
+class ArtifactDescriptor(BaseModel):
+    """Download metadata shared by generated and retrieved artifacts."""
+
+    uri: str = Field(description="MCP resource URI for the artifact bytes.")
+    name: str = Field(description="Plain artifact filename.")
+    mime_type: str = Field(description="Media type of the returned bytes.")
+    size: int = Field(ge=0, description="Artifact size in bytes.")
+    sha256: str = Field(description="Lowercase SHA-256 digest of the exact artifact bytes.")
+
+
+class ArtifactToolOutput(BaseModel):
+    """Structured result for artifact-writing and artifact-retrieval tools."""
+
+    model_config = ConfigDict(extra="allow")
+
+    response_mode: Literal["compact", "full"] = Field(
+        description="Whether repeated design metadata was compacted or returned in full."
+    )
+    artifact: ArtifactDescriptor | None = Field(
+        default=None,
+        description="Artifact metadata on success; absent when validation fails before writing.",
+    )
+    error: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Structured error code, message and written=false on handled validation failure."
+        ),
+    )
+    warnings: list[Any] = Field(
+        default_factory=list,
+        description="Generation or verification warnings; empty when none were reported.",
+    )
 
 
 def build_server(
@@ -221,8 +255,22 @@ def build_server(
         return response
 
     @mcp.tool(annotations=read)
-    def get_capabilities(detail: bool = False) -> dict[str, Any]:
-        """Get server-wide support, policies and limits; not individual instruction details."""
+    def get_capabilities(
+        detail: Annotated[
+            bool,
+            Field(
+                description=(
+                    "False returns the compact server summary; true includes full instruction, "
+                    "generation and simulation capability details."
+                )
+            ),
+        ] = False,
+    ) -> dict[str, Any]:
+        """Return server-wide support, policies and limits as metadata only.
+
+        This never reads or modifies ladder program content. To edit one network and write a new
+        .ldr file, use modify_network instead.
+        """
         base = capabilities() if detail or not compact_responses else capability_summary()
         result = {
             **base,
@@ -266,7 +314,17 @@ def build_server(
         return result
 
     @mcp.tool(annotations=read)
-    def get_instruction_capabilities(family: str | None = None) -> dict[str, Any]:
+    def get_instruction_capabilities(
+        family: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Exact instruction-family identifier returned by this tool's family list; "
+                    "omit to list valid families instead of requesting one family's limits."
+                )
+            ),
+        ] = None,
+    ) -> dict[str, Any]:
         """List instruction families, or get limits and evidence for one selected family."""
         if family is None:
             families = instruction_families()
@@ -279,13 +337,48 @@ def build_server(
         return manual_reference()
 
     @mcp.tool(annotations=read)
-    def inspect_rtc_snapshot(registers: dict[str, StrictInt]) -> dict[str, Any]:
-        """Validate supplied R4128..R4134 values and optional packed R4135; no PLC access."""
-        return analyze_rtc_snapshot(registers)
+    def inspect_rtc_snapshot(
+        registers: Annotated[
+            RTCSnapshot,
+            Field(
+                description=(
+                    "Caller-supplied RTC snapshot keyed by R4128 through R4134, with optional "
+                    "packed R4135; values are integers, not PLC addresses to read."
+                )
+            ),
+        ],
+    ) -> dict[str, Any]:
+        """Validate a caller-supplied FATEK RTC register snapshot offline.
+
+        Use this after obtaining R4128..R4134 externally; optionally include packed R4135 to check
+        hour/minute consistency. It checks field ranges and month/day, then returns decoded fields,
+        expected_R4135 and consistency when supplied. Invalid or unknown fields return an error and
+        nothing is written. This server has no PLC-access tool; use get_manual_reference for RTC
+        register meanings and setting procedure.
+        """
+        return analyze_rtc_snapshot(registers.model_dump(exclude_none=True))
 
     @mcp.tool(annotations=read)
-    def get_design_guide(detail: bool = False) -> dict[str, Any]:
-        """Get design guidance. Use detail=true for instruction notes and full examples."""
+    def get_design_guide(
+        detail: Annotated[
+            bool,
+            Field(
+                description=(
+                    "False returns compact control recipes, architecture policy and workflow; "
+                    "true adds instruction notes, complete examples and the Ladder IR schema."
+                )
+            ),
+        ] = False,
+    ) -> dict[str, Any]:
+        """Return offline workflow guidance for designing supported WinProLadder programs.
+
+        Use this before generation to choose a control, sequence, system or custom-Ladder tool and
+        to obtain acceptance-test patterns. With detail=false it returns compact control recipes,
+        architecture policy and workflow; detail=true adds instruction notes, complete examples
+        and the Ladder IR schema. This is not runtime capability metadata (get_capabilities),
+        instruction operand evidence (get_instruction_capabilities), or manual/RTC reference data
+        (get_manual_reference), and it does not validate IR or create a file.
+        """
         if compact_responses and not detail:
             return {
                 "response_mode": "compact",
@@ -311,16 +404,46 @@ def build_server(
     @mcp.tool(annotations=write)
     @structured_write_errors
     def generate_system_ldr(
-        output_name: str,
-        spec: SystemSpec,
-        io_contract: IOContract,
-        acceptance: list[AcceptanceCase] | None = None,
-        require_acceptance: bool = False,
-        strict_writers: bool = True,
-        target_profile: HeaderProfile | None = None,
-    ) -> CallToolResult:
-        """Generate independent controls with automatic internal M/T/C allocation.
-        Explicit overlapping resources are rejected, not silently reassigned. Inputs can be shared.
+        output_name: Annotated[
+            str,
+            Field(
+                description="New plain .ldr filename in the artifact directory; never overwrites."
+            ),
+        ],
+        spec: Annotated[
+            SystemSpec,
+            Field(description="System requirement plus one or more independent control recipes."),
+        ],
+        io_contract: Annotated[
+            IOContract,
+            Field(description="Complete user-authorized physical X inputs and Y outputs."),
+        ],
+        acceptance: Annotated[
+            list[AcceptanceCase] | None,
+            Field(description="Optional executable scan cases checked before and after encoding."),
+        ] = None,
+        require_acceptance: Annotated[
+            bool,
+            Field(description="When true, reject generation unless acceptance cases are supplied."),
+        ] = False,
+        strict_writers: Annotated[
+            bool,
+            Field(description="When true, reject conflicting or unsafe multiple device writers."),
+        ] = True,
+        target_profile: Annotated[
+            HeaderProfile | None,
+            Field(
+                description="Optional sampled CPU/header profile; omit to use the default profile."
+            ),
+        ] = None,
+    ) -> Annotated[CallToolResult, ArtifactToolOutput]:
+        """Create a new .ldr from multiple independent control recipes in a SystemSpec.
+
+        Use this when one requirement contains two or more independent controls that may share
+        inputs; use generate_control_ldr for one control and generate_sequence_ldr for dependent
+        ordered steps. It allocates internal M/T/C resources, rejects explicit overlaps, validates
+        acceptance cases and writes only a new artifact. Validation failure writes nothing. It does
+        not execute existing Ladder IR or return a trace; use simulate_ladder for that.
         """
         ladder, design = system_ladder(spec)
         if target_profile is not None:
@@ -340,17 +463,46 @@ def build_server(
     @mcp.tool(annotations=write)
     @structured_write_errors
     def generate_control_ldr(
-        output_name: str,
-        spec: ControlSpec,
-        io_contract: IOContract,
-        acceptance: list[AcceptanceCase] | None = None,
-        require_acceptance: bool = False,
-        strict_writers: bool = True,
-        target_profile: HeaderProfile | None = None,
-    ) -> CallToolResult:
-        """Generate common control functions from customer requirements translated by the host.
-        Physical I/O must be explicit and within io_contract. Supports latch, toggle, edges, delays,
-        pulse, counter, interlocked direction and star/delta; returns actual .ldr + assumptions.
+        output_name: Annotated[
+            str,
+            Field(
+                description="New plain .ldr filename in the artifact directory; never overwrites."
+            ),
+        ],
+        spec: Annotated[
+            ControlSpec,
+            Field(description="One supported control recipe with its requirement and addresses."),
+        ],
+        io_contract: Annotated[
+            IOContract,
+            Field(description="Complete user-authorized physical X inputs and Y outputs."),
+        ],
+        acceptance: Annotated[
+            list[AcceptanceCase] | None,
+            Field(description="Optional executable scan cases checked before and after encoding."),
+        ] = None,
+        require_acceptance: Annotated[
+            bool,
+            Field(description="When true, reject generation unless acceptance cases are supplied."),
+        ] = False,
+        strict_writers: Annotated[
+            bool,
+            Field(description="When true, reject conflicting or unsafe multiple device writers."),
+        ] = True,
+        target_profile: Annotated[
+            HeaderProfile | None,
+            Field(
+                description="Optional sampled CPU/header profile; omit to use the default profile."
+            ),
+        ] = None,
+    ) -> Annotated[CallToolResult, ArtifactToolOutput]:
+        """Create a new .ldr for one common control function from a ControlSpec.
+
+        Use this for exactly one latch, toggle, edge, delay, pulse, counter, interlocked direction
+        or star/delta recipe. Use generate_system_ldr for multiple independent controls,
+        generate_sequence_ldr for ordered steps, or generate_ldr for caller-authored IR. Physical
+        I/O must be explicit in io_contract; validation failure writes nothing. This creates ladder
+        logic, whereas generate_component_comments creates only a separate comment-import .txt.
         """
         ladder, design = control_ladder(spec)
         if target_profile is not None:
@@ -370,16 +522,46 @@ def build_server(
     @mcp.tool(annotations=write)
     @structured_write_errors
     def generate_sequence_ldr(
-        output_name: str,
-        spec: SequenceSpec,
-        io_contract: IOContract,
-        acceptance: list[AcceptanceCase] | None = None,
-        require_acceptance: bool = False,
-        strict_writers: bool = True,
-        target_profile: HeaderProfile | None = None,
-    ) -> CallToolResult:
-        """Generate ordered steps using native T timers, with no automatic X/Y additions.
-          Native pause/resume uses FUN87 with register state and no relay copy chains.
+        output_name: Annotated[
+            str,
+            Field(
+                description="New plain .ldr filename in the artifact directory; never overwrites."
+            ),
+        ],
+        spec: Annotated[
+            SequenceSpec,
+            Field(
+                description="Ordered step requirement, start signal, timing and output definitions."
+            ),
+        ],
+        io_contract: Annotated[
+            IOContract,
+            Field(description="Complete user-authorized physical X inputs and Y outputs."),
+        ],
+        acceptance: Annotated[
+            list[AcceptanceCase] | None,
+            Field(description="Optional executable scan cases checked before and after encoding."),
+        ] = None,
+        require_acceptance: Annotated[
+            bool,
+            Field(description="When true, reject generation unless acceptance cases are supplied."),
+        ] = False,
+        strict_writers: Annotated[
+            bool,
+            Field(description="When true, reject conflicting or unsafe multiple device writers."),
+        ] = True,
+        target_profile: Annotated[
+            HeaderProfile | None,
+            Field(
+                description="Optional sampled CPU/header profile; omit to use the default profile."
+            ),
+        ] = None,
+    ) -> Annotated[CallToolResult, ArtifactToolOutput]:
+        """Create a new .ldr for ordered steps from a SequenceSpec.
+
+        This generates sequence logic; validate_ladder only checks caller-supplied Ladder IR and
+        cannot derive a sequence from requirements. Native T timers are used with no automatic X/Y
+        additions. Native pause/resume uses FUN87 with register state and no relay copy chains.
         External pulse counting is only for requirements explicitly specifying a clock input.
         Return symbols and actual .ldr; not GUI or PLC verified.
         """
@@ -401,17 +583,41 @@ def build_server(
     @mcp.tool(annotations=write)
     @structured_write_errors
     def generate_ldr(
-        output_name: str,
-        ladder: Ladder,
-        io_contract: IOContract,
-        acceptance: list[AcceptanceCase] | None = None,
-        require_acceptance: bool = False,
-        strict_writers: bool = False,
-    ) -> CallToolResult:
-        """Compile caller-supplied custom Ladder IR to an actual .ldr file.
+        output_name: Annotated[
+            str,
+            Field(
+                description="New plain .ldr filename in the artifact directory; never overwrites."
+            ),
+        ],
+        ladder: Annotated[
+            Ladder,
+            Field(
+                description="Complete caller-authored Ladder IR program to validate and compile."
+            ),
+        ],
+        io_contract: Annotated[
+            IOContract,
+            Field(description="Complete user-authorized physical X inputs and Y outputs."),
+        ],
+        acceptance: Annotated[
+            list[AcceptanceCase] | None,
+            Field(description="Optional executable scan cases checked before and after encoding."),
+        ] = None,
+        require_acceptance: Annotated[
+            bool,
+            Field(description="When true, reject generation unless acceptance cases are supplied."),
+        ] = False,
+        strict_writers: Annotated[
+            bool,
+            Field(description="When true, reject conflicting or unsafe multiple device writers."),
+        ] = False,
+    ) -> Annotated[CallToolResult, ArtifactToolOutput]:
+        """Compile caller-supplied custom Ladder IR into a new binary .ldr file.
 
         Use generate_control_ldr for common controls and generate_sequence_ldr for ordered steps.
-        Returns SHA-256, a binary resource link and verification warnings. Never overwrites files.
+        This generates ladder code; generate_component_comments creates only a separate comment
+        .txt and cannot compile Ladder IR. Returns SHA-256, a binary resource link and verification
+        warnings. Never overwrites files.
         """
         return artifact_result(
             service.generate(
@@ -425,25 +631,84 @@ def build_server(
         )
 
     @mcp.tool(annotations=read)
-    def inspect_pdw(path: str) -> dict[str, Any]:
+    def inspect_pdw(
+        path: Annotated[
+            str,
+            Field(
+                description="Existing .pdw path that must resolve inside the configured workspace."
+            ),
+        ],
+    ) -> dict[str, Any]:
         """Inspect PDW sections, Chinese comments and known checksums; FUNC199 stays opaque."""
         return service.inspect_pdw(path)
 
     @mcp.tool(annotations=write)
     @structured_write_errors
     def generate_project_pdw(
-        output_name: str,
-        template_path: str,
-        ladder: Ladder,
-        io_contract: IOContract,
-        acceptance: list[AcceptanceCase] | None = None,
-        sections: list[PdwSection] | None = None,
-        comments: list[ComponentComment] | None = None,
-        require_acceptance: bool = False,
-        module_order: list[str] | None = None,
-        module_template_paths: list[str] | None = None,
-    ) -> CallToolResult:
-        """Compile Ladder IR to sampled FBs-20MC/32MC/40MC/60MC PDW layouts.
+        output_name: Annotated[
+            str,
+            Field(
+                description="New plain .pdw filename in the artifact directory; never overwrites."
+            ),
+        ],
+        template_path: Annotated[
+            str,
+            Field(
+                description="Existing sampled .pdw template path inside the configured workspace."
+            ),
+        ],
+        ladder: Annotated[
+            Ladder,
+            Field(
+                description="Complete Ladder IR program whose profile must match the template CPU."
+            ),
+        ],
+        io_contract: Annotated[
+            IOContract,
+            Field(description="Complete user-authorized physical X inputs and Y outputs."),
+        ],
+        acceptance: Annotated[
+            list[AcceptanceCase] | None,
+            Field(description="Optional executable scan cases checked before and after encoding."),
+        ] = None,
+        sections: Annotated[
+            list[PdwSection] | None,
+            Field(
+                description="Optional named sections keyed by zero-based source network indexes."
+            ),
+        ] = None,
+        comments: Annotated[
+            list[ComponentComment] | None,
+            Field(description="Optional component comments to embed in the PDW project."),
+        ] = None,
+        require_acceptance: Annotated[
+            bool,
+            Field(description="When true, reject generation unless acceptance cases are supplied."),
+        ] = False,
+        module_order: Annotated[
+            list[str] | None,
+            Field(
+                description=(
+                    "Optional exact module-name order; null preserves template modules and an "
+                    "empty list removes them."
+                )
+            ),
+        ] = None,
+        module_template_paths: Annotated[
+            list[str] | None,
+            Field(
+                description=(
+                    "Optional workspace PDW templates supplying module records; requires an "
+                    "explicit module_order."
+                )
+            ),
+        ] = None,
+    ) -> Annotated[CallToolResult, ArtifactToolOutput]:
+        """Compile Ladder IR into a new variable-length PDW project from a local template.
+
+        This writes a PDW project binary with optional embedded sections and comments;
+        generate_component_comments writes only a separate comment-import .txt and cannot create a
+        PDW project. Sampled FBs-20MC/32MC/40MC/60MC layouts are supported.
 
         Module records come from local templates.
 
@@ -478,16 +743,34 @@ def build_server(
     @mcp.tool(annotations=write)
     @structured_write_errors
     def generate_pdw(
-        output_name: str,
-        template_path: str,
-        rungs: list[PdwRung],
-        io_contract: IOContract,
-        acceptance: list[AcceptanceCase] | None = None,
-    ) -> CallToolResult:
-        """Experimental PDW: replace one/two X -> Y rungs in a local FBs-60MC template.
+        output_name: Annotated[
+            str,
+            Field(
+                description="New plain .pdw filename in the artifact directory; never overwrites."
+            ),
+        ],
+        template_path: Annotated[
+            str,
+            Field(description="Existing FBs-60MC .pdw template path inside the workspace."),
+        ],
+        rungs: Annotated[
+            list[PdwRung],
+            Field(description="One or two replacement X-to-Y rungs matching the template count."),
+        ],
+        io_contract: Annotated[
+            IOContract,
+            Field(description="Complete user-authorized physical X inputs and Y outputs."),
+        ],
+        acceptance: Annotated[
+            list[AcceptanceCase] | None,
+            Field(description="Optional executable scan cases checked against the replacement."),
+        ] = None,
+    ) -> Annotated[CallToolResult, ArtifactToolOutput]:
+        """Create a new fixed-size PDW binary by replacing one or two X-to-Y template rungs.
 
         Same rung count required. Only X0/X1, Y0/Y1/Y2 and NO/NC contacts supported.
         No branches, functions, comments or PLC operations. Templates are workspace-scoped.
+        This generates a PDW binary; generate_component_comments produces only a separate .txt.
         Keep private templates outside Git; configure --root to their private directory.
         Return the actual binary artifact and warnings. Never overwrite.
         """
@@ -499,7 +782,16 @@ def build_server(
         )
 
     @mcp.tool(annotations=read)
-    def get_pdw_artifact(output_name: str) -> CallToolResult:
+    def get_pdw_artifact(
+        output_name: Annotated[
+            str,
+            Field(
+                description=(
+                    "Exact plain .pdw filename previously created in the artifact directory."
+                )
+            ),
+        ],
+    ) -> Annotated[CallToolResult, ArtifactToolOutput]:
         """Retrieve a generated PDW artifact's exact bytes from the configured output directory."""
         target = artifact_path(output_name, frozenset({".pdw"}))
         data = artifact_bytes(output_name, frozenset({".pdw"}))
@@ -512,11 +804,22 @@ def build_server(
     @mcp.tool(annotations=write)
     @structured_write_errors
     def generate_component_comments(
-        output_name: str, entries: list[ComponentComment]
-    ) -> CallToolResult:
-        """Generate a separate WinProLadder component-comment import .txt.
+        output_name: Annotated[
+            str,
+            Field(
+                description="New plain .txt filename in the artifact directory; never overwrites."
+            ),
+        ],
+        entries: Annotated[
+            list[ComponentComment],
+            Field(description="Component rows containing a device ref, comment and description."),
+        ],
+    ) -> Annotated[CallToolResult, ArtifactToolOutput]:
+        """Create only a separate CP950 WinProLadder component-comment import .txt file.
 
-        Call this when the user explicitly requests 新增元件註解 or component comments.
+        Call this only when the user explicitly requests 新增元件註解 or component comments. It
+        does not inspect, analyze, generate or modify ladder logic or PDW projects; use analyze_ldr
+        to explain the logic and device references in an existing .ldr.
         Each row has ref, comment and description. Output exactly follows the supplied sample:
         REF/COMMENT/DESCRIPTION columns, tabs, CRLF and CP950/Big5. Never overwrites a file.
         """
@@ -530,7 +833,16 @@ def build_server(
         )
 
     @mcp.tool(annotations=read)
-    def get_ldr_artifact(output_name: str) -> CallToolResult:
+    def get_ldr_artifact(
+        output_name: Annotated[
+            str,
+            Field(
+                description=(
+                    "Exact plain .ldr filename previously created in the artifact directory."
+                )
+            ),
+        ],
+    ) -> Annotated[CallToolResult, ArtifactToolOutput]:
         """Retrieve a generated .ldr as an embedded MCP binary resource and download link.
 
         Use the original output_name, including .ldr. Returns exact file bytes as base64
@@ -545,28 +857,80 @@ def build_server(
         )
 
     @mcp.tool(annotations=read)
-    def inspect_ldr(path: str) -> dict[str, Any]:
-        """Inspect binary framing, raw bytes, offsets and CRC only; does not explain logic."""
+    def inspect_ldr(
+        path: Annotated[
+            str,
+            Field(
+                description="Existing .ldr path that must resolve inside the configured workspace."
+            ),
+        ],
+    ) -> dict[str, Any]:
+        """Inspect the binary container of one existing .ldr file without decoding its logic.
+
+        Use this for framing, record offsets, raw payload bytes and stored/calculated CRC evidence.
+        It reads one workspace-scoped file and returns metadata only; it never writes or connects to
+        a PLC. Use read_ldr for decoded networks or analyze_ldr for device reads, writes and
+        meaning.
+        Invalid framing or file constraints return an error rather than partial interpretation.
+        """
         return service.inspect(path)
 
     @mcp.tool(annotations=read)
-    def read_ldr(path: str) -> dict[str, Any]:
+    def read_ldr(
+        path: Annotated[
+            str,
+            Field(
+                description="Existing .ldr path that must resolve inside the configured workspace."
+            ),
+        ],
+    ) -> dict[str, Any]:
         """Decode Ladder networks in display order; unknown payloads stay opaque. Reject bad CRC."""
         return service.read(path)
 
     @mcp.tool(annotations=read)
-    def analyze_ldr(path: str) -> dict[str, Any]:
+    def analyze_ldr(
+        path: Annotated[
+            str,
+            Field(
+                description="Existing .ldr path that must resolve inside the configured workspace."
+            ),
+        ],
+    ) -> dict[str, Any]:
         """Analyze decoded network meaning and device reads/writes; not a raw-byte inspection."""
         return service.analyze(path)
 
     @mcp.tool(annotations=read)
-    def compare_ldr(left_path: str, right_path: str) -> dict[str, Any]:
-        """Align display-order networks and report insert/delete/replace, including CRC changes."""
+    def compare_ldr(
+        left_path: Annotated[
+            str,
+            Field(description="Existing baseline .ldr path inside the configured workspace."),
+        ],
+        right_path: Annotated[
+            str,
+            Field(description="Existing comparison .ldr path inside the configured workspace."),
+        ],
+    ) -> dict[str, Any]:
+        """Compare two existing .ldr files and report their structural and CRC differences.
+
+        This only aligns decoded display-order networks as insert/delete/replace. It does not
+        validate caller-supplied IR, simulate behavior, generate comments or write a ladder file.
+        """
         return service.compare(left_path, right_path)
 
     @mcp.tool(annotations=read)
-    def validate_ladder(ladder: Ladder) -> dict[str, Any]:
-        """Preview simplified connected IR and resource costs; not PLC syntax validation."""
+    def validate_ladder(
+        ladder: Annotated[
+            Ladder,
+            Field(
+                description="Caller-supplied Ladder IR to lower and check without creating a file."
+            ),
+        ],
+    ) -> dict[str, Any]:
+        """Validate one caller-supplied Ladder IR object without reading or writing .ldr files.
+
+        Returns simplified connected IR, layout and resource/policy errors; it is not PLC syntax
+        validation. To report differences between two existing .ldr files, use compare_ldr instead.
+        """
         lowered, layout = lower_ladder(ladder)
         source_architecture = service.architecture(ladder, enforce=False)
         architecture = service.architecture(lowered, enforce=False)
@@ -589,14 +953,41 @@ def build_server(
 
     @mcp.tool(annotations=read)
     def simulate_ladder(
-        ladder: Ladder,
-        inputs: list[dict[str, StrictBool]],
-        initial: dict[str, Scalar] | None = None,
-        scan_ms: StrictInt | None = None,
+        ladder: Annotated[
+            Ladder,
+            Field(description="Caller-supplied Ladder IR program to execute in the bounded model."),
+        ],
+        inputs: Annotated[
+            list[dict[str, StrictBool]],
+            Field(
+                description=(
+                    "Ordered scan inputs; each object maps X device names to Boolean values."
+                )
+            ),
+        ],
+        initial: Annotated[
+            dict[str, Scalar] | None,
+            Field(
+                description="Optional initial Boolean or integer values keyed by modeled device."
+            ),
+        ] = None,
+        scan_ms: Annotated[
+            StrictInt | None,
+            Field(
+                ge=1,
+                description=(
+                    "Milliseconds per scan; required when the Ladder uses timers, counters or "
+                    "FUN87/88/89."
+                ),
+            ),
+        ] = None,
     ) -> dict[str, Any]:
-        """Bounded Boolean/direct R/D model, not PLC emulation.
+        """Simulate caller-supplied Ladder IR and return a bounded per-scan behavior trace.
 
-        scan_ms is required for T/C and FUN87/88/89. Supports the explicitly listed
+        This neither generates a system .ldr nor compares existing files; use generate_system_ldr
+        for multi-control generation and compare_ldr for file differences. This is a
+        Boolean/direct R/D model, not PLC emulation. scan_ms is required for T/C and FUN87/88/89.
+        Supports the explicitly listed
         numeric/native subset; unsupported actions fail without a partial trace.
         Words use unsigned 16-bit storage. Missing X inputs reset false each scan.
         See get_capabilities simulation_model for assumptions and supported actions.
@@ -608,21 +999,76 @@ def build_server(
 
     @mcp.tool(annotations=write)
     @structured_write_errors
-    def export_ldr(path: str, output_name: str) -> CallToolResult:
-        """Re-encode to a NEW file, preserving opaque bytes and any original invalid CRC."""
+    def export_ldr(
+        path: Annotated[
+            str,
+            Field(description="Existing .ldr source path inside the configured workspace."),
+        ],
+        output_name: Annotated[
+            str,
+            Field(
+                description="New plain .ldr filename in the artifact directory; never overwrites."
+            ),
+        ],
+    ) -> Annotated[CallToolResult, ArtifactToolOutput]:
+        """Re-encode one existing .ldr into a separate new .ldr artifact.
+
+        Use this for a lossless round trip that preserves unknown payloads and the source file's CRC
+        validity state; it does not change network logic. The source remains untouched and an
+        existing output_name is rejected. Returns the new artifact link, size, SHA-256 and warnings.
+        Use modify_network to insert, replace or delete logic, or generate_ldr for new Ladder IR.
+        """
         return artifact_result(service.export(path, output_name))
 
     @mcp.tool(annotations=write)
     @structured_write_errors
     def modify_network(
-        path: str,
-        output_name: str,
-        operation: Literal["replace", "insert", "delete"],
-        index: int,
-        network: Network | None = None,
-        allow_unverified: bool = False,
-    ) -> CallToolResult:
-        """Edit in a NEW file; index 0 is N000. Preserve untouched raw records."""
+        path: Annotated[
+            str,
+            Field(description="Existing source .ldr path inside the configured workspace."),
+        ],
+        output_name: Annotated[
+            str,
+            Field(
+                description="New plain .ldr filename in the artifact directory; never overwrites."
+            ),
+        ],
+        operation: Annotated[
+            Literal["replace", "insert", "delete"],
+            Field(description="Edit action: replace or delete index, or insert before index."),
+        ],
+        index: Annotated[
+            int,
+            Field(
+                ge=0,
+                description="Zero-based display-order network index; 0 identifies N000.",
+            ),
+        ],
+        network: Annotated[
+            Network | None,
+            Field(
+                description=(
+                    "Replacement or inserted Network IR; required for replace/insert and omitted "
+                    "for delete."
+                )
+            ),
+        ] = None,
+        allow_unverified: Annotated[
+            bool,
+            Field(
+                description=(
+                    "False rejects edits when unknown records prevent policy verification; true "
+                    "permits that explicit risk while still preserving untouched records."
+                )
+            ),
+        ] = False,
+    ) -> Annotated[CallToolResult, ArtifactToolOutput]:
+        """Edit one network in an existing .ldr and write the result to a new .ldr file.
+
+        Use operation replace, insert or delete; index 0 is N000 and untouched raw records are
+        preserved. Unlike get_capabilities, this changes program content; get_capabilities returns
+        server metadata only. The source file is never overwritten.
+        """
         return artifact_result(
             service.edit(path, output_name, operation, index, network, allow_unverified)
         )

@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict, Field, StrictInt
+
 RTC_FIELDS = {
     "R4128": ("second", 0, 59),
     "R4129": ("minute", 0, 59),
@@ -11,6 +13,37 @@ RTC_FIELDS = {
     "R4133": ("year_code", 0, 99),
     "R4134": ("weekday_code", 0, 6),
 }
+
+
+class RTCSnapshot(BaseModel):
+    """Caller-supplied FATEK RTC register values for offline validation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    R4128: StrictInt = Field(ge=0, le=59, description="Second value, 0 through 59.")
+    R4129: StrictInt = Field(ge=0, le=59, description="Minute value, 0 through 59.")
+    R4130: StrictInt = Field(ge=0, le=23, description="Hour value, 0 through 23.")
+    R4131: StrictInt = Field(ge=1, le=31, description="Day of month, 1 through 31.")
+    R4132: StrictInt = Field(ge=1, le=12, description="Month number, 1 through 12.")
+    R4133: StrictInt = Field(
+        ge=0,
+        le=99,
+        description="Two-digit year code, 0 through 99; no century is inferred.",
+    )
+    R4134: StrictInt = Field(
+        ge=0,
+        le=6,
+        description="Weekday code, 0 through 6; weekday names are not inferred.",
+    )
+    R4135: StrictInt | None = Field(
+        default=None,
+        ge=0,
+        le=65535,
+        description=(
+            "Optional packed time word: hour in the high byte and minute in the low byte "
+            "(hour*256+minute), not decimal HHMM."
+        ),
+    )
 
 
 def manual_reference() -> dict[str, Any]:
