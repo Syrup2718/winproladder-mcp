@@ -44,7 +44,10 @@ Timer example:
 
 Timer `preset` is measured in time-base ticks, not milliseconds. With a `.01S` time base, `preset=100` means one second. The MCP cannot determine the target project's time base from the `.ldr` file alone.
 
-Use `get_design_guide` for the complete schema. Use `get_instruction_capabilities` for operands and modes of individual native FUNC instructions.
+Use `get_design_guide(detail=true)` for the complete schema and
+`get_instruction_capabilities` for operands and modes of individual native FUNC instructions. To
+avoid repeating five large unions in `tools/list`, tools that accept complete Ladder or Network IR
+publish a lightweight object schema; calls are still fully validated by the same Pydantic models.
 
 ## Component Comments
 

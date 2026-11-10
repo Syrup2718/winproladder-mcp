@@ -80,26 +80,15 @@ def build_server(
     mcp = FastMCP(
         "WinProLadder",
         instructions=(
-            "For common functions prefer generate_control_ldr; for sequential pause/resume "
-            "use generate_sequence_ldr. Copy only user-specified X/Y into io_contract. "
-            "Never invent physical I/O or external clocks. Require signal and output addresses. "
-            "Ordinary T and sampled FUN87/88/89 accumulative timers are supported. "
-            "Use get_design_guide only when guidance is needed; detail=true expands notes. "
-            "Call get_instruction_capabilities without a family to list families, then pass one "
-            "family for focused limits. "
-            "Honor its workspace architecture policy; forbidden M-to-M chains must be "
-            "redesigned using native instructions, not renamed or hidden in helpers. "
-            "Call generate_ldr for an actual file; inferred encodings are enabled. "
-            "Do not ask the user for JSON or samples for supported expressions/parameters. "
-            "Include acceptance cases in generation; avoid repeating the same simulation. "
-            "Set require_acceptance=true when behavior checks are mandatory. "
-            "Return file links and validation warnings. "
-            "Generation results include an MCP resource link to the actual binary .ldr. "
-            "Use resources/read or get_ldr_artifact to deliver its bytes to clients without "
-            "access to the server filesystem. "
-            "When the user explicitly requests 新增元件註解 or component comments, call "
-            "generate_component_comments and return its separate .txt artifact link. "
-            "Stop polarity is the PLC input logic, not physical button wiring. No PLC operations."
+            "Prefer generate_control_ldr for one control and generate_sequence_ldr for ordered "
+            "steps; use custom Ladder IR only when needed. Declare exactly the user-specified X/Y "
+            "and never invent physical I/O or external clocks. Honor the workspace architecture "
+            "policy: redesign forbidden M-to-M chains with native instructions, never hidden relay "
+            "helpers. Use get_design_guide(detail=true) for the full IR schema and "
+            "get_instruction_capabilities for focused limits. Return artifact links and every "
+            "validation warning. Generated files are offline artifacts only: no GUI import, PLC "
+            "connection or runtime verification is implied. MCP never renames or deletes "
+            "artifacts; those are filesystem operations."
         ),
     )
     read = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
@@ -200,6 +189,12 @@ def build_server(
             }
             if assumptions:
                 result["design_assumptions"] = assumptions
+        warnings = result.get("warnings")
+        if warnings is None:
+            validation_result = result.get("validation")
+            if isinstance(validation_result, dict):
+                warnings = validation_result.get("warnings")
+        result["warnings"] = list(warnings or [])
         name = Path(result["path"]).name
         uri = AnyUrl(f"winproladder://artifacts/{quote(name, safe='')}")
         metadata = {
@@ -217,7 +212,7 @@ def build_server(
             "response_mode": metadata["response_mode"],
             "assumed_profile": metadata.get("assumed_profile"),
             "profile_warning": metadata.get("profile_warning"),
-            "warnings": metadata.get("warnings", []),
+            "warnings": metadata["warnings"],
         }
         response = CallToolResult(
             content=[
@@ -268,8 +263,10 @@ def build_server(
     ) -> dict[str, Any]:
         """Return server-wide support, policies and limits as metadata only.
 
-        This never reads or modifies ladder program content. To edit one network and write a new
-        .ldr file, use modify_network instead.
+        Includes build/version, generation and simulation scope, architecture policy, workspace,
+        output directory and artifact delivery. detail=true expands instruction-specific limits.
+        This never reads or modifies program content; use modify_network to edit one network.
+        PLC access and artifact rename/delete are intentionally outside this offline server.
         """
         base = capabilities() if detail or not compact_responses else capability_summary()
         result = {
@@ -325,7 +322,13 @@ def build_server(
             ),
         ] = None,
     ) -> dict[str, Any]:
-        """List instruction families, or get limits and evidence for one selected family."""
+        """Return implemented limits and evidence for one instruction family.
+
+        Omit family to discover valid identifiers; provide one returned identifier for its operand,
+        encoding and runtime-model boundaries. Use this for implemented MCP coverage, not general
+        PLC legality: get_manual_reference provides manual maxima and edition differences, while
+        get_capabilities provides server-wide support. Unknown family identifiers return an error.
+        """
         if family is None:
             families = instruction_families()
             return {"families": families, "count": len(families)}
@@ -333,7 +336,13 @@ def build_server(
 
     @mcp.tool(annotations=read)
     def get_manual_reference() -> dict[str, Any]:
-        """Get manual operand maxima, edition differences and RTC register/control procedures."""
+        """Return bundled PLC-manual semantics, operand maxima and cited source pages.
+
+        Use this to decide documented PLC legality, manual-edition differences or RTC register and
+        control procedures. Use get_instruction_capabilities instead for implemented encoder and
+        simulation coverage, or get_design_guide for generation workflow. This reads no project or
+        PLC state and returns static reference data only.
+        """
         return manual_reference()
 
     @mcp.tool(annotations=read)
@@ -437,13 +446,13 @@ def build_server(
             ),
         ] = None,
     ) -> Annotated[CallToolResult, ArtifactToolOutput]:
-        """Create a new .ldr from multiple independent control recipes in a SystemSpec.
+        """Generate a new .ldr for two or more independent ControlSpec recipes in one SystemSpec.
 
-        Use this when one requirement contains two or more independent controls that may share
-        inputs; use generate_control_ldr for one control and generate_sequence_ldr for dependent
-        ordered steps. It allocates internal M/T/C resources, rejects explicit overlaps, validates
-        acceptance cases and writes only a new artifact. Validation failure writes nothing. It does
-        not execute existing Ladder IR or return a trace; use simulate_ladder for that.
+        Never use this for one recipe, dependent ordered steps or caller-authored IR: use
+        generate_control_ldr, generate_sequence_ldr or generate_ldr respectively. This tool
+        allocates internal M/T/C, permits shared inputs, rejects explicit overlaps, checks
+        acceptance and writes only a new artifact. Validation failure writes nothing. It does not
+        execute existing IR or return a trace; use simulate_ladder for that.
         """
         ladder, design = system_ladder(spec)
         if target_profile is not None:
@@ -496,13 +505,13 @@ def build_server(
             ),
         ] = None,
     ) -> Annotated[CallToolResult, ArtifactToolOutput]:
-        """Create a new .ldr for one common control function from a ControlSpec.
+        """Generate a new .ldr for exactly one supported control recipe in a ControlSpec.
 
-        Use this for exactly one latch, toggle, edge, delay, pulse, counter, interlocked direction
-        or star/delta recipe. Use generate_system_ldr for multiple independent controls,
-        generate_sequence_ldr for ordered steps, or generate_ldr for caller-authored IR. Physical
-        I/O must be explicit in io_contract; validation failure writes nothing. This creates ladder
-        logic, whereas generate_component_comments creates only a separate comment-import .txt.
+        Never use this for multiple independent controls, ordered steps or caller-authored IR: use
+        generate_system_ldr, generate_sequence_ldr or generate_ldr respectively. Supports latch,
+        toggle, edges, delays, pulse, counter, direction interlock and star/delta. Physical I/O must
+        be explicit; validation failure writes nothing. generate_component_comments creates only a
+        separate comment-import .txt.
         """
         ladder, design = control_ladder(spec)
         if target_profile is not None:
@@ -557,13 +566,13 @@ def build_server(
             ),
         ] = None,
     ) -> Annotated[CallToolResult, ArtifactToolOutput]:
-        """Create a new .ldr for ordered steps from a SequenceSpec.
+        """Generate a new .ldr for dependent ordered steps defined by a SequenceSpec.
 
-        This generates sequence logic; validate_ladder only checks caller-supplied Ladder IR and
-        cannot derive a sequence from requirements. Native T timers are used with no automatic X/Y
-        additions. Native pause/resume uses FUN87 with register state and no relay copy chains.
-        External pulse counting is only for requirements explicitly specifying a clock input.
-        Return symbols and actual .ldr; not GUI or PLC verified.
+        Never use this for one control, independent controls or caller-authored IR: use
+        generate_control_ldr, generate_system_ldr or generate_ldr respectively. validate_ladder
+        checks existing IR and cannot derive steps. Uses native T timers or FUN87 register state for
+        pause/resume, never adds X/Y, and requires an explicit clock for pulse counting. Validation
+        failure writes nothing; no GUI or PLC verification is implied.
         """
         ladder, design = sequence_ladder(spec)
         if target_profile is not None:
@@ -590,9 +599,12 @@ def build_server(
             ),
         ],
         ladder: Annotated[
-            Ladder,
+            dict[str, Any],
             Field(
-                description="Complete caller-authored Ladder IR program to validate and compile."
+                description=(
+                    "Complete caller-authored Ladder IR object to validate and compile; obtain its "
+                    "full schema from get_design_guide(detail=true)."
+                )
             ),
         ],
         io_contract: Annotated[
@@ -612,17 +624,19 @@ def build_server(
             Field(description="When true, reject conflicting or unsafe multiple device writers."),
         ] = False,
     ) -> Annotated[CallToolResult, ArtifactToolOutput]:
-        """Compile caller-supplied custom Ladder IR into a new binary .ldr file.
+        """Compile complete Ladder IR the caller already provides into a new binary .ldr file.
 
-        Use generate_control_ldr for common controls and generate_sequence_ldr for ordered steps.
-        This generates ladder code; generate_component_comments creates only a separate comment
-        .txt and cannot compile Ladder IR. Returns SHA-256, a binary resource link and verification
-        warnings. Never overwrites files.
+        Never translate a ControlSpec, SequenceSpec or SystemSpec to call this tool; use
+        generate_control_ldr, generate_sequence_ldr or generate_system_ldr. It does not design
+        recipes, resolve defaults or allocate recipe resources. generate_component_comments creates
+        only a separate comment .txt. Returns SHA-256, a resource link and warnings; validation
+        failure writes nothing and existing files are never overwritten.
         """
+        ladder_model = Ladder.model_validate(ladder)
         return artifact_result(
             service.generate(
                 output_name,
-                ladder,
+                ladder_model,
                 acceptance,
                 io_contract=io_contract,
                 require_acceptance=require_acceptance,
@@ -639,7 +653,13 @@ def build_server(
             ),
         ],
     ) -> dict[str, Any]:
-        """Inspect PDW sections, Chinese comments and known checksums; FUNC199 stays opaque."""
+        """Inspect the structure and metadata of one existing workspace PDW project.
+
+        Use this for CPU/profile data, modules, sections, Chinese comments, network offsets and
+        known checksums. It does not return the downloadable binary; use get_pdw_artifact for exact
+        generated bytes. FUNC199 and unsupported layouts remain opaque, invalid files return an
+        error, and nothing is written or sent to a PLC.
+        """
         return service.inspect_pdw(path)
 
     @mcp.tool(annotations=write)
@@ -658,9 +678,12 @@ def build_server(
             ),
         ],
         ladder: Annotated[
-            Ladder,
+            dict[str, Any],
             Field(
-                description="Complete Ladder IR program whose profile must match the template CPU."
+                description=(
+                    "Complete Ladder IR object whose profile must match the template CPU; obtain "
+                    "its full schema from get_design_guide(detail=true)."
+                )
             ),
         ],
         io_contract: Annotated[
@@ -704,16 +727,17 @@ def build_server(
             ),
         ] = None,
     ) -> Annotated[CallToolResult, ArtifactToolOutput]:
-        """Compile Ladder IR into a new variable-length PDW project from a local template.
+        """Create or revise a PDW non-destructively by compiling Ladder IR into a new project.
 
-        This writes a PDW project binary with optional embedded sections and comments;
+        Supply an existing local PDW as template_path and a different output_name; opaque project
+        settings are retained while requested program and annotations are replaced. This writes a
+        variable-length PDW binary with optional embedded sections and comments;
         generate_component_comments writes only a separate comment-import .txt and cannot create a
         PDW project. Sampled FBs-20MC/32MC/40MC/60MC layouts are supported.
 
         Module records come from local templates.
 
-        Match ladder.profile to the template CPU. Template must be inside workspace. Program and
-        annotations are replaced by the explicit request; opaque project settings are retained.
+        Match ladder.profile to the template CPU. Template must be inside workspace.
         Network.comment supports CR/LF. Section indexes refer to zero-based source networks.
         Optional embedded SECT text uses only the sampled even-byte encoding. FUNC199 and
         control flow are not generated. New files only, no PLC connection or GUI guarantee.
@@ -722,10 +746,11 @@ def build_server(
         duplicates are retained. Missing or conflicting records are rejected. No automatic I/O
         allocation, module parameter editing, slot-capacity or hardware compatibility validation.
         """
+        ladder_model = Ladder.model_validate(ladder)
         result = service.generate_project_pdw(
             output_name,
             template_path,
-            ladder,
+            ladder_model,
             io_contract,
             acceptance,
             sections=sections,
@@ -792,7 +817,13 @@ def build_server(
             ),
         ],
     ) -> Annotated[CallToolResult, ArtifactToolOutput]:
-        """Retrieve a generated PDW artifact's exact bytes from the configured output directory."""
+        """Return the exact bytes and download link for one previously generated PDW artifact.
+
+        Use this after PDW generation when the client needs an embedded binary resource; use
+        inspect_pdw to interpret project structure, or get_ldr_artifact for an .ldr. output_name
+        must be the exact plain .pdw filename in the artifact directory. Missing, oversized or
+        wrong-extension files return an error. This reads only and returns URI, size and SHA-256.
+        """
         target = artifact_path(output_name, frozenset({".pdw"}))
         data = artifact_bytes(output_name, frozenset({".pdw"}))
         return artifact_result(
@@ -884,7 +915,14 @@ def build_server(
             ),
         ],
     ) -> dict[str, Any]:
-        """Decode Ladder networks in display order; unknown payloads stay opaque. Reject bad CRC."""
+        """Decode one existing .ldr into display-order network records and optional Ladder IR.
+
+        Use this for decoded logic and raw payloads; use inspect_ldr for container offsets or
+        bad-CRC forensics, and analyze_ldr for device reads/writes and semantic summaries.
+        Unsupported payloads remain opaque, complete Ladder IR is returned only when every network
+        decodes, and
+        bad CRC or unknown framing returns an error. The workspace file is never modified.
+        """
         return service.read(path)
 
     @mcp.tool(annotations=read)
@@ -896,7 +934,14 @@ def build_server(
             ),
         ],
     ) -> dict[str, Any]:
-        """Analyze decoded network meaning and device reads/writes; not a raw-byte inspection."""
+        """Explain the behavior and device usage of one existing valid .ldr file.
+
+        Use this for per-network meaning, decoded counts, device read/write references, timer
+        settings and completeness warnings. Use read_ldr when full decoded logic or raw payloads
+        are needed, or inspect_ldr for framing and CRC evidence. Bad CRC or unknown framing returns
+        an error; opaque networks produce an explicit incomplete-analysis warning. Nothing is
+        written or sent to a PLC.
+        """
         return service.analyze(path)
 
     @mcp.tool(annotations=read)
@@ -913,16 +958,20 @@ def build_server(
         """Compare two existing .ldr files and report their structural and CRC differences.
 
         This only aligns decoded display-order networks as insert/delete/replace. It does not
-        validate caller-supplied IR, simulate behavior, generate comments or write a ladder file.
+        validate IR, simulate behavior or write a file: use validate_ladder, simulate_ladder or
+        generate_ldr for those actions. Use read_ldr for either file's decoded network contents.
         """
         return service.compare(left_path, right_path)
 
     @mcp.tool(annotations=read)
     def validate_ladder(
         ladder: Annotated[
-            Ladder,
+            dict[str, Any],
             Field(
-                description="Caller-supplied Ladder IR to lower and check without creating a file."
+                description=(
+                    "Caller-supplied Ladder IR object to check without creating a file; obtain its "
+                    "full schema from get_design_guide(detail=true)."
+                )
             ),
         ],
     ) -> dict[str, Any]:
@@ -931,8 +980,9 @@ def build_server(
         Returns simplified connected IR, layout and resource/policy errors; it is not PLC syntax
         validation. To report differences between two existing .ldr files, use compare_ldr instead.
         """
-        lowered, layout = lower_ladder(ladder)
-        source_architecture = service.architecture(ladder, enforce=False)
+        ladder_model = Ladder.model_validate(ladder)
+        lowered, layout = lower_ladder(ladder_model)
+        source_architecture = service.architecture(ladder_model, enforce=False)
         architecture = service.architecture(lowered, enforce=False)
         result: dict[str, Any] = dict(validation(lowered))
         if not source_architecture["valid"] or not architecture["valid"]:
@@ -954,8 +1004,13 @@ def build_server(
     @mcp.tool(annotations=read)
     def simulate_ladder(
         ladder: Annotated[
-            Ladder,
-            Field(description="Caller-supplied Ladder IR program to execute in the bounded model."),
+            dict[str, Any],
+            Field(
+                description=(
+                    "Caller-supplied Ladder IR object for the bounded model; obtain its full "
+                    "schema from get_design_guide(detail=true)."
+                )
+            ),
         ],
         inputs: Annotated[
             list[dict[str, StrictBool]],
@@ -992,8 +1047,9 @@ def build_server(
         Words use unsigned 16-bit storage. Missing X inputs reset false each scan.
         See get_capabilities simulation_model for assumptions and supported actions.
         """
+        ladder_model = Ladder.model_validate(ladder)
         return {
-            "trace": simulate_runtime(ladder, inputs, initial or {}, scan_ms),
+            "trace": simulate_runtime(ladder_model, inputs, initial or {}, scan_ms),
             "scope": MODEL_SCOPE,
         }
 
@@ -1045,11 +1101,11 @@ def build_server(
             ),
         ],
         network: Annotated[
-            Network | None,
+            dict[str, Any] | None,
             Field(
                 description=(
-                    "Replacement or inserted Network IR; required for replace/insert and omitted "
-                    "for delete."
+                    "Replacement or inserted Network IR object; required for replace/insert and "
+                    "omitted for delete. Its full schema is in get_design_guide(detail=true)."
                 )
             ),
         ] = None,
@@ -1069,8 +1125,9 @@ def build_server(
         preserved. Unlike get_capabilities, this changes program content; get_capabilities returns
         server metadata only. The source file is never overwritten.
         """
+        network_model = Network.model_validate(network) if network is not None else None
         return artifact_result(
-            service.edit(path, output_name, operation, index, network, allow_unverified)
+            service.edit(path, output_name, operation, index, network_model, allow_unverified)
         )
 
     @mcp.resource(

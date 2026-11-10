@@ -74,6 +74,36 @@ def test_compact_stdio_preserves_evidence_and_binary(tmp_path):
             assert not download.isError
             assert download.structuredContent["sha256"] == brief["sha256"]
 
+            arithmetic = await session.call_tool(
+                "generate_ldr",
+                {
+                    "output_name": "arithmetic.ldr",
+                    "ladder": {
+                        "networks": [
+                            {
+                                "action": {
+                                    "type": "arithmetic",
+                                    "operation": "add",
+                                    "sa": "R0",
+                                    "sb": 5,
+                                    "destination": "R1",
+                                }
+                            }
+                        ]
+                    },
+                    "io_contract": {"inputs": [], "outputs": []},
+                },
+            )
+            assert not arithmetic.isError
+            arithmetic_summary = json.loads(arithmetic.content[0].text)
+            arithmetic_metadata = arithmetic.structuredContent
+            validation_warnings = arithmetic_metadata["validation"]["warnings"]
+            assert len(validation_warnings) == 2
+            assert arithmetic_summary["warnings"] == validation_warnings
+            assert arithmetic_metadata["warnings"] == validation_warnings
+            assert "WinProLadder import" in validation_warnings[0]
+            assert "Arithmetic" in validation_warnings[1]
+
             duplicate = await session.call_tool(
                 "generate_control_ldr",
                 {

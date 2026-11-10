@@ -27,9 +27,26 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
             stdio_client(params) as (read, write),
             ClientSession(read, write) as session,
         ):
-            await session.initialize()
+            initialized = await session.initialize()
+            assert len(initialized.instructions or "") < 700
             tools = (await session.list_tools()).tools
             assert sum(len(tool.description or "") for tool in tools) < 12000
+            serialized_tools = json.dumps(
+                [tool.model_dump(mode="json", by_alias=True, exclude_none=True) for tool in tools],
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+            assert len(serialized_tools) < 75000
+            advanced_schema_names = {
+                "generate_project_pdw",
+                "generate_ldr",
+                "simulate_ladder",
+                "modify_network",
+                "validate_ladder",
+            }
+            for tool in tools:
+                if tool.name in advanced_schema_names:
+                    assert len(json.dumps(tool.inputSchema, separators=(",", ":"))) < 8000
             for tool in tools:
                 properties = tool.inputSchema.get("properties", {})
                 assert all(schema.get("description") for schema in properties.values()), tool.name
@@ -62,22 +79,46 @@ def test_stdio_tool_workflow(tmp_path: Path) -> None:
             generate = next(t for t in tools if t.name == "generate_ldr")
             assert "ladder" in generate.inputSchema["properties"]
             assert generate.annotations.destructiveHint is False
-            assert "custom Ladder IR" in generate.description
+            assert "complete Ladder IR" in generate.description
             control = next(t for t in tools if t.name == "generate_control_ldr")
-            assert "common control function" in control.description
+            assert "control recipe" in control.description
             descriptions = {
                 tool.name: re.sub(r"\s+", " ", tool.description or "") for tool in tools
             }
             expected_boundaries = {
                 "get_capabilities": ("modify_network", "metadata only"),
-                "generate_system_ldr": ("simulate_ladder", "does not execute"),
+                "get_instruction_capabilities": (
+                    "get_manual_reference",
+                    "get_capabilities",
+                ),
+                "get_manual_reference": (
+                    "get_instruction_capabilities",
+                    "get_design_guide",
+                ),
+                "generate_system_ldr": (
+                    "simulate_ladder",
+                    "generate_ldr",
+                    "does not execute",
+                ),
                 "generate_control_ldr": ("generate_component_comments", "creates only"),
-                "generate_sequence_ldr": ("validate_ladder", "cannot derive"),
-                "generate_ldr": ("generate_component_comments", "cannot compile"),
+                "generate_sequence_ldr": (
+                    "generate_control_ldr",
+                    "generate_system_ldr",
+                    "validate_ladder",
+                ),
+                "generate_ldr": (
+                    "generate_component_comments",
+                    "SystemSpec",
+                    "caller already provides",
+                ),
+                "inspect_pdw": ("get_pdw_artifact", "FUNC199"),
                 "generate_project_pdw": ("generate_component_comments", "cannot create"),
                 "generate_pdw": ("generate_component_comments", "separate .txt"),
+                "get_pdw_artifact": ("inspect_pdw", "get_ldr_artifact"),
                 "generate_component_comments": ("analyze_ldr", "does not inspect"),
-                "compare_ldr": ("validate caller-supplied IR", "does not"),
+                "read_ldr": ("inspect_ldr", "analyze_ldr"),
+                "analyze_ldr": ("read_ldr", "inspect_ldr"),
+                "compare_ldr": ("validate_ladder", "does not"),
                 "validate_ladder": ("compare_ldr", "without reading or writing"),
                 "simulate_ladder": ("compare_ldr", "neither generates"),
                 "modify_network": ("get_capabilities", "changes program content"),

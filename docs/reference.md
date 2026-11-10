@@ -44,7 +44,9 @@ Timer 範例：
 
 Timer `preset` 是時基刻度，不是毫秒。`.01S` 時基下 `preset=100` 代表 1 秒；MCP 無法單靠 `.ldr` 確認目標工程的時間基準。
 
-完整 schema 由 `get_design_guide` 提供；個別原生 FUNC 的 operand 與模式請用 `get_instruction_capabilities` 查詢。
+完整 schema 由 `get_design_guide(detail=true)` 提供；個別原生 FUNC 的 operand 與模式請用
+`get_instruction_capabilities` 查詢。為避免在 `tools/list` 重複五份大型 union，接受完整
+Ladder／Network IR 的工具只公開輕量 object schema，但呼叫時仍以同一套 Pydantic 模型完整驗證。
 
 ## 元件註解
 
