@@ -131,8 +131,10 @@ def design_guide() -> dict[str, Any]:
             "Native increment/decrement, compare and bitwise actions are supported from test8. "
             "MC/MCE and 07P.UDCTR are supported from test9, with no built-in runtime simulation. "
             "Respect the workspace policy even for implicit M dependencies through MC regions.",
-            "FUN11..14 use arithmetic actions: register Sa and nonnegative immediate Sb only. "
-            "MUL/DIV write D and D+1; reserve both. Direct R/D runtime acceptance is available.",
+            "FUN11 ADD accepts register or nonnegative immediate Sb; FUN12..14 retain "
+            "nonnegative immediate Sb only. The common OR bank R3904..R3967 is available for "
+            "direct word instructions such as ADD destinations and MOV. MUL/DIV write D and "
+            "D+1; reserve both. Direct R/D/OR runtime acceptance is available.",
             "Native edge networks can pulse Y/M directly without helper M contacts. "
             "Only isolated X rising/falling contacts; model starts from initial/FALSE.",
             "For independent controls use generate_system_ldr to allocate internal M/T/C "

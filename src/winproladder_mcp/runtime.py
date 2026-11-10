@@ -255,9 +255,12 @@ def simulate_runtime(
                 if not test(getattr(a, "enable", "TRUE")):
                     continue
                 if isinstance(a, Arithmetic):
-                    left, right = word(a.sa), a.sb
+                    left = word(a.sa)
+                    right = word(a.sb) if isinstance(a.sb, str) else a.sb
                     if not test(a.unsigned_when):
                         left = signed(left)
+                        if isinstance(a.sb, str):
+                            right = signed(right)
                     if a.operation == "add":
                         value = left + right
                     elif a.operation == "sub":
