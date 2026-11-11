@@ -102,6 +102,14 @@ def audit(root: Path) -> dict:
                 errors.append({"path": rel, "error": str(exc)})
     source_broken_links = [item for item in links if not _is_local_output(item["document"])]
     local_output_broken_links = [item for item in links if _is_local_output(item["document"])]
+    source_content_errors = [item for item in errors if not _is_local_output(item["path"])]
+    local_output_content_errors = [item for item in errors if _is_local_output(item["path"])]
+    source_ldr_errors = [
+        item for item in ldrs if "error" in item and not _is_local_output(item["path"])
+    ]
+    local_output_ldr_errors = [
+        item for item in ldrs if "error" in item and _is_local_output(item["path"])
+    ]
     return {
         "root": str(root),
         "scope": "All regular files counted; Git/venv/tool environments "
@@ -111,11 +119,15 @@ def audit(root: Path) -> dict:
         "inventory": files,
         "duplicate_content": [v for v in duplicates.values() if len(v) > 1],
         "content_errors": errors,
+        "source_content_errors": source_content_errors,
+        "local_output_content_errors": local_output_content_errors,
         "broken_links": links,
         "source_broken_links": source_broken_links,
         "local_output_broken_links": local_output_broken_links,
         "local_only_links": local_links,
         "ldr_checks": ldrs,
+        "source_ldr_errors": source_ldr_errors,
+        "local_output_ldr_errors": local_output_ldr_errors,
     }
 
 
@@ -125,24 +137,40 @@ def main() -> None:
     parser.add_argument(
         "--output", type=Path, required=True, help="New JSON report; never overwrite"
     )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Exit non-zero for source errors; ignored local output never blocks",
+    )
     args = parser.parse_args()
     result = audit(args.root)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("x", encoding="utf-8") as stream:
         json.dump(result, stream, ensure_ascii=False, indent=2)
+    failed = bool(
+        result["source_content_errors"]
+        or result["source_broken_links"]
+        or result["source_ldr_errors"]
+    )
     print(
         json.dumps(
             {
                 "report": str(args.output),
                 "files": sum(t["files"] for t in result["totals"].values()),
-                "content_errors": result["content_errors"],
+                "check": args.check,
+                "passed": not failed,
+                "source_content_errors": result["source_content_errors"],
                 "source_broken_links": result["source_broken_links"],
+                "source_ldr_errors": result["source_ldr_errors"],
+                "local_output_content_error_count": len(result["local_output_content_errors"]),
                 "local_output_broken_link_count": len(result["local_output_broken_links"]),
-                "ldr_errors": [r for r in result["ldr_checks"] if "error" in r],
+                "local_output_ldr_error_count": len(result["local_output_ldr_errors"]),
             },
             ensure_ascii=True,
         )
     )
+    if args.check and failed:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
