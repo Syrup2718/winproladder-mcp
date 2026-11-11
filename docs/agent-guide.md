@@ -1,6 +1,31 @@
 # Agent 操作指南
 
-[文件索引](README.md) · [使用參考](reference.md)
+[文件索引](README.md) · [專案架構](../ARCHITECTURE.md) · [使用參考](reference.md)
+
+## 工作區不可違反的契約
+
+- 每次 Ladder 操作都必須讀取根目錄 `.winproladder-policy.json`，不可為了產檔而停用、
+  繞過或放寬政策。
+- 禁止無意義的 M→M relay 複製、冗餘中繼鏈、自保持／複製 SET/RESET 目的地，以及
+  lowering 自動產生的 relay helper。M 控制原生 function，且該 function 產生 M 結果或
+  狀態位元則允許；普通 relay rung 不會因位於 MC 內或被命名為 function 而取得例外。
+- 數值與步序狀態使用原生暫存器。無條件比較可產生供 Y 輸出或 timer/register EN 使用的
+  M 狀態位元；不可用改名或等價 relay 鏈掩飾被禁止的設計。
+- 保留使用者現有的 I/O、極性、優先權、復歸與時間契約，不可自行增加輸入、輸出或
+  外部時脈。
+- 必須分別檢查來源 IR、lowered program，以及實際輸出 bytes 重新解碼後的程式。
+
+數字倒數顯示的每個 50 ms digit slot 必須維持亮 40 ms、滅 10 ms，順序為秒、十分之一秒。
+即使相鄰數字相同（例如 9.9 或 0.0），也不可省略 blank interval。
+
+## 指令與格式證據
+
+判斷 instruction mode、operand 範圍、單位、D/P 變體或 PLC 行為前，先查閱使用者提供的
+`C:/Fatek/FBe進階篇/進階篇應用指令.pdf`；需要時再查基本篇與 RTC 手冊。若手冊與 GUI
+匯出樣本仍有差異，記錄精確頁碼與 bytes 證據。
+
+PLC 文件語意與本專案 `.ldr` serialization 是兩個不同層級。缺少 encoder 只能表示目前
+實作不支援產檔，不能推論 PLC operand、mode 或 instruction 本身不合法。
 
 ## 建議流程
 
@@ -10,8 +35,6 @@
 4. 優先使用高階配方；自訂 IR 可先執行 `validate_ladder`。
 5. 把 acceptance 與產檔放在同一次請求，回傳實際檔案連結與驗證狀態。
 6. 使用者明確要求元件註解時，再呼叫 `generate_component_comments` 並交付獨立 `.txt`。
-
-本工作區禁止無意義 M→M 複製、冗餘中繼及自動 relay helpers；原生 function 的 M 控制與 M 結果／狀態不在此限。數值與步序狀態應使用暫存器。
 
 ## 工具選擇
 
@@ -53,5 +76,7 @@
 - 高階 sidecar 中的 `symbols` 與 `network_notes` 不是 `.ldr` 內嵌註解。
 - acceptance 通過只代表支援模型與輸出 bytes 一致，不代表 GUI 或 PLC 已驗證。
 - 未知網路不猜測語意；若無法證明符合政策，拒絕修改或重新生成。
+- 交付新產生的 `.ldr` 時，檔案連結放在回覆最前面，並分別標示獨立離線模型、MCP
+  內建模擬、WinProLadder GUI 匯入與實體 PLC 驗證狀態。
 
 停止按鈕的「實體常閉」與 PLC 讀值極性是不同概念。條件必須依使用者描述的 PLC 值建立，不能自行反轉。

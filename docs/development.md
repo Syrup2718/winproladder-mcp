@@ -1,6 +1,6 @@
 # 開發指南
 
-[文件索引](README.md) · [貢獻指南](project/CONTRIBUTING.md)
+[文件索引](README.md) · [專案架構](../ARCHITECTURE.md) · [Agent 指南](agent-guide.md) · [貢獻指南](project/CONTRIBUTING.md)
 
 ## 開發環境
 
@@ -23,14 +23,27 @@ docs/                  使用與工程文件
 
 ## 必要檢查
 
+一般修改執行統一的快速驗證。專案目前沒有可靠的受影響測試選擇器，因此 `--quick`
+仍會執行完整測試：
+
 ```powershell
-uv run python -m pytest -q
-uv run ruff check .
-uv run python -m mypy
-uv run python -m winproladder_mcp.setup check
+uv run python scripts/validate.py --quick
 ```
 
-`setup check` 會啟動真實 stdio MCP，驗證工具列舉、`.ldr` 產生、acceptance、SHA-256、資源下載及元件註解檔。
+合併前或 CI 的 Linux job 執行完整驗證：
+
+```powershell
+uv run python scripts/validate.py --full
+```
+
+兩種模式都會檢查 Ruff format、Ruff lint、strict mypy 與測試。`--full` 另要求 90%
+總 coverage、啟動真實 stdio MCP self-check，並以 workspace audit `--check` 阻擋原始碼、
+文件與 `samples/`／`tests/` LDR 的完整性錯誤。本機輸出中的歷史 broken links 不會阻擋驗證。
+
+每一步的命令、結果、耗時及 log 路徑會寫入 `tmp/validation/latest.json`；各步驟的
+redacted logs 位於同一次 run 的子目錄。即使其中一步失敗，驗證仍會完成其餘步驟並以
+非零狀態結束。`setup check` 會驗證工具列舉、`.ldr` 產生、acceptance、SHA-256、資源下載
+及元件註解檔。
 
 需要完整發布驗證時，使用新的空工作目錄：
 
@@ -38,19 +51,11 @@ uv run python -m winproladder_mcp.setup check
 uv run python scripts/verify_release.py --root <new-directory>
 ```
 
-## 核心模組
+## 架構與生成契約
 
-| 模組 | 責任 |
-| --- | --- |
-| `ldr.py`、`profiles.py` | 容器、CRC、record 與檔頭 |
-| `logic.py`、`ir.py` | 條件 AST、語意 IR、編解碼 |
-| `layout.py`、`optimize.py` | 接圖、配置與局部簡化 |
-| `control.py`、`sequence.py`、`system.py` | 高階產生器 |
-| `runtime.py`、`acceptance.py` | 有界模型與驗收 |
-| `service.py`、`server.py` | 檔案邊界與 MCP 介面 |
-| `capabilities.py` | 對外支援範圍 |
-
-原始 bytes 往返與生成最佳化必須分離；read/export 不應改變未知資料。
+模組責任、依賴方向、LDR 產生管線與驗證層級以根目錄
+[ARCHITECTURE.md](../ARCHITECTURE.md) 為唯一架構依據。Ladder 生成限制、手冊證據與交付規則
+以 [Agent 操作指南](agent-guide.md) 為準，本頁只記錄開發與驗證流程。
 
 ## 新增指令
 
@@ -60,7 +65,7 @@ uv run python scripts/verify_release.py --root <new-directory>
 4. 加入原始 bytes、邊界、反例及 MCP 交付測試。
 5. 更新 capabilities 與對應工程證據文件。
 
-缺少 serialization 不代表 PLC 指令本身不合法；文件應分開描述 PLC 語意與本專案 codec 限制。
+PLC 語意與 serialization 支援的區分以 [Agent 操作指南](agent-guide.md#指令與格式證據) 為準。
 
 ## 格式研究
 
