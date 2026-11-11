@@ -69,10 +69,7 @@ def behavior_verification(
             "warning": "No executable acceptance cases were supplied.",
         }
     passed = bool(
-        source_report
-        and emitted_report
-        and source_report["passed"]
-        and emitted_report["passed"]
+        source_report and emitted_report and source_report["passed"] and emitted_report["passed"]
     )
     return {
         "level": "source_and_emitted_acceptance",
