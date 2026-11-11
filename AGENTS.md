@@ -28,6 +28,23 @@ and safely rewriting FATEK WinProLadder files. It does not connect to a PLC.
 - Distinguish documented PLC semantics from this repository's serialization and simulation
   support. A missing encoder is not evidence that a PLC operand or mode is illegal.
 
+## Git workflow
+
+- Treat `main` as the only long-lived branch. Normally work on `main` or reuse at most one
+  temporary branch for the current task; do not create a branch for every edit or agent run.
+- Keep one task's implementation, tests, fixes, and review changes on the same temporary branch.
+  Create another branch only for an independent PR or to isolate unrelated work.
+- Small, low-risk changes do not require a branch or PR. Use a PR when independent review,
+  CI isolation, or a separately mergeable change is useful.
+- Before changing branches or preparing commits, inspect `git status` and preserve all existing
+  user changes. Never discard, overwrite, or mix unrelated work.
+- Keep the checks in [docs/development.md](docs/development.md) intact. Do not weaken formatting,
+  lint, type, test, coverage, architecture-boundary, audit, or CI gates to make a change pass.
+- After a PR merges, first verify its commits are in an updated local `main`. A temporary branch
+  may be cleaned up only when it is fully merged and has no unsaved work.
+- Do not merge a PR, delete a local or remote branch, force-push, rewrite remote history, or remove
+  uncommitted changes without the user's explicit approval.
+
 ## Delivery and release
 
 - Return a newly generated `.ldr` link first. Clearly separate offline checks, MCP simulation,

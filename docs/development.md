@@ -21,6 +21,12 @@ docs/                  使用與工程文件
 
 本機產物放在 `artifacts/`、`tmp/`、`.venv/` 或 `.install/`，不應混入原始樣本。
 
+## Git 工作流程
+
+分支與 Pull Request 規範以 [AGENTS.md 的 Git workflow](../AGENTS.md#git-workflow) 為唯一依據。
+日常小型修改不強制建立分支或 PR；同一任務若已使用暫時分支，後續修改、測試與 review
+修正沿用該分支。是否使用分支不影響下列驗證要求。
+
 ## 必要檢查
 
 一般修改執行統一的快速驗證。專案目前沒有可靠的受影響測試選擇器，因此 `--quick`

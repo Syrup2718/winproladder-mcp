@@ -21,6 +21,9 @@ Before merging, run `uv run python scripts/validate.py --full` to add coverage, 
 self-check, and the workspace audit. A pull request should explain what changed, how it was
 verified, and any remaining limitations.
 
+Follow the [Git workflow in AGENTS.md](../../AGENTS.md#git-workflow) for branch and PR decisions.
+Small changes do not require a PR; when a PR is used, keep one temporary branch per task.
+
 ## Adding an Instruction
 
 1. Confirm the documented semantics, operand ranges, and time units.

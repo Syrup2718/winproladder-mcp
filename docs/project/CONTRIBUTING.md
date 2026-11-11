@@ -20,6 +20,9 @@ uv run python scripts/validate.py --quick
 合併前可執行 `uv run python scripts/validate.py --full`，加入 coverage、MCP self-check 與
 workspace audit。Pull Request 說明改了什麼、如何驗證，以及仍有什麼限制。
 
+分支與 PR 的使用時機以 [AGENTS.md 的 Git workflow](../../AGENTS.md#git-workflow) 為準。
+小型修改不強制建立 PR；若使用 PR，應維持同一任務只使用同一暫時分支。
+
 ## 新增指令
 
 1. 核對手冊語意、範圍與時間單位。
