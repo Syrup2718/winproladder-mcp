@@ -19,8 +19,7 @@ def register_bank(name: str) -> tuple[int, int, int]:
     if name[0] == "D" and address <= 4095:
         return address, 0, 4095
     raise ValueError(
-        "Supported inferred banks: R0..3839, R3840..3903, R3904..3967, "
-        "R5000..8071, D0..4095"
+        "Supported inferred banks: R0..3839, R3840..3903, R3904..3967, R5000..8071, D0..4095"
     )
 
 

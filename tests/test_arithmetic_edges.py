@@ -120,9 +120,7 @@ def test_gui_exported_register_add_and_or_destination_oracles():
 
 def test_register_add_runtime_uses_signed_or_unsigned_operands():
     signed_add = Ladder(
-        networks=[
-            Network(action=Arithmetic(operation="add", sa="R0", sb="R1", destination="R2"))
-        ]
+        networks=[Network(action=Arithmetic(operation="add", sa="R0", sb="R1", destination="R2"))]
     )
     assert timed_simulate(signed_add, [{}], {"R0": 1, "R1": 0xFFFF}, 10)[0]["R2"] == 0
     signed_add.networks[0].action.unsigned_when = "TRUE"

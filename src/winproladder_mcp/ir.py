@@ -1269,11 +1269,7 @@ class ProcessFunction(Model):
         required = FIELDS[self.type]
         for name in set().union(*map(set, FIELDS.values())):
             if name in required:
-                if (
-                    self.type == "move_word"
-                    and name == "source"
-                    and isinstance(self.source, int)
-                ):
+                if self.type == "move_word" and name == "source" and isinstance(self.source, int):
                     continue
                 value = self.operand(name)
                 if self.type in memory_functions.CODES:
@@ -2424,9 +2420,7 @@ def decode_network(payload: bytes) -> Network | None:
             opcodes = ARITHMETIC_REGISTER_OPCODES if register_sb else ARITHMETIC_OPCODES
             action = Arithmetic.model_validate(
                 {
-                    "operation": next(
-                        k for k, v in opcodes.items() if v == payload[-8:-6]
-                    ),
+                    "operation": next(k for k, v in opcodes.items() if v == payload[-8:-6]),
                     "sa": decode_register(payload[-6:-4]),
                     "sb": (
                         decode_register(payload[-4:-2])
@@ -2599,9 +2593,7 @@ def validation(ladder: Ladder) -> dict[str, object]:
             payloads.append(payload.hex(" "))
             from .validation_evidence import collect_instruction_evidence
 
-            instruction_evidence.extend(
-                collect_instruction_evidence(index, network, payload)
-            )
+            instruction_evidence.extend(collect_instruction_evidence(index, network, payload))
         except ValueError as error:
             errors.append(f"N{index:03}: {error}")
     from .validation_evidence import normalize_instruction_evidence

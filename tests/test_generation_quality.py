@@ -38,9 +38,7 @@ def test_generation_discloses_missing_acceptance_and_can_require_it(tmp_path):
         "warning": "No executable acceptance cases were supplied.",
     }
     with pytest.raises(ValueError, match="acceptance cases are required"):
-        service.generate(
-            "denied.ldr", ladder, io_contract=contract, require_acceptance=True
-        )
+        service.generate("denied.ldr", ladder, io_contract=contract, require_acceptance=True)
     assert not (tmp_path / "artifacts/denied.ldr").exists()
 
 
