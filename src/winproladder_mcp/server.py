@@ -843,9 +843,7 @@ def build_server(
         ],
         entries: Annotated[
             list[ComponentComment],
-            Field(
-                description="Rows with ref, description, and COMMENT (max 16 CP950/Big5 bytes)."
-            ),
+            Field(description="Rows with ref, description, and COMMENT (max 16 CP950/Big5 bytes)."),
         ],
     ) -> Annotated[CallToolResult, ArtifactToolOutput]:
         """Create only a separate CP950 WinProLadder component-comment import .txt file.

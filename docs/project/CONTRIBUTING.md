@@ -14,13 +14,11 @@
 
 ```powershell
 uv sync --locked
-uv run python -m pytest -q
-uv run ruff check .
-uv run python -m mypy
-uv run python -m winproladder_mcp.setup check
+uv run python scripts/validate.py --quick
 ```
 
-Pull Request 說明改了什麼、如何驗證，以及仍有什麼限制。
+合併前可執行 `uv run python scripts/validate.py --full`，加入 coverage、MCP self-check 與
+workspace audit。Pull Request 說明改了什麼、如何驗證，以及仍有什麼限制。
 
 ## 新增指令
 

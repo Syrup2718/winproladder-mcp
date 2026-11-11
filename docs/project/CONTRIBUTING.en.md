@@ -14,13 +14,12 @@ Follow [AGENTS.md](../../AGENTS.md), then run:
 
 ```powershell
 uv sync --locked
-uv run python -m pytest -q
-uv run ruff check .
-uv run python -m mypy
-uv run python -m winproladder_mcp.setup check
+uv run python scripts/validate.py --quick
 ```
 
-A pull request should explain what changed, how it was verified, and any remaining limitations.
+Before merging, run `uv run python scripts/validate.py --full` to add coverage, the MCP
+self-check, and the workspace audit. A pull request should explain what changed, how it was
+verified, and any remaining limitations.
 
 ## Adding an Instruction
 

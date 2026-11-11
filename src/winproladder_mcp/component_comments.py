@@ -62,9 +62,12 @@ def render_component_comments(entries: list[ComponentComment]) -> bytes:
     folded = [entry.ref.upper() for entry in entries]
     if len(folded) != len(set(folded)):
         raise ValueError("Component comments contain duplicate REF values")
-    text = "\r\n".join(
-        [HEADER, *(f"{entry.ref}\t{entry.comment}\t{entry.description}" for entry in entries)]
-    ) + "\r\n"
+    text = (
+        "\r\n".join(
+            [HEADER, *(f"{entry.ref}\t{entry.comment}\t{entry.description}" for entry in entries)]
+        )
+        + "\r\n"
+    )
     data = text.encode(ENCODING, errors="strict")
     if len(data) > MAX_SIZE:
         raise ValueError("Component-comment file exceeds 16 MiB limit")

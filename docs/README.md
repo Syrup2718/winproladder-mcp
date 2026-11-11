@@ -17,6 +17,7 @@
 
 | 文件 | 內容 |
 | --- | --- |
+| [專案架構](../ARCHITECTURE.md) | 系統邊界、模組責任、依賴方向與產檔驗證管線 |
 | [Agent 指南](agent-guide.md) | MCP 工具選擇與交付規則 |
 | [開發指南](development.md) | 環境、測試與新增指令流程 |
 | [v1.1.1 發布紀錄](project/RELEASING.md) | 該版提交、檢查、合併 main、標籤與 GitHub Release 流程 |

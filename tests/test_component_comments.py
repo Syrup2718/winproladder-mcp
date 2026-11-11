@@ -98,9 +98,7 @@ def test_component_comment_writer_is_scoped_and_never_overwrites(tmp_path: Path)
     with pytest.raises(ValueError, match=r"plain \.txt filename"):
         service.write_component_comments("../escape.txt", SAMPLE_ENTRIES)
     with pytest.raises(ValueError, match="duplicate REF"):
-        render_component_comments(
-            [ComponentComment(ref="X0"), ComponentComment(ref="x0")]
-        )
+        render_component_comments([ComponentComment(ref="X0"), ComponentComment(ref="x0")])
 
 
 def test_component_comment_stdio_generation_and_download(tmp_path: Path) -> None:
@@ -122,9 +120,7 @@ def test_component_comment_stdio_generation_and_download(tmp_path: Path) -> None
             metadata = result.structuredContent
             assert metadata is not None
             assert metadata["entry_count"] == 9
-            assert metadata["artifact"]["mime_type"] == (
-                "text/tab-separated-values; charset=big5"
-            )
+            assert metadata["artifact"]["mime_type"] == ("text/tab-separated-values; charset=big5")
             link = next(item for item in result.content if isinstance(item, ResourceLink))
             embedded = next(item for item in result.content if isinstance(item, EmbeddedResource))
             assert link.name == "元件註解.txt"

@@ -69,83 +69,57 @@ from .transfer_functions import CODES as TRANSFER_CODES
 
 Predicate = Callable[[Ladder], bool]
 
+
 def collect_instruction_evidence(
     index: int, network: Network, payload: bytes
 ) -> list[dict[str, object]]:
     """Classify one compiled network against observed export anchors."""
     instruction_evidence: list[dict[str, object]] = []
     if isinstance(network.action, (ExclusiveLogic, WordConversion, ZoneCompare)):
-        observed10 = next(
-            (i for i, raw in TEST10_PAYLOADS.items() if payload.hex() == raw), None
-        )
+        observed10 = next((i for i, raw in TEST10_PAYLOADS.items() if payload.hex() == raw), None)
         instruction_evidence.append(
             {
                 "network_index": index,
                 "instruction": network.action.type,
-                "status": "observed_export"
-                if observed10 is not None
-                else "inferred_variant",
-                "source": f"test10.ldr N{observed10:03}"
-                if observed10 is not None
-                else "test10",
+                "status": "observed_export" if observed10 is not None else "inferred_variant",
+                "source": f"test10.ldr N{observed10:03}" if observed10 is not None else "test10",
                 "gui_import_verified": False,
             }
         )
-    observed12 = next(
-        (i for i, raw in TEST12_PAYLOADS.items() if payload.hex() == raw), None
-    )
-    observed13 = next(
-        (i for i, raw in TEST13_PAYLOADS.items() if payload.hex() == raw), None
-    )
+    observed12 = next((i for i, raw in TEST12_PAYLOADS.items() if payload.hex() == raw), None)
+    observed13 = next((i for i, raw in TEST13_PAYLOADS.items() if payload.hex() == raw), None)
     if isinstance(network.action, PeripheralIO):
-        observed15 = next(
-            (i for i, raw in TEST15_PAYLOADS.items() if payload.hex() == raw), None
-        )
+        observed15 = next((i for i, raw in TEST15_PAYLOADS.items() if payload.hex() == raw), None)
         instruction_evidence.append(
             {
                 "network_index": index,
                 "instruction": network.action.type,
-                "status": "observed_export"
-                if observed15 is not None
-                else "inferred_variant",
-                "source": f"test15.ldr N{observed15:03}"
-                if observed15 is not None
-                else "test15",
+                "status": "observed_export" if observed15 is not None else "inferred_variant",
+                "source": f"test15.ldr N{observed15:03}" if observed15 is not None else "test15",
                 "gui_import_verified": False,
             }
         )
     if isinstance(network.action, (Watchdog, HighSpeedCounter, Divide48, SumWords, PID)):
         from .instruction_catalog import TEST16_PAYLOADS
 
-        observed16 = next(
-            (i for i, raw in TEST16_PAYLOADS.items() if payload.hex() == raw), None
-        )
+        observed16 = next((i for i, raw in TEST16_PAYLOADS.items() if payload.hex() == raw), None)
         instruction_evidence.append(
             {
                 "network_index": index,
                 "instruction": network.action.type,
-                "status": "observed_export"
-                if observed16 is not None
-                else "inferred_variant",
-                "source": f"test16.ldr N{observed16:03}"
-                if observed16 is not None
-                else "test16",
+                "status": "observed_export" if observed16 is not None else "inferred_variant",
+                "source": f"test16.ldr N{observed16:03}" if observed16 is not None else "test16",
                 "gui_import_verified": False,
             }
         )
     if isinstance(network.action, (IntegerFunction, Divide48, SumWords)):
         from .instruction_catalog import TEST17_PAYLOADS
 
-        observed17 = next(
-            (i for i, raw in TEST17_PAYLOADS.items() if payload.hex() == raw), None
-        )
+        observed17 = next((i for i, raw in TEST17_PAYLOADS.items() if payload.hex() == raw), None)
         if (
             observed17 is not None
             or isinstance(network.action, IntegerFunction)
-            or (
-                isinstance(network.action, Divide48)
-                and network.action.encoding == "single_input"
-            )
+            or (isinstance(network.action, Divide48) and network.action.encoding == "single_input")
         ):
             instruction_evidence[:] = [
                 e for e in instruction_evidence if e["network_index"] != index
@@ -154,9 +128,7 @@ def collect_instruction_evidence(
                 {
                     "network_index": index,
                     "instruction": network.action.type,
-                    "status": "observed_export"
-                    if observed17 is not None
-                    else "inferred_variant",
+                    "status": "observed_export" if observed17 is not None else "inferred_variant",
                     "source": f"test17.ldr N{observed17:03}"
                     if observed17 is not None
                     else "test17",
@@ -166,38 +138,26 @@ def collect_instruction_evidence(
     if isinstance(network.action, (AnalogConversion, BitAccess, SampleFlow)):
         from .instruction_catalog import TEST18_PAYLOADS
 
-        observed18 = next(
-            (i for i, raw in TEST18_PAYLOADS.items() if payload.hex() == raw), None
-        )
+        observed18 = next((i for i, raw in TEST18_PAYLOADS.items() if payload.hex() == raw), None)
         instruction_evidence.append(
             {
                 "network_index": index,
                 "instruction": network.action.type,
-                "status": "observed_export"
-                if observed18 is not None
-                else "inferred_variant",
-                "source": f"test18.ldr N{observed18:03}"
-                if observed18 is not None
-                else "test18",
+                "status": "observed_export" if observed18 is not None else "inferred_variant",
+                "source": f"test18.ldr N{observed18:03}" if observed18 is not None else "test18",
                 "gui_import_verified": False,
             }
         )
     if isinstance(network.action, (AccumulativeTimer, TemperatureControl, SampleCall)):
         from .instruction_catalog import TEST19_PAYLOADS
 
-        observed19 = next(
-            (i for i, raw in TEST19_PAYLOADS.items() if payload.hex() == raw), None
-        )
+        observed19 = next((i for i, raw in TEST19_PAYLOADS.items() if payload.hex() == raw), None)
         instruction_evidence.append(
             {
                 "network_index": index,
                 "instruction": network.action.type,
-                "status": "observed_export"
-                if observed19 is not None
-                else "inferred_variant",
-                "source": f"test19.ldr N{observed19:03}"
-                if observed19 is not None
-                else "test19",
+                "status": "observed_export" if observed19 is not None else "inferred_variant",
+                "source": f"test19.ldr N{observed19:03}" if observed19 is not None else "test19",
                 "gui_import_verified": False,
             }
         )
@@ -259,18 +219,14 @@ def collect_instruction_evidence(
             {
                 "network_index": index,
                 "instruction": network.action.type,
-                "status": "observed_export"
-                if observed20 is not None
-                else "inferred_variant",
+                "status": "observed_export" if observed20 is not None else "inferred_variant",
                 "source": f"{evidence_name}.ldr N{observed20:03}"
                 if observed20 is not None
                 else evidence_name,
                 "gui_import_verified": False,
             }
         )
-    observed14 = next(
-        (i for i, raw in TEST14_PAYLOADS.items() if payload.hex() == raw), None
-    )
+    observed14 = next((i for i, raw in TEST14_PAYLOADS.items() if payload.hex() == raw), None)
     if isinstance(network.action, ImmediateIO) or (
         isinstance(network.action, FloatOperation)
         and (
@@ -282,12 +238,8 @@ def collect_instruction_evidence(
             {
                 "network_index": index,
                 "instruction": network.action.type,
-                "status": "observed_export"
-                if observed14 is not None
-                else "inferred_variant",
-                "source": f"test14.ldr N{observed14:03}"
-                if observed14 is not None
-                else "test14",
+                "status": "observed_export" if observed14 is not None else "inferred_variant",
+                "source": f"test14.ldr N{observed14:03}" if observed14 is not None else "test14",
                 "gui_import_verified": False,
             }
         )
@@ -304,12 +256,8 @@ def collect_instruction_evidence(
             {
                 "network_index": index,
                 "instruction": network.action.operation,
-                "status": "observed_export"
-                if observed13 is not None
-                else "inferred_variant",
-                "source": f"test13.ldr N{observed13:03}"
-                if observed13 is not None
-                else "test13",
+                "status": "observed_export" if observed13 is not None else "inferred_variant",
+                "source": f"test13.ldr N{observed13:03}" if observed13 is not None else "test13",
                 "gui_import_verified": False,
             }
         )
@@ -326,31 +274,21 @@ def collect_instruction_evidence(
             {
                 "network_index": index,
                 "instruction": network.action.type,
-                "status": "observed_export"
-                if observed12 is not None
-                else "inferred_variant",
-                "source": f"test12.ldr N{observed12:03}"
-                if observed12 is not None
-                else "test12",
+                "status": "observed_export" if observed12 is not None else "inferred_variant",
+                "source": f"test12.ldr N{observed12:03}" if observed12 is not None else "test12",
                 "gui_import_verified": False,
             }
         )
     elif network.comparison_chain or isinstance(network.action, FloatOperation):
-        observed11 = next(
-            (i for i, raw in TEST11_PAYLOADS.items() if payload.hex() == raw), None
-        )
+        observed11 = next((i for i, raw in TEST11_PAYLOADS.items() if payload.hex() == raw), None)
         instruction_evidence.append(
             {
                 "network_index": index,
                 "instruction": "comparison_chain"
                 if network.comparison_chain
                 else "float_operation",
-                "status": "observed_export"
-                if observed11 is not None
-                else "inferred_variant",
-                "source": f"test11.ldr N{observed11:03}"
-                if observed11 is not None
-                else "test11",
+                "status": "observed_export" if observed11 is not None else "inferred_variant",
+                "source": f"test11.ldr N{observed11:03}" if observed11 is not None else "test11",
                 "gui_import_verified": False,
             }
         )
@@ -361,15 +299,9 @@ def collect_instruction_evidence(
         instruction_evidence.append(
             {
                 "network_index": index,
-                "instruction": network.action.type
-                if network.action
-                else "test9 Boolean/Timer",
-                "status": "observed_export"
-                if observed9 is not None
-                else "inferred_variant",
-                "source": f"test9.ldr N{observed9:03}"
-                if observed9 is not None
-                else "test9",
+                "instruction": network.action.type if network.action else "test9 Boolean/Timer",
+                "status": "observed_export" if observed9 is not None else "inferred_variant",
+                "source": f"test9.ldr N{observed9:03}" if observed9 is not None else "test9",
                 "gui_import_verified": False,
             }
         )
@@ -383,21 +315,15 @@ def collect_instruction_evidence(
         instruction_evidence.append(
             {
                 "network_index": index,
-                "instruction": network.action.type
-                if network.action
-                else "native coil/rail",
-                "status": "observed_export"
-                if observed8 is not None
-                else "inferred_variant",
+                "instruction": network.action.type if network.action else "native coil/rail",
+                "status": "observed_export" if observed8 is not None else "inferred_variant",
                 "source": f"test8.ldr N{observed8:03}"
                 if observed8 is not None
                 else "test8 + prior samples",
                 "gui_import_verified": False,
             }
         )
-    if observed8 is None and (
-        isinstance(network.action, Arithmetic) or network.edge is not None
-    ):
+    if observed8 is None and (isinstance(network.action, Arithmetic) or network.edge is not None):
         if isinstance(network.action, Arithmetic):
             instruction = f"16-bit {network.action.operation}"
         else:
@@ -442,9 +368,7 @@ def collect_instruction_evidence(
                 "network_index": index,
                 "instruction": "FUN33 LCNV",
                 "status": "observed_export" if observed is not None else "inferred_variant",
-                "source": f"test6.ldr N{observed:03}"
-                if observed is not None
-                else "test6 + manual",
+                "source": f"test6.ldr N{observed:03}" if observed is not None else "test6 + manual",
                 "operand_labels": "screenshot" if observed in {0, 2, 4, 6} else "inferred",
                 "gui_import_verified": False,
             }
@@ -452,10 +376,7 @@ def collect_instruction_evidence(
     return instruction_evidence
 
 
-
-def normalize_instruction_evidence(
-    ladder: Ladder, evidence_rows: list[dict[str, object]]
-) -> None:
+def normalize_instruction_evidence(ladder: Ladder, evidence_rows: list[dict[str, object]]) -> None:
     """Upgrade evidence rows when newer exact sample payloads supersede older families."""
     anchors = (
         (TEST28_PAYLOADS, "test28"),
@@ -580,9 +501,7 @@ WARNING_RULES: tuple[tuple[Predicate, str], ...] = (
         "semantics remain unverified. No native runtime simulation.",
     ),
     (
-        lambda ladder: _action(
-            ladder, (Watchdog, HighSpeedCounter, Divide48, SumWords, PID)
-        ),
+        lambda ladder: _action(ladder, (Watchdog, HighSpeedCounter, Divide48, SumWords, PID)),
         "test16: WDT and PID times use 10 ms units. PID A/M is not EN. Only sampled HSC0 read "
         "and 93D zero-to-PV write supported. No runtime simulation or hardware verification.",
     ),
@@ -599,9 +518,7 @@ WARNING_RULES: tuple[tuple[Predicate, str], ...] = (
         "runtime simulation.",
     ),
     (
-        lambda ladder: _action(
-            ladder, (MasterControl, MasterEnd, Differential, UpDownCounter)
-        ),
+        lambda ladder: _action(ladder, (MasterControl, MasterEnd, Differential, UpDownCounter)),
         "test9: MC/MCE, DIFU/DIFD and 16-bit 07P.UDCTR encodings observed. Changed operands/"
         "conditions are inferred. DIFU/DIFD have an offline model; MC/MCE and UDCTR do not. "
         "UDCTR clear uses direct polarity; never substitute ordinary Counter CLR encoding.",
@@ -662,9 +579,7 @@ def validation_warnings(
 ) -> list[str]:
     """Build evidence warnings from declarative rules."""
     warnings = (
-        []
-        if import_verified
-        else ["Composition has not been verified by WinProLadder import."]
+        [] if import_verified else ["Composition has not been verified by WinProLadder import."]
     )
     warnings.extend(message for predicate, message in WARNING_RULES if predicate(ladder))
     if repeated_coils:

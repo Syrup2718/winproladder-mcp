@@ -6,6 +6,7 @@
 
 | 腳本 | 用途 |
 | --- | --- |
+| [validate.py](validate.py) | 統一執行格式、lint、型別、測試、coverage、MCP 與 workspace 驗證並保留 redacted logs |
 | [verify_release.py](verify_release.py) | 真實 MCP 生成、下載與驗收；使用新的獨立驗證 root，名稱不表示會打包 |
 | [generate_control_examples.py](generate_control_examples.py) | 控制配方範例產檔 |
 | [generate_design_examples.py](generate_design_examples.py) | 自訂 IR 範例產檔 |
@@ -21,5 +22,8 @@
 ```powershell
 uv run python scripts/audit_workspace.py --output tmp/workspace-audit-new.json
 ```
+
+加入 `--check` 時，source content errors、source broken links 或 tracked LDR 錯誤會回傳
+非零狀態；`artifacts/`、`dist/`、`tmp/` 內的本機歷史問題只會記錄，不會阻擋。
 
 兩支範例生成腳本使用明確的示範 I/O 契約；不代表使用者實際接線。受政策拒絕的配方會回報 `policy_rejected`，不會停用政策。

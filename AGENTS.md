@@ -1,40 +1,36 @@
-# Ladder generation requirements
+# Repository guide for agents
 
-## Release preferences
+This repository provides an offline MCP server for reading, generating, validating,
+and safely rewriting FATEK WinProLadder files. It does not connect to a PLC.
 
-- Do not build installation packages (wheel, sdist, or installers) unless the user
-  explicitly requests them. Ordinary feature updates do not authorize packaging.
-- Do not bump version numbers unless the user explicitly requests a version update.
-  Continue updating implementation, tests, and documentation without a version bump;
-  describe unreleased changes separately from the last packaged release.
+## Read the relevant source of truth
 
-## Generation constraints
+- Read [ARCHITECTURE.md](ARCHITECTURE.md) before changing module boundaries or the
+  generation pipeline.
+- Read [docs/agent-guide.md](docs/agent-guide.md) before generating or modifying Ladder.
+- Read [docs/development.md](docs/development.md) before implementation or test work.
+- Read [docs/ldr-format.md](docs/ldr-format.md) or [docs/pdw-format.md](docs/pdw-format.md)
+  before changing a file codec.
+- Read `.winproladder-policy.json` for every Ladder operation. Never disable, bypass,
+  or weaken it to produce an artifact.
 
-- This workspace forbids meaningless M-to-M relay copies, redundant intermediate
-  chains, self-holds/copy SET/RESET destinations, and automatically lowered relay
-  helpers. The user clarified that M inputs controlling a native function and
-  that function producing M results/status bits ARE allowed (including timers,
-  counters, comparisons, differential functions and other function blocks).
-  An ordinary relay rung does not gain this exemption by being inside MC or by
-  being labeled as a function. Do not synthesize dummy functions to disguise copies.
-- Read `.winproladder-policy.json`; never disable or weaken it to get a file out.
-- Use native registers for numeric values and sequence state. Unconditional
-  comparisons may produce M status bits used by Y outputs or timer/register EN.
-  Do not replace forbidden M chains with equivalent disguised relay chains.
-- Check the source, lowered program, and decoded emitted bytes. If supported
-  instructions cannot implement the requirement, report the precise limitation.
-- For the numeric countdown display, each 50 ms digit slot is ON for 40 ms and
-  OFF for 10 ms, including repeated digits such as 9.9 and 0.0. Seconds come first,
-  tenths second. Never omit the blank interval just because adjacent digits match.
-- Preserve the user's current timing and I/O contract. Do not invent inputs.
-- Return the new `.ldr` link first. Clearly distinguish independent offline
-  modeling, MCP built-in simulation, GUI import, and real PLC verification.
+## Non-negotiable invariants
 
-## Instruction reference
+- Preserve the user's I/O, polarity, priority, reset, and timing contract. Never invent
+  physical inputs, outputs, or external clocks.
+- Do not synthesize meaningless M-to-M relay copies, redundant helper chains, or disguised
+  equivalents. Native functions may consume M controls and produce M results/status bits
+  when the workspace policy allows them.
+- Keep numeric values and sequence state in native registers. Verify the source IR, lowered
+  program, and decoded emitted bytes before delivery.
+- Preserve unknown file data on lossless read/export paths; reject edits that cannot be
+  validated safely.
+- Distinguish documented PLC semantics from this repository's serialization and simulation
+  support. A missing encoder is not evidence that a PLC operand or mode is illegal.
 
-- For instruction modes, operand ranges, units, D/P variants and behavior, consult
-  the user-provided `C:/Fatek/FBe進階篇/進階篇應用指令.pdf` before assuming a limitation
-  or asking the user to explain it. Use the basic and RTC manuals where applicable.
-- Separate documented PLC semantics from implemented `.ldr` serialization. A missing
-  encoding is not an illegal PLC operand or unsupported PLC mode. Record exact pages
-  for unresolved differences between the manual and supplied GUI exports.
+## Delivery and release
+
+- Return a newly generated `.ldr` link first. Clearly separate offline checks, MCP simulation,
+  WinProLadder GUI import, and real PLC verification.
+- Do not overwrite artifacts or source samples.
+- Do not bump versions or build wheels, sdists, or installers unless the user explicitly asks.

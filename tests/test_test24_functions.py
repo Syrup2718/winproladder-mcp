@@ -184,9 +184,7 @@ def test_payload_truncations_rejected():
 
 
 def test_mov_supports_common_or_bank_from_r3904_anchor():
-    network = Network(
-        action=ProcessFunction(type="move_word", source="R2501", destination="R3940")
-    )
+    network = Network(action=ProcessFunction(type="move_word", source="R2501", destination="R3940"))
     payload = compile_network(network)
     assert payload.hex() == "4fe8f4ac1d8a01c8"
     assert decode_network(payload) == network
