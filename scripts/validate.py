@@ -18,6 +18,10 @@ SECRET_ASSIGNMENT = re.compile(
     r"(?i)\b(api[_-]?key|authorization|credential|password|secret|token)\b"
     r"(\s*[=:]\s*)([^\s,;]+)"
 )
+SECRET_JSON_ASSIGNMENT = re.compile(
+    r'(?i)("(?:api[_-]?key|authorization|credential|password|secret|token)"\s*:\s*")'
+    r'((?:\\.|[^"\\])*)(")'
+)
 SECRET_TOKEN = re.compile(
     r"(?i)\b(bearer\s+)[A-Za-z0-9._~+/=-]+|"
     r"\b(?:github_pat_|gh[opsu]_|sk-)[A-Za-z0-9_-]{8,}"
@@ -33,6 +37,7 @@ class Step:
 def redact(text: str) -> str:
     """Remove common credential forms without recording environment variables."""
 
+    text = SECRET_JSON_ASSIGNMENT.sub(r"\1<redacted>\3", text)
     text = SECRET_ASSIGNMENT.sub(r"\1\2<redacted>", text)
 
     def replace_token(match: re.Match[str]) -> str:

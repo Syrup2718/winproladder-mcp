@@ -68,6 +68,29 @@ def test_failure_still_runs_later_steps_and_redacts_json_and_logs(tmp_path):
     assert "still ran" in saved
 
 
+def test_json_secret_output_is_redacted_without_altering_safe_fields(tmp_path, monkeypatch):
+    secret = "json-secret-should-never-appear"
+    monkeypatch.setenv("HARNESS_REDACTION_TEST_SECRET", secret)
+    step = validate.Step(
+        "json-output",
+        (
+            sys.executable,
+            "-c",
+            "import json, os; print(json.dumps({"
+            "'token': os.environ['HARNESS_REDACTION_TEST_SECRET'], 'status': 'ok'}))",
+        ),
+    )
+
+    code, latest = execute(tmp_path, [step])
+
+    assert code == 0
+    result = json.loads(latest.read_text(encoding="utf-8"))
+    log = Path(result["steps"][0]["log"]).read_text(encoding="utf-8")
+    assert secret not in log
+    assert '"token": "<redacted>"' in log
+    assert '"status": "ok"' in log
+
+
 def test_quick_and_full_plans_contain_the_required_checks(tmp_path):
     quick = validate.validation_steps(ROOT, "quick", tmp_path)
     full = validate.validation_steps(ROOT, "full", tmp_path)
