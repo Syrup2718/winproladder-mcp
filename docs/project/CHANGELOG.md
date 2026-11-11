@@ -9,6 +9,8 @@
 
 ### 修正
 
+- `.ldr`／`.pdw` artifact 下載工具在檔案不存在時，現在回傳穩定的
+  `ARTIFACT_NOT_FOUND` 結構化錯誤與 `written=false`，不再落入一般 MCP 例外。
 - 元件註解的 `COMMENT` 現在會在寫檔前依 WinProLadder 限制檢查 CP950／Big5 編碼長度，
   超過 16 bytes 便拒絕；空白通常為 1 byte，中文字通常為 2 bytes。
 - 修正 FUN8 MOV 有號 16 位元常數來源的編碼：使用者提供的 WinProLadder `MOV.ldr`
@@ -17,6 +19,8 @@
 
 ### 新增
 
+- 新增 LDR 產生失敗診斷：八類 `generation_code`、pipeline stage、Network／operand、
+  證據缺口、重試條件與驗證層級；成功時另回報既有 lowering 實際套用的安全恢復。
 - 依使用者提供的 WinProLadder `add_fix.ldr` 匯出，補上 FUN11 ADD 的暫存器 `Sb`
   編解碼，並讓 FUN8 MOV 與共用直接暫存器編碼可使用 OR 區 `R3904～R3967`。
   `R3904` 由 GUI 匯出錨定，其餘 OR 位址依同一位址公式延伸；新產生的變體仍需另行

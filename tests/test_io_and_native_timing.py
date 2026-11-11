@@ -7,7 +7,7 @@ import pytest
 
 from winproladder_mcp.analysis import device_references
 from winproladder_mcp.control import ControlSpec, control_ladder
-from winproladder_mcp.io_contract import IOContract
+from winproladder_mcp.io_contract import IOContract, check_io
 from winproladder_mcp.ir import (
     Coil,
     Ladder,
@@ -27,6 +27,34 @@ from winproladder_mcp.timing import timed_simulate
 
 def devices(ladder):
     return set(device_references(list(enumerate(ladder.networks)))["devices"])
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"inputs": ["X0", "X0"], "outputs": []}, "duplicate"),
+        ({"inputs": ["X01"], "outputs": []}, "canonical X"),
+        ({"inputs": ["X256"], "outputs": []}, "exceeds supported range"),
+        ({"inputs": [], "outputs": ["Y01"]}, "canonical Y"),
+        ({"inputs": [], "outputs": ["Y256"]}, "exceeds supported range"),
+    ],
+)
+def test_io_contract_rejects_noncanonical_or_ambiguous_addresses(payload, message):
+    with pytest.raises(ValueError, match=message):
+        IOContract.model_validate(payload)
+
+
+def test_io_contract_reports_used_and_unused_physical_devices_only():
+    report = check_io(
+        {"X0", "Y1", "M0", "R0"},
+        IOContract(inputs=["X0", "X2"], outputs=["Y1", "Y3"]),
+    )
+    assert report == {
+        "allowed": {"inputs": ["X0", "X2"], "outputs": ["Y1", "Y3"]},
+        "used": ["X0", "Y1"],
+        "unused": ["X2", "Y3"],
+        "extra": [],
+    }
 
 
 @pytest.mark.parametrize("extra", ["X4", "Y74"])
@@ -154,6 +182,8 @@ def test_mcp_generation_requires_separate_customer_io_contract(tmp_path):
         )
         assert result.isError
         assert result.structuredContent["error"]["code"] == "IO_CONTRACT_VIOLATION"
+        assert result.structuredContent["error"]["generation_code"] == "UNSUPPORTED_OPERAND"
+        assert result.structuredContent["diagnosis"]["stage"] == "source_validation"
         assert result.structuredContent["error"]["written"] is False
 
     asyncio.run(run())

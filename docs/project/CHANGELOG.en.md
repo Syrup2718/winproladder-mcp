@@ -10,6 +10,9 @@ export is not mistaken for verification of every generated variant.
 
 ### Fixed
 
+- `.ldr` and `.pdw` artifact download tools now return a stable structured
+  `ARTIFACT_NOT_FOUND` error with `written=false` instead of falling through to a generic MCP
+  exception when the requested artifact does not exist.
 - Component-comment `COMMENT` values are now checked before writing against WinProLadder's
   16-byte CP950/Big5 limit. Spaces typically use 1 byte and Chinese characters typically use 2.
 - Corrected the FUN8 MOV signed 16-bit constant-source encoding. Four sampled operand sets in the
@@ -19,6 +22,9 @@ export is not mistaken for verification of every generated variant.
 
 ### Added
 
+- Added LDR generation-failure diagnostics with eight `generation_code` categories, pipeline
+  stage, Network/operand context, evidence gaps, retry conditions, and verification levels;
+  successful generation now reports safe recovery actually applied by the existing lowering path.
 - Added FUN11 ADD register-`Sb` encode/decode support from the user-supplied WinProLadder
   `add_fix.ldr` export, and enabled the common direct-register codec and FUN8 MOV to use the OR
   bank `R3904..R3967`. The export anchors `R3904`; the remaining OR addresses extend the same

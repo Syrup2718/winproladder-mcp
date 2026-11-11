@@ -79,3 +79,12 @@ The model is not a PLC simulator. Unsupported native functions are rejected expl
 - `export_ldr`: preserve unknown data and save as a new file
 
 All writes are restricted to the workspace output directory, and existing files are not overwritten. Unknown records can be preserved and analyzed; they are not regenerated when compliance with the current policy cannot be proven.
+
+Handled artifact-generation and download failures return a structured `error` with
+`written=false`. Existing output names use `ARTIFACT_ALREADY_EXISTS`; missing download names use
+`ARTIFACT_NOT_FOUND`, without returning a server-side file path as a successful result.
+
+LDR generation failures also provide `generation_code` and `diagnosis`, including the failed
+stage, Network, instruction, operands, retry condition, evidence gap, and verification levels. See
+[generation failure diagnostics](generation-diagnostics.en.md) for the exact eight-code scope and
+safe-recovery rules.

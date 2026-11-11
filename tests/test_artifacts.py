@@ -80,6 +80,29 @@ def test_binary_artifact_delivery_and_scope(tmp_path: Path) -> None:
             for name in ["../private.ldr", "..\\private.ldr", "notes.txt", "missing.ldr"]:
                 denied = await session.call_tool("get_ldr_artifact", {"output_name": name})
                 assert denied.isError, name
+                assert denied.structuredContent["error"]["written"] is False
+            missing = await session.call_tool("get_ldr_artifact", {"output_name": "missing.ldr"})
+            assert missing.structuredContent["error"] == {
+                "code": "ARTIFACT_NOT_FOUND",
+                "message": "Artifact or workspace source not found: missing.ldr",
+                "written": False,
+            }
+            missing_pdw = await session.call_tool(
+                "get_pdw_artifact", {"output_name": "missing.pdw"}
+            )
+            assert missing_pdw.isError
+            assert missing_pdw.structuredContent["error"]["code"] == "ARTIFACT_NOT_FOUND"
+            missing_source = await session.call_tool(
+                "export_ldr",
+                {"path": "missing-source.ldr", "output_name": "unused-output.ldr"},
+            )
+            assert missing_source.isError
+            assert missing_source.structuredContent["error"] == {
+                "code": "ARTIFACT_NOT_FOUND",
+                "message": "Artifact or workspace source not found: missing-source.ldr",
+                "written": False,
+            }
+            assert not (output / "unused-output.ldr").exists()
             with pytest.raises(McpError):
                 await session.read_resource(AnyUrl("winproladder://artifacts/..%2Fprivate.ldr"))
 

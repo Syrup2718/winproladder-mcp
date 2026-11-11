@@ -78,3 +78,11 @@ Ladder／Network IR 的工具只公開輕量 object schema，但呼叫時仍以�
 - `export_ldr`：保留未知資料並另存
 
 所有寫入都限制在工作區輸出目錄，且不覆寫既有檔案。未知記錄可保留與分析；無法證明符合目前政策時不會重新生成。
+
+產生或下載 artifact 的已處理錯誤會回傳結構化 `error`，並固定標示 `written=false`。
+同名輸出使用 `ARTIFACT_ALREADY_EXISTS`；下載名稱不存在時使用 `ARTIFACT_NOT_FOUND`，
+不會把伺服器端檔案路徑當成成功結果回傳。
+
+LDR 產生失敗另提供 `generation_code` 與 `diagnosis`，包含失敗階段、Network、指令、
+operand、重試條件、證據缺口及驗證等級。安全恢復與八類錯誤的精確範圍見
+[產生失敗診斷](generation-diagnostics.md)。

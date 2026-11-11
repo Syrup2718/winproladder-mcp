@@ -71,6 +71,8 @@ FBs-20MC／32MC／40MC／60MC 的可變長度程式、
 - 高階工具預設拒絕跨網路重複 normal coil writer。
 - 寫檔前檢查來源、lowered program 及解碼後輸出。
 - acceptance 失敗時不建立檔案；可用 `require_acceptance=true` 強制要求案例。
+- 產生失敗提供八類 `generation_code`、pipeline stage、Network／operand、證據缺口與安全
+  重試條件；只自動套用既有、已驗證的 IR 正規化與 lowering。
 
 工作區規則由 `.winproladder-policy.json` 控制，本儲存庫預設啟用嚴格政策。
 

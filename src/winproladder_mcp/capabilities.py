@@ -5,6 +5,7 @@ from typing import Any
 
 from . import __version__
 from .design import design_guide
+from .generation_diagnostics import diagnostic_capabilities
 from .ir import Ladder, Network, block_catalog, start_stop
 from .pdw import capabilities as pdw_capabilities
 from .runtime import simulation_capabilities
@@ -114,6 +115,7 @@ def capabilities() -> dict[str, Any]:
         "internal allocation; generate_ldr: Boolean, native X edges, T/C, register, "
         "arithmetic, LCNV and loop IR.",
         "inference_notice": "Unseen combinations/ranges are inferred, not PLC-validated.",
+        "generation_failure_diagnostics": diagnostic_capabilities(),
         "component_comments": {
             "tool": "generate_component_comments",
             "trigger": "Use when the user explicitly requests 新增元件註解 or component comments",
@@ -618,6 +620,7 @@ def capability_summary() -> dict[str, Any]:
         "simulation_model",
         "address_subset",
         "generation",
+        "generation_failure_diagnostics",
         "component_comments",
         "inference_notice",
         "manual_reference_tool",

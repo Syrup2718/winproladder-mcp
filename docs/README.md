@@ -12,6 +12,7 @@
 | [FUNC 支援表](supported-functions.md) | 同頁中英對照 | 原生指令的解析、產生與模擬狀態 |
 | [使用參考](reference.md) | [Usage reference](reference.en.md) | 配方、順序控制、自訂 IR 與驗收 |
 | [驗證範圍](verification.md) | [Verification](verification.en.md) | 離線、GUI 與實體 PLC 驗證的差異 |
+| [產生失敗診斷](generation-diagnostics.md) | [Generation diagnostics](generation-diagnostics.en.md) | `.ldr` 失敗分類、證據缺口與安全恢復 |
 
 ## 開發
 

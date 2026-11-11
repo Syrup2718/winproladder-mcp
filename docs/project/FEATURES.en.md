@@ -65,6 +65,9 @@ See the [supported FUNC table](../supported-functions.md) for instruction number
 - Reject duplicate normal-coil writers across networks in high-level generators.
 - Inspect the source, lowered program, and decoded emitted bytes before writing.
 - Do not create a file when acceptance fails; `require_acceptance=true` can require explicit cases.
+- Report generation failures with one of eight `generation_code` values, pipeline stage,
+  Network/operand context, evidence gaps, and safe retry conditions. Automatic recovery is limited
+  to the existing validated IR normalization and lowering paths.
 
 Workspace rules are defined by `.winproladder-policy.json`; this repository enables the strict policy by default.
 

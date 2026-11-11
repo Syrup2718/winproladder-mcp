@@ -137,6 +137,9 @@ ordinary coils do not become functions through naming or placement.
 
 The offline runtime is intentionally incomplete. Unsupported behavior must fail before execution,
 not return a partial trace that looks successful. See [verification scope](docs/verification.md).
+Generation failures retain these gates and expose stage-specific diagnostics; safe recovery is
+limited to the existing validated normalization and lowering pipeline. See
+[generation diagnostics](docs/generation-diagnostics.md).
 
 ## Sources of truth
 

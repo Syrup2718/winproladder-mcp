@@ -5,6 +5,7 @@ import base64
 import functools
 import hashlib
 import json
+from inspect import signature
 from pathlib import Path
 from typing import Annotated, Any, Literal
 from urllib.parse import quote, unquote
@@ -25,6 +26,11 @@ from .capabilities import capability_summary, instruction_capabilities, instruct
 from .component_comments import ComponentComment
 from .control import ControlSpec, control_ladder
 from .design import design_guide
+from .generation_diagnostics import (
+    GenerationFailure,
+    diagnose_generation_failure,
+    recovery_report,
+)
 from .io_contract import IOContract
 from .ir import Ladder, Network, validation
 from .layout import lower_ladder
@@ -71,6 +77,10 @@ class ArtifactToolOutput(BaseModel):
         default_factory=list,
         description="Generation or verification warnings; empty when none were reported.",
     )
+    diagnosis: dict[str, Any] | None = Field(
+        default=None,
+        description="Structured LDR generation failure diagnosis; absent on success.",
+    )
 
 
 def build_server(
@@ -94,7 +104,11 @@ def build_server(
     read = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
     write = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False)
 
-    def error_result(error: Exception, output_name: str | None = None) -> CallToolResult:
+    def error_result(
+        error: Exception,
+        output_name: str | None = None,
+        diagnosis: dict[str, Any] | None = None,
+    ) -> CallToolResult:
         message = str(error)
         if isinstance(error, FileExistsError):
             code = "ARTIFACT_ALREADY_EXISTS"
@@ -103,6 +117,11 @@ def build_server(
             suggested_name = f"{stem}-2{suffix}" if suffix else f"{stem}-2"
             user_message = f"Will not overwrite existing artifact {filename}"
             details: dict[str, Any] = {"suggested_name": suggested_name}
+        elif isinstance(error, FileNotFoundError):
+            code = "ARTIFACT_NOT_FOUND"
+            filename = Path(error.filename).name if error.filename else output_name or "artifact"
+            user_message = f"Artifact or workspace source not found: {filename}"
+            details = {}
         elif "Undeclared physical I/O" in message:
             code = "IO_CONTRACT_VIOLATION"
             user_message = message
@@ -112,7 +131,7 @@ def build_server(
             user_message = message
             details = {}
         else:
-            code = "VALIDATION_ERROR"
+            code = diagnosis["code"] if diagnosis is not None else "VALIDATION_ERROR"
             user_message = message
             details = {}
         payload = {
@@ -120,9 +139,11 @@ def build_server(
                 "code": code,
                 "message": user_message,
                 **details,
+                **({"generation_code": diagnosis["code"]} if diagnosis is not None else {}),
                 "written": False,
             },
             "response_mode": "compact" if compact_responses else "full",
+            **({"diagnosis": diagnosis} if diagnosis is not None else {}),
         }
         return CallToolResult(
             isError=True,
@@ -130,16 +151,37 @@ def build_server(
             structuredContent=payload,
         )
 
-    def structured_write_errors(function: Any) -> Any:
+    def structured_artifact_errors(function: Any) -> Any:
         @functools.wraps(function)
         def wrapped(*args: Any, **kwargs: Any) -> Any:
             try:
                 return function(*args, **kwargs)
-            except (FileExistsError, ValueError) as error:
-                output_name = kwargs.get("output_name")
-                if output_name is None and args:
-                    output_name = args[0]
-                return error_result(error, output_name)
+            except (FileExistsError, FileNotFoundError, ValueError) as error:
+                arguments = signature(function).bind_partial(*args, **kwargs).arguments
+                output_name = arguments.get("output_name")
+                diagnosis = None
+                diagnostic_tools = {
+                    "generate_system_ldr",
+                    "generate_control_ldr",
+                    "generate_sequence_ldr",
+                    "generate_ldr",
+                    "validate_ladder",
+                }
+                if function.__name__ in diagnostic_tools and (
+                    isinstance(error, GenerationFailure)
+                    or not isinstance(error, (FileExistsError, FileNotFoundError))
+                ):
+                    diagnostic = diagnose_generation_failure(
+                        error,
+                        stage="ir_validation",
+                        ladder=arguments.get("ladder"),
+                    )
+                    diagnosis = diagnostic.model_dump()
+                return error_result(
+                    error,
+                    str(output_name) if output_name is not None else None,
+                    diagnosis,
+                )
 
         return wrapped
 
@@ -411,7 +453,7 @@ def build_server(
         }
 
     @mcp.tool(annotations=write)
-    @structured_write_errors
+    @structured_artifact_errors
     def generate_system_ldr(
         output_name: Annotated[
             str,
@@ -470,7 +512,7 @@ def build_server(
         )
 
     @mcp.tool(annotations=write)
-    @structured_write_errors
+    @structured_artifact_errors
     def generate_control_ldr(
         output_name: Annotated[
             str,
@@ -529,7 +571,7 @@ def build_server(
         )
 
     @mcp.tool(annotations=write)
-    @structured_write_errors
+    @structured_artifact_errors
     def generate_sequence_ldr(
         output_name: Annotated[
             str,
@@ -590,7 +632,7 @@ def build_server(
         )
 
     @mcp.tool(annotations=write)
-    @structured_write_errors
+    @structured_artifact_errors
     def generate_ldr(
         output_name: Annotated[
             str,
@@ -663,7 +705,7 @@ def build_server(
         return service.inspect_pdw(path)
 
     @mcp.tool(annotations=write)
-    @structured_write_errors
+    @structured_artifact_errors
     def generate_project_pdw(
         output_name: Annotated[
             str,
@@ -766,7 +808,7 @@ def build_server(
         )
 
     @mcp.tool(annotations=write)
-    @structured_write_errors
+    @structured_artifact_errors
     def generate_pdw(
         output_name: Annotated[
             str,
@@ -807,6 +849,7 @@ def build_server(
         )
 
     @mcp.tool(annotations=read)
+    @structured_artifact_errors
     def get_pdw_artifact(
         output_name: Annotated[
             str,
@@ -833,7 +876,7 @@ def build_server(
         )
 
     @mcp.tool(annotations=write)
-    @structured_write_errors
+    @structured_artifact_errors
     def generate_component_comments(
         output_name: Annotated[
             str,
@@ -864,6 +907,7 @@ def build_server(
         )
 
     @mcp.tool(annotations=read)
+    @structured_artifact_errors
     def get_ldr_artifact(
         output_name: Annotated[
             str,
@@ -964,6 +1008,7 @@ def build_server(
         return service.compare(left_path, right_path)
 
     @mcp.tool(annotations=read)
+    @structured_artifact_errors
     def validate_ladder(
         ladder: Annotated[
             dict[str, Any],
@@ -993,12 +1038,22 @@ def build_server(
         except ValueError as error:
             result["valid"] = False
             result["errors"].append(str(error))
+        diagnostics = [
+            diagnose_generation_failure(
+                ValueError(str(reason)),
+                stage="lowered_validation",
+                ladder=lowered,
+            ).model_dump()
+            for reason in result["errors"]
+        ]
         return {
             **result,
+            "diagnostics": diagnostics,
             "architecture": architecture,
             "source_architecture": source_architecture,
             "layout": layout,
             "optimized_ladder": lowered.model_dump(),
+            "generation_recovery": recovery_report(layout),
         }
 
     @mcp.tool(annotations=read)
@@ -1054,7 +1109,7 @@ def build_server(
         }
 
     @mcp.tool(annotations=write)
-    @structured_write_errors
+    @structured_artifact_errors
     def export_ldr(
         path: Annotated[
             str,
@@ -1077,7 +1132,7 @@ def build_server(
         return artifact_result(service.export(path, output_name))
 
     @mcp.tool(annotations=write)
-    @structured_write_errors
+    @structured_artifact_errors
     def modify_network(
         path: Annotated[
             str,

@@ -11,6 +11,7 @@ from .analysis import describe, device_references, timer_settings
 from .architecture import architecture_report, enforce_architecture, load_policy
 from .capabilities import capabilities as capabilities
 from .component_comments import ComponentComment, render_component_comments
+from .generation_diagnostics import generation_stage, recovery_report
 from .generation_quality import behavior_verification, writer_report
 from .io_contract import IOContract, check_io
 from .ir import (
@@ -500,51 +501,61 @@ class Service:
         strict_writers: bool = False,
     ) -> dict[str, Any]:
         profile_explicit = "profile" in ladder.model_fields_set
-        if require_acceptance and acceptance is None:
-            raise ValueError("Executable acceptance cases are required; no file written")
-        source_acceptance = check_acceptance(ladder, acceptance) if acceptance is not None else None
-        if source_acceptance is not None and not source_acceptance["passed"]:
-            raise ValueError(f"Acceptance failed; no file written: {source_acceptance}")
-        self.architecture(ladder)
-        source_writers = writer_report(ladder, strict=strict_writers)
-        source_devices = set(device_references(list(enumerate(ladder.networks)))["devices"])
-        # Lowering must preserve physical I/O even without an explicit contract.
-        contract = io_contract or IOContract(
-            inputs=sorted(d for d in source_devices if d.startswith("X")),
-            outputs=sorted(d for d in source_devices if d.startswith("Y")),
-        )
-        check_io(source_devices, contract)
-        lowered, layout = lower_ladder(ladder)
-        self.architecture(lowered)
-        self.check_layout(layout)
-        lowered_writers = writer_report(lowered, strict=strict_writers)
-        ladder = lowered
-        result = validation(ladder)
-        if not result["valid"]:
-            raise ValueError(str(result["errors"]))
-        evidence = cast(dict[str, Any], result["evidence"])
-        if not evidence["gui"]["exact_payload_anchor"] and not allow_unverified:
-            raise ValueError(
-                "Composition not import-verified; validate_ladder first "
-                "and explicitly set allow_unverified=true for a candidate"
+        with generation_stage("source_validation", ladder):
+            if require_acceptance and acceptance is None:
+                raise ValueError("Executable acceptance cases are required; no file written")
+            source_acceptance = (
+                check_acceptance(ladder, acceptance) if acceptance is not None else None
             )
-        records = tuple(Record.create(compile_network(n)) for n in reversed(ladder.networks))
-        document = Document(default_header(ladder.profile), records, FOOTER)
-        # Replay emitted bytes before writing; source-only checks miss compiler errors.
-        parsed = parse(document.encode())
-        decoded = [decode_network(r.payload) for r in reversed(parsed.records)]
-        if any(n is None for n in decoded):
-            raise ValueError("Generated network failed semantic decode; no file written")
-        emitted = Ladder(profile=ladder.profile, networks=[n for n in decoded if n is not None])
-        architecture = self.architecture(emitted)
-        emitted_writers = writer_report(emitted, strict=strict_writers)
-        io_report = check_io(
-            set(device_references(list(enumerate(emitted.networks)))["devices"]), contract
-        )
-        emitted_report = check_acceptance(emitted, acceptance) if acceptance is not None else None
-        if emitted_report is not None and not emitted_report["passed"]:
-            raise ValueError(f"Compiled acceptance failed; no file written: {emitted_report}")
-        emitted_timer_settings = timer_settings(list(enumerate(emitted.networks)))
+            if source_acceptance is not None and not source_acceptance["passed"]:
+                raise ValueError(f"Acceptance failed; no file written: {source_acceptance}")
+            self.architecture(ladder)
+            source_writers = writer_report(ladder, strict=strict_writers)
+            source_devices = set(device_references(list(enumerate(ladder.networks)))["devices"])
+            # Lowering must preserve physical I/O even without an explicit contract.
+            contract = io_contract or IOContract(
+                inputs=sorted(d for d in source_devices if d.startswith("X")),
+                outputs=sorted(d for d in source_devices if d.startswith("Y")),
+            )
+            check_io(source_devices, contract)
+        with generation_stage("lowering", ladder):
+            lowered, layout = lower_ladder(ladder)
+            self.architecture(lowered)
+            self.check_layout(layout)
+            lowered_writers = writer_report(lowered, strict=strict_writers)
+        ladder = lowered
+        with generation_stage("encoding", ladder):
+            result = validation(ladder)
+            if not result["valid"]:
+                raise ValueError(str(result["errors"]))
+            evidence = cast(dict[str, Any], result["evidence"])
+        with generation_stage("import_verification", ladder):
+            if not evidence["gui"]["exact_payload_anchor"] and not allow_unverified:
+                raise ValueError(
+                    "Composition not import-verified; validate_ladder first "
+                    "and explicitly set allow_unverified=true for a candidate"
+                )
+        with generation_stage("encoding", ladder):
+            records = tuple(Record.create(compile_network(n)) for n in reversed(ladder.networks))
+            document = Document(default_header(ladder.profile), records, FOOTER)
+        with generation_stage("artifact_validation", ladder):
+            # Replay emitted bytes before writing; source-only checks miss compiler errors.
+            parsed = parse(document.encode())
+            decoded = [decode_network(r.payload) for r in reversed(parsed.records)]
+            if any(n is None for n in decoded):
+                raise ValueError("Generated network failed semantic decode; no file written")
+            emitted = Ladder(profile=ladder.profile, networks=[n for n in decoded if n is not None])
+            architecture = self.architecture(emitted)
+            emitted_writers = writer_report(emitted, strict=strict_writers)
+            io_report = check_io(
+                set(device_references(list(enumerate(emitted.networks)))["devices"]), contract
+            )
+            emitted_report = (
+                check_acceptance(emitted, acceptance) if acceptance is not None else None
+            )
+            if emitted_report is not None and not emitted_report["passed"]:
+                raise ValueError(f"Compiled acceptance failed; no file written: {emitted_report}")
+            emitted_timer_settings = timer_settings(list(enumerate(emitted.networks)))
         profile_selection = (
             {"target_profile": ladder.profile}
             if profile_explicit
@@ -568,6 +579,7 @@ class Service:
             **profile_selection,
             "layout_normalized_networks": layout["normalized_networks"],
             "layout": layout,
+            "generation_recovery": recovery_report(layout),
             "io_contract": io_report,
             "timer_settings": emitted_timer_settings,
             "symbols": ladder.symbols,
