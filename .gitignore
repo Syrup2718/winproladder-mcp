@@ -1,0 +1,73 @@
+# Python bytecode and caches
+__pycache__/
+*.py[codz]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments
+.venv/
+.install/
+venv/
+env/
+
+# Build and packaging output
+build/
+dist/
+*.egg-info/
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+.codex/
+
+# Generated artifacts and local workspaces
+artifacts/
+tmp/
+*.hexdump
+*.ldr
+*.pdw
+
+# Private interoperability evidence (kept outside the public repository)
+samples/
+private/
+private-*/
+docs/research/
+scripts/research/
+*research-sidecar*
+*coverage-matrix*
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.pdf
+*.dll
+*.exe
+*.pdb
+*.idb
+*.i64
+*.til
+*.nam
+*.ghidra
+*.gpr
+*.rep
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.bundle

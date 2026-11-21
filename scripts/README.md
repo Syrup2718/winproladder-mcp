@@ -1,0 +1,29 @@
+# 維護腳本
+
+[首頁](../README.md) · [文件索引](../docs/README.md)
+
+在專案根目錄以 `uv run python scripts/<名稱>.py` 執行。生成腳本可能寫入 artifacts，先看 `--help` 並使用新名稱；一般開發不需要逐一執行。
+
+| 腳本 | 用途 |
+| --- | --- |
+| [validate.py](validate.py) | 統一執行格式、lint、型別、測試、coverage、MCP 與 workspace 驗證並保留 redacted logs |
+| [verify_release.py](verify_release.py) | 真實 MCP 生成、下載與驗收；使用新的獨立驗證 root，名稱不表示會打包 |
+| [generate_control_examples.py](generate_control_examples.py) | 控制配方範例產檔 |
+| [generate_design_examples.py](generate_design_examples.py) | 自訂 IR 範例產檔 |
+| [smoke_mcp.py](smoke_mcp.py) | 本機 MCP 設定診斷 |
+
+一次性研究工具、原始匯出與受限制的互通證據不納入公開 repository。公開測試使用合成或
+專案自行產生的 fixtures；完整原生 byte-anchor suite 另存於私有封存。
+
+測試與型別檢查命令見[開發指南](../docs/development.md)。安裝包與版本變更須由使用者明確要求。
+
+[audit_workspace.py](audit_workspace.py) 可盤點檔案、重複內容、文件連結、JSON／Python 語法及 LDR CRC；只寫入新報告，不搬移或刪除檔案。摘要會將原始內容的失效連結與 `artifacts/`、`dist/`、`tmp/` 內的本機產物分開，完整報告仍保留兩類明細：
+
+```powershell
+uv run python scripts/audit_workspace.py --output tmp/workspace-audit-new.json
+```
+
+加入 `--check` 時，source content errors、source broken links 或 tracked LDR 錯誤會回傳
+非零狀態；`artifacts/`、`dist/`、`tmp/` 內的本機歷史問題只會記錄，不會阻擋。
+
+兩支範例生成腳本使用明確的示範 I/O 契約；不代表使用者實際接線。受政策拒絕的配方會回報 `policy_rejected`，不會停用政策。

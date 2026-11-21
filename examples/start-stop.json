@@ -1,0 +1,12 @@
+{
+  "networks": [
+    {
+      "steps": [
+        {"op": "load", "contact": {"device": "Y", "address": 0}},
+        {"op": "or", "contact": {"device": "X", "address": 0}},
+        {"op": "and", "contact": {"device": "X", "address": 1, "normally_closed": true}}
+      ],
+      "coils": [{"device": "Y", "address": 0}]
+    }
+  ]
+}

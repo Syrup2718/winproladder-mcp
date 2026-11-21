@@ -1,0 +1,13 @@
+{
+  "networks": [
+    {
+      "block": {
+        "type": "timer",
+        "address": 1,
+        "preset": 256,
+        "time_base": "0.01s",
+        "enable": "always_on"
+      }
+    }
+  ]
+}

@@ -1,0 +1,244 @@
+"""Original GUI export oracle plus boundary, pin, policy and physical IO checks."""
+
+from pathlib import Path
+
+import pytest
+
+from winproladder_mcp.analysis import device_references
+from winproladder_mcp.architecture import ArchitecturePolicy, architecture_report
+from winproladder_mcp.instruction_catalog import TEST24_PAYLOADS
+from winproladder_mcp.io_contract import IOContract
+from winproladder_mcp.ir import (
+    Coil,
+    Ladder,
+    Network,
+    ProcessFunction,
+    compile_network,
+    decode_network,
+    simulate,
+    validation,
+)
+from winproladder_mcp.layout import lower_ladder
+from winproladder_mcp.ldr import parse
+from winproladder_mcp.logic import parse_expression
+from winproladder_mcp.service import Service
+from winproladder_mcp.timing import timed_simulate
+from winproladder_mcp.transfer_functions import CONTROLS, STATUS
+
+ROOT = Path(__file__).resolve().parents[1]
+POLICY = ArchitecturePolicy(forbid_m_to_m=True, allow_function_m_to_m=True)
+IO = IOContract(inputs=["X0", "X2", "X6", "X9", "X11"], outputs=[f"Y{i}" for i in range(8, 24)])
+
+
+def sample():
+    networks = []
+    for payload in TEST24_PAYLOADS.values():
+        network = decode_network(bytes.fromhex(payload))
+        assert network is not None
+        networks.append(network)
+    return Ladder(profile="FBs-40MA-test12", networks=networks)
+
+
+def test_original_generation_and_evidence(tmp_path):
+    (tmp_path / ".winproladder-policy.json").write_text(POLICY.model_dump_json())
+    p = sample()
+    assert [compile_network(n).hex() for n in p.networks] == list(TEST24_PAYLOADS.values())
+    report = validation(p)
+    assert report["valid"]
+    assert [e["source"] for e in report["instruction_evidence"]] == [
+        f"private native export N{i:03}" for i in range(8)
+    ]
+    result = Service(tmp_path).generate("transfers.ldr", p, io_contract=IO)
+    document = parse(Path(result["path"]).read_bytes())
+    assert [record.payload.hex() for record in reversed(document.records)] == list(
+        TEST24_PAYLOADS.values()
+    )
+    assert not result["layout"]["helper_devices"]
+
+
+def test_decoded_parameters_match_screenshot():
+    a = [n.action for n in sample().networks]
+    assert (a[0].source, a[0].destination, a[0].length) == ("R2", "R2", 5)
+    assert (a[0].enable, a[0].input_bit, a[0].left) == ("X0", "X0", "FALSE")
+    assert (a[1].source, a[1].destination, a[1].length) == ("R12", "R12", 5)
+    assert (a[2].source, a[2].destination, a[2].length, a[2].ones) == ("R100", "R100", 10, "M3")
+    assert a[2].zero == [Coil(device="M", address=6)]
+    assert (a[3].source, a[3].destination, a[3].length, a[3].ascending) == (
+        "R122",
+        "R155",
+        4,
+        "TRUE",
+    )
+    assert (a[4].destination, a[4].length, a[4].ones) == ("R111", 2, "FALSE")
+    assert (a[5].source, a[5].destination) == ("R11", "R20")
+    assert (a[6].source, a[6].destination) == ("R5", "WY8")
+    assert (a[7].trigger, a[7].bit_destination) == ("X11", "M10")
+
+
+def test_word_spans_and_toggle_read_modify_write():
+    d = device_references(list(enumerate(sample().networks)))["devices"]
+    assert d["R6"]["writes"] == [0] and "R7" not in d
+    assert d["R109"]["reads"] == [2] and "R110" not in d
+    assert d["R100"]["writes"] == [2] and not d["R101"]["writes"]
+    assert d["R158"]["writes"] == [3] and "R159" not in d
+    assert d["R112"]["writes"] == [4] and "R113" not in d
+    assert all(d[f"Y{i}"]["writes"] == [6] for i in range(8, 24))
+    assert "Y7" not in d and "Y24" not in d
+    assert d["M10"]["reads"] == [7] and d["M10"]["writes"] == [7]
+
+
+@pytest.mark.parametrize("index", range(8))
+def test_control_status_wiring_and_policy(index):
+    n = sample().networks[index]
+    for name in CONTROLS[n.action.type]:
+        setattr(n.action, name, "M30 AND TRUE")
+    for name in STATUS[n.action.type]:
+        setattr(n.action, name, [Coil(device="M", address=31)])
+    p = Ladder(networks=[n])
+    lowered, report = lower_ladder(p)
+    decoded = Ladder(networks=[decode_network(compile_network(lowered.networks[0]))])
+    assert not report["helper_devices"]
+    for candidate in [p, lowered, decoded]:
+        assert architecture_report(candidate, POLICY)["valid"]
+        if STATUS[n.action.type] or n.action.type == "toggle_bit":
+            assert not architecture_report(candidate, ArchitecturePolicy(forbid_m_to_m=True))[
+                "valid"
+            ]
+    for name in CONTROLS[n.action.type]:
+        assert getattr(decoded.networks[0].action, name) == "M30"
+    with pytest.raises(ValueError):
+        simulate(decoded, [{}], {})
+    if index in {5, 7}:
+        trace = timed_simulate(decoded, [{}], {}, 10)
+        assert trace
+    else:
+        with pytest.raises(ValueError):
+            timed_simulate(decoded, [{}], {}, 10)
+
+
+@pytest.mark.parametrize("index", range(8))
+@pytest.mark.parametrize("expression", ["TRUE", "FALSE", "X4", "NOT X4", "X4 AND M10", "X4 OR M10"])
+def test_each_control_separately(index, expression):
+    for field in CONTROLS[sample().networks[index].action.type]:
+        n = sample().networks[index]
+        setattr(n.action, field, expression)
+        decoded = decode_network(compile_network(n))
+        assert decoded is not None
+        for name in CONTROLS[n.action.type]:
+            assert parse_expression(getattr(decoded.action, name)) == parse_expression(
+                getattr(n.action, name)
+            )
+        assert compile_network(decoded) == compile_network(n)
+
+
+@pytest.mark.parametrize(
+    "index,field,value",
+    [
+        (0, "length", 1),
+        (0, "length", 257),
+        (0, "source", "R3838"),
+        (1, "destination", "D4093"),
+        (2, "destination", "R3840"),
+        (3, "length", 128),
+        (3, "length", 1),
+        (4, "length", 0),
+        (4, "length", 512),
+        (4, "destination", "D4095"),
+        (5, "source", "10"),
+        (5, "destination", "WX0"),
+        (5, "destination", "D3072"),
+        (6, "destination", "WY7"),
+        (6, "source", "R3848"),
+        (7, "bit_destination", "X0"),
+        (7, "bit_destination", "M1000"),
+        (7, "enable", "X0"),
+        (7, "length", 2),
+        (0, "pulse", True),
+        (0, "length_register", "R1"),
+        (2, "ascending", "X0"),
+        (5, "trigger", "X0"),
+    ],
+)
+def test_invalid_or_unencoded_forms(index, field, value):
+    data = sample().networks[index].action.model_dump()
+    data[field] = value
+    with pytest.raises(ValueError):
+        ProcessFunction.model_validate(data)
+
+
+@pytest.mark.parametrize("index,length", [(0, 256), (1, 256), (2, 256), (3, 127), (4, 1), (4, 511)])
+def test_lengths_and_non_sample_operands(index, length):
+    n = sample().networks[index]
+    data = n.action.model_dump()
+    data.update(length=length, destination="D3500")
+    if data["source"] is not None:
+        data["source"] = "R5000"
+    n.action = ProcessFunction.model_validate(data)
+    assert decode_network(compile_network(n)).action == n.action
+    assert len(n.action.destination_devices()) == (1 if index == 2 else length)
+
+
+def test_wy8_contract_checks_entire_word_before_writing(tmp_path):
+    for missing in [8, 16, 23]:
+        io = IO.model_copy(update={"outputs": [x for x in IO.outputs if x != f"Y{missing}"]})
+        with pytest.raises(ValueError):
+            Service(tmp_path).generate("bad.ldr", sample(), io_contract=io)
+    assert not (tmp_path / "artifacts/bad.ldr").exists()
+
+
+def test_payload_truncations_rejected():
+    for raw in TEST24_PAYLOADS.values():
+        payload = bytes.fromhex(raw)
+        assert decode_network(payload[:-1]) is None
+
+
+def test_mov_supports_common_or_bank_from_r3904_anchor():
+    network = Network(action=ProcessFunction(type="move_word", source="R2501", destination="R3940"))
+    payload = compile_network(network)
+    assert payload.hex() == "4fe8f4ac1d8a01c8"
+    assert decode_network(payload) == network
+    refs = device_references([(0, network)])["devices"]
+    assert refs["R2501"]["reads"] == [0]
+    assert refs["R3940"]["writes"] == [0]
+
+
+@pytest.mark.parametrize(
+    "value,destination,payload",
+    [
+        (3276, "R2000", "4fe8f5ac0ccc19a0"),
+        (16383, "R2001", "4fe8f5ac3fff19a2"),
+        (0, "R2002", "4fe8f5ac000019a4"),
+        (100, "R2003", "4fe8f5ac006419a6"),
+        (-32768, "R2004", "4fe8f5ac800019a8"),
+    ],
+)
+def test_constant_mov_round_trip_and_runtime(value, destination, payload):
+    network = Network(
+        action=ProcessFunction(type="move_word", source=value, destination=destination)
+    )
+    assert compile_network(network).hex() == payload
+    decoded = decode_network(bytes.fromhex(payload))
+    assert decoded is not None and decoded.action == network.action
+    assert compile_network(decoded).hex() == payload
+    refs = device_references([(0, network)])["devices"]
+    assert refs[destination]["writes"] == [0]
+    assert timed_simulate(Ladder(networks=[network]), [{}], {}, 10)[0][destination] == (
+        value & 0xFFFF
+    )
+    evidence = validation(Ladder(networks=[network]))["instruction_evidence"][0]
+    if value in {3276, 16383, 0, 100}:
+        assert evidence["status"] == "observed_export"
+        assert evidence["source"].startswith("private native export N")
+    else:
+        assert evidence["status"] == "inferred_variant"
+
+
+@pytest.mark.parametrize("value", [-32769, 32768, True])
+def test_constant_mov_boundaries(value):
+    with pytest.raises(ValueError):
+        ProcessFunction(type="move_word", source=value, destination="R2000")
+
+
+def test_constant_move_inverse_remains_unencoded():
+    with pytest.raises(ValueError):
+        ProcessFunction(type="move_inverse", source=100, destination="R2000")

@@ -1,0 +1,483 @@
+"""Manual-defined operand limits and RTC reference; no PLC connection or execution."""
+
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, StrictInt
+
+RTC_FIELDS = {
+    "R4128": ("second", 0, 59),
+    "R4129": ("minute", 0, 59),
+    "R4130": ("hour", 0, 23),
+    "R4131": ("day", 1, 31),
+    "R4132": ("month", 1, 12),
+    "R4133": ("year_code", 0, 99),
+    "R4134": ("weekday_code", 0, 6),
+}
+
+
+class RTCSnapshot(BaseModel):
+    """Caller-supplied FATEK RTC register values for offline validation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    R4128: StrictInt = Field(ge=0, le=59, description="Second value, 0 through 59.")
+    R4129: StrictInt = Field(ge=0, le=59, description="Minute value, 0 through 59.")
+    R4130: StrictInt = Field(ge=0, le=23, description="Hour value, 0 through 23.")
+    R4131: StrictInt = Field(ge=1, le=31, description="Day of month, 1 through 31.")
+    R4132: StrictInt = Field(ge=1, le=12, description="Month number, 1 through 12.")
+    R4133: StrictInt = Field(
+        ge=0,
+        le=99,
+        description="Two-digit year code, 0 through 99; no century is inferred.",
+    )
+    R4134: StrictInt = Field(
+        ge=0,
+        le=6,
+        description="Weekday code, 0 through 6; weekday names are not inferred.",
+    )
+    R4135: StrictInt | None = Field(
+        default=None,
+        ge=0,
+        le=65535,
+        description=(
+            "Optional packed time word: hour in the high byte and minute in the low byte "
+            "(hour*256+minute), not decimal HHMM."
+        ),
+    )
+
+
+def manual_reference() -> dict[str, Any]:
+    return {
+        "sources": {
+            "advanced": "進階篇應用指令.pdf: 7-3..13, 7-19..24, 7-28..57, "
+            "7-59..61, 7-79..124, 7-151..171, 7-66..73",
+            "temperature": "CH20_FB-PLC溫度量測及溫度PID控制.pdf: 20-44..47 (older edition)",
+            "basic": "基本應用指令.pdf: 7-2, 7-18..20, 7-23..26",
+            "rtc": "CH16_萬年曆（RTC）.pdf: 16-1..2 (FB-PLC MA/MC with RTC)",  # noqa: RUF001
+        },
+        "rule": "Manual operand limits define PLC legality. Sample addresses are not maxima. "
+        "LDR encoding support, CPU availability and manual editions are separate evidence.",
+        "instruction_modes": {
+            "PULSE_SPEED_DISPLAY": {
+                "pages": "Advanced 7-74..78",
+                "81": "MD0; EN rising resets HO/OUT/DN and captures U/D. PAU preserves progress. "
+                "Fr 8..2000 Hz, PC 0..32767 for non-D (0=continuous). Values are runtime register "
+                "contents. One instruction, main-unit transistor outputs; CPU capacity unverified.",
+                "82": "To/Tp are milliseconds, To 0..Tp. To>Tp asserts ERR. One instruction, "
+                "Y0..15. Page heading says Tp<=32676 but operand table says32767; codec uses "
+                "the table 1..32767, upper boundary needs target-version confirmation.",
+                "83": "X0..7 pulse source, TI 1..32767 ms, D occupies three words. "
+                "Input frequency total below5kHz; mechanical pulse conversion not simulated.",
+                "84": "Page7-78 lists MD0..1 but omits GUI Nd. test28 MD1 Ns/Nl are registers, "
+                "not literal lengths. Exact anchor only; dynamic spans unresolved, no generation.",
+            },
+            "ENCOD_ASCII_TIME_BSHF": {
+                "pages": "Basic 7-20; advanced 7-46..57",
+                "06": "CLR=1 clears D and OTB regardless of EN/INB/LR. Otherwise EN "
+                "shifts one bit; LR=1 left, 0 right, fills INB, displaced bit to OTB",
+                "58": "Ns=0..15, NL=2..256 points. Scan high-to-low when H/L=1, "
+                "low-to-high otherwise; store relative index in low byte, high byte zero. "
+                "All source bits zero: D=0 flag, instruction not executed. Source crosses "
+                "words and clips at operand bank end; up to 17 source words for nonzero Ns",
+                "59": "N=0..3 means N+1 nibbles converted to bytes low-first. "
+                "Odd digit count preserves last high byte. Segment mapping a=B6..g=B0, B7=0",
+                "60": "Manual 1..12 English/numeric characters, two per word, first in low "
+                "byte. Codec supports 1..12 ASCII letters/digits/spaces; "
+                "inferred packing confirmed by test27/28. "
+                "Manual 7-51 example draws ERR, but GUI sample has no output; no ERR encoded",
+                "61_62": "HMS storage order seconds/minutes/hours, signed 16-bit each. "
+                "SEC result signed 32-bit; HMS source signed 32-bit, three-word result. "
+                "HMS seconds range -117968399..117964799, overflow skips execution. "
+                "Sample HMS has reserved 0000 selector; alternative forms not inferred",
+                "63_64": "N=1..511 ASCII digits/nibbles. HEX consumes N low-byte ASCII "
+                "words (0-9/A-F), writes ceil(N/4) words, preserving unused nibbles. "
+                "ASCII reads ceil(N/4) words, writes N low bytes, preserving all high bytes. "
+                "Manual examples show most-significant selected nibble first",
+            },
+            "SHIFT_GRAY_DECODE": {
+                "pages": "7-38..45",
+                "BDIST": "N=1..256 bytes. Read ceil(N/2) words, high byte first; "
+                "write N words with high byte zero. Page 7-38 prose says N source registers, "
+                "but N unit and N=9 figure explicitly use 5 source and 9 destination words",
+                "51_54": "16-bit N=1..16, D variants 1..32. Repeat shift/rotate N times, "
+                "OTB is the final displaced bit; invalid N sets ERR and skips execution. "
+                "Shifts fill INB each step; rotation wraps. Sample constant N on 51/54, "
+                "register N on 52/53; alternate N forms not yet encoded",
+                "55_56": "Binary to Gray / Gray to binary. Sample non-D direct word forms. "
+                "Manual wording about less-than-16 versus at-least-16 conversion bits is "
+                "ambiguous; no new bit-count parameter or doubleword mode is inferred",
+                "DECOD": "Ns=0..15, NL=1..8 source bits, output 2^NL points (1..16 words). "
+                "Page 7-45 table prints NL 2..256, inconsistent with the definition and "
+                "behavior specifying NL 1..8; codec follows definition and GUI sample. "
+                "Source extends across B15 into next word, "
+                "clipping at highest operand-bank bit. Sample Ns=3, NL=5 writes two words. "
+                "Unused bits of a destination word for NL<4 are not explicitly specified; "
+                "conservative destination read/write references are retained",
+                "codec": "test26 sampled 16-bit non-P, direct operands. "
+                "BDIST dynamic N tracks maximum possible range; DECOD constant Ns/NL only. "
+                "These are encoding/analysis boundaries, not prohibitions of legal PLC forms",
+            },
+            "PACKING_FUNCTIONS": {
+                "pages": "7-30..37",
+                "42_44": "Move selected bit/nibble/byte only; preserve other destination bits. "
+                "16-bit Ns/Nd ranges 0..15, 0..3, 0..1; D variants double the ranges but are "
+                "not encoded. Invalid index sets ERR and skips instruction",
+                "45_46": "XCHG exchanges both operands; SWAP exchanges two bytes in one word",
+                "47_48": "N=1..4 nibbles. UNIT takes low nibble from N consecutive words into "
+                "one word low-to-high and clears unused nibbles. DIST distributes low-to-high "
+                "into N words, each with upper 12 bits zero",
+                "49": "N=1..256 bytes. Pack low bytes from N source words into ceil(N/2) "
+                "destination words; manual diagram puts first source byte in HIGH byte, "
+                "second in LOW byte. Odd-N unused byte is not specified. No ERR output",
+                "codec": "test25 non-P direct forms: 42..44 constant indices; 47/48 constant N; "
+                "49 register N. BUNIT conservatively tracks maximum footprint and destination "
+                "reads for unspecified odd-byte preservation; not a runtime prediction",
+            },
+            "TEST24_TRANSFER_MATRIX": {
+                "pages": "Basic 7-23..25; advanced 7-111..112, 7-122..124",
+                "MOV": "EN transfers one word; MOV/ bitwise inverts before writing. The codec "
+                "supports direct-word MOV and GUI-exported signed 16-bit constant-source MOV. "
+                "WY8 spans Y8..Y23. Basic manual D max 3071, MOV/ IR max R3847; "
+                "newer advanced bank tables do not settle these MOV forms",
+                "TOGG": "Each TG 0-to-1 transition toggles destination; continuous high TG "
+                "does NOT toggle every scan. Codec currently supports Y0..255/M0..999",
+                "SORT": "L=2..127; A/D=1 ascending, 0 descending; ERR on bad L. "
+                "Sample 16-bit constant L; D/P and register L legal but not yet encoded",
+                "Z_WR": "N=1..511; 1/0=1 fills ones, 0 clears. Native N stored literally. "
+                "Manual supports bit/word regions, dynamic N and D/P; codec direct R/D words only",
+                "MBSHF_MBROT": "L=2..256 words (16*L bits). L/R=1 left, 0 right. "
+                "MBSHF inserts INB, emits outgoing OTB; MBROT reinserts outgoing OTB. "
+                "Same source and destination permitted",
+                "MBCNT": "Count ones if 1/0=1, zeroes otherwise across 16*L bits; "
+                "write count into ONE destination word, D=0 reports zero count",
+                "codec": "test24 observed forms; additional operands, dynamic L/P/indirect "
+                "remain encoding gaps, not illegal PLC modes",
+            },
+            "MATRIX_FUNCTIONS": {
+                "pages": [
+                    "7-113",
+                    "7-114",
+                    "7-115",
+                    "7-116",
+                    "7-117",
+                    "7-118",
+                    "7-119",
+                    "7-120",
+                    "7-121",
+                ],
+                "length": "2..256 16-bit words; matrix contains 16*L bits",
+                "120_124": "Pairwise AND/OR/XOR/XNR or invert each bit into destination; "
+                "in-place destination allowed. L can be constant or permitted register",
+                "125": "FHD=1 or Pr=16*L-1 starts at zero; otherwise Pr+1. D/S=1 unequal, "
+                "0 equal. FND on match, END at last bit; invalid pointer sets ERR",
+                "126_127": "CLR first resets pointer, independently of EN. "
+                "Read selected bit to OTB or write INB; END if Pr=16*L-1, "
+                "otherwise increment only when INC=1. Pointer range 0..16*L-1",
+                "codec": "Sampled non-P direct R/D only. MINV register L supported; "
+                "other sampled functions constant L. Alternate L forms, P and indirect "
+                "forms remain unencoded. Static MINV references cover worst-case 256 words",
+            },
+            "TABLE_SEARCH_STORAGE": {
+                "pages": [
+                    "7-100",
+                    "7-101",
+                    "7-102",
+                    "7-103",
+                    "7-104",
+                    "7-105",
+                    "7-106",
+                    "7-107",
+                    "7-108",
+                    "7-109",
+                ],
+                "length": "105..111: 2..256; BKCMP 112: 1..256 groups",
+                "105_106": "FHD=1 or Pr=L-1 starts at index 0; otherwise starts Pr+1. "
+                "D/S=1 seeks unequal, 0 equal. FND marks match; END marks last index; "
+                "ERR for Pr outside 0..L-1",
+                "107": "Fill L destination words with Rs",
+                "108_109": "L/R=1 left, 0 right. Shift fills IW and writes displaced OW; "
+                "rotate wraps the displaced element. Source and destination may be identical",
+                "110_111": "QUEUE FIFO, STACK LIFO. I/O=1 push, 0 pop; Pr=0 empty, Pr=L full. "
+                "First storage element is QU/ST base, not base+1. ERR outside 0..L",
+                "112": "Compare Rs with L pairs at Ts[2*i] lower / Ts[2*i+1] upper. "
+                "Write L consecutive result bits. M1975=0: upper<lower gives ERR and false; "
+                "M1975=1 permits wrapping intervals. Result range Y0..255/M0..999/S0..999",
+                "codec": "Sampled non-P 16-bit; constant Rs on 105/107, register IW/Rs "
+                "on 108/110/111/112; direct R/D, constant L, Y/M results. "
+                "Other legal manual operands and D/P/indirect encodings remain unresolved",
+            },
+            "TABLE_TRANSFERS": {
+                "pages": ["7-96", "7-97", "7-98", "7-99"],
+                "length": "101/102: 2..2048; 103/104: 2..256",
+                "101_102": "CLR clears Pr before transfer, independent of EN. "
+                "Then Ts[Pr] -> Rd (101) or Td[Pr] (102). END when Pr=L-1; "
+                "otherwise INC increments Pr. Invalid Pr sets ERR",
+                "103": "Whole source table copied to destination in one execution",
+                "104": "Both tables exchanged in one execution; both must be writable",
+                "codec": "16-bit non-P, constant L, direct R/D banks only. Manual allows "
+                "additional D/P, register-length and indirect forms; those encodings remain "
+                "unresolved",
+                "evidence": "test21 N002 CLR X5 uses normal contact 6005; "
+                "7FE8 denotes FALSE, not inverted physical CLR. Corrects test20 interpretation",
+            },
+            "ASCWR": {
+                "pages": ["7-87"],
+                "MD": "0 ASCII/Printer via Port1; 1 reserved for specific purposes",
+                "work": "Pt uses 8 exclusive registers; file S ends at END, may embed operands",
+                "inputs": "EN rising-edge starts, PAU=1 pauses, ABT=1 aborts",
+                "codec": "Only sampled 94P MD=1. Do not apply MD=0 runtime semantics "
+                "to reserved MD=1; variable source span is unresolved",
+            },
+            "RAMP": {
+                "pages": ["7-88", "7-89"],
+                "Tn": "T0..255, must be configured for 10 ms time base and not reused",
+                "PV": "M1974=0 timer count in 10 ms units; M1974=1 increment per 10 ms",
+                "direction": "U/D=1 ramp up, 0 ramp down; sampled when EN rises; PAU pauses",
+                "limits": "SU must exceed SL at runtime; D+1 is an exclusive work register",
+                "codec": "Sampled non-P form and register PV/SL/SU; constants/P not encoded",
+            },
+            "RAMP2": {
+                "pages": ["7-90", "7-91", "7-92", "7-93"],
+                "values": "Om/Rt 0..65535; Ta/Td 0..65000 ms; Rt stable at least 2 scans",
+                "banks": "HR R0..3839, OR R3904..3967, ROR R5000..8071, D0..3999",
+                "work": "4 exclusive registers",
+                "EN": "0 immediately clears Rc and ACC/DEC; 1 tracks/clamps Rt toward Om",
+                "OS": "V4.60 or later; not verified on attached hardware",
+                "codec": "Register operands only. R3904 is sampled, other OR offsets inferred",
+            },
+            "REGISTER_TO_TABLE": {
+                "pages": ["7-94", "7-95"],
+                "length": "2..2048; pointer range 0..L-1, 16-bit pointer even in D form",
+                "order": "CLR resets Pr before transfer and also works independently of EN; "
+                "copy Rs to Td[Pr]; END if Pr=L-1, otherwise INC increments Pr",
+                "codec": "16-bit non-P, register Rs/Td/Pr, constant L. Constant data, "
+                "register length, D/P and indirect modes not yet serialized",
+            },
+            "ACCUMULATIVE_TIMER": {
+                "pages": ["7-81", "7-82"],
+                "units_ms": {"87": 10, "88": 100, "89": 1000},
+                "inputs": "EN=0 clears CV; EN=1/TIM=0 retains; EN=1/TIM=1 counts",
+                "PV": "constant 0..32767 or word; current codec implements direct R/D only",
+                "CV": "Manual permits T/C, word groups and register banks including IR; "
+                "codec currently implements T0..255 and direct R/D, including IR",
+                "outputs": "TUP done; NUP not done",
+            },
+            "TPCTL": {
+                "pages": ["7-79", "7-80", "20-44", "20-45", "20-46", "20-47"],
+                "zones": "Sn0..31, Zn1..32, Sn+Zn<=32; Yn and SV/OS/PR/IR/DR/OR span Zn",
+                "work": "9 exclusive words",
+                "Md": "0 modified minimum overshoot, 1 generic PID; absent from test19, "
+                "encoding unresolved, do not guess default",
+                "H/C": "Older CH20 20-45: 1 heating, 0 cooling",
+                "temperature_source": "7-80: planning table unless R4003=A55AH and "
+                "R4004=10000..13839 (R0..3839) or 20000..23999 (D0..3999)",
+                "edition_difference": "Older CH20 20-44: Sn0..23, Zn1..24, D0..3071, "
+                "FUN85 prerequisite; newer 7-79: 32 zones/D4095 and planning. "
+                "Do not transfer hardware prerequisites or defaults between editions",
+            },
+            "CALL": {
+                "pages": ["7-61"],
+                "semantics": "Calls labeled subroutine, returns via RTS; max 5 nested levels "
+                "including interrupts",
+                "encoding_boundary": "Exact test19 CALL1 anchor decoded; target metadata "
+                "unresolved, sample lacks LBL1/RTS; generation rejected",
+            },
+            "ADCNV": {
+                "pages": ["7-12", "7-13"],
+                "Pl": {"0": "unipolar", "1": "bipolar"},
+                "F/T": {"0": "12-bit", "1": "14-bit"},
+                "N_words": [1, 64],
+                "evidence": "Source IR column blank in page 7-12 operand table, but "
+                "page 7-13 example and test18 both use R3840; supported on that evidence",
+                "encoding_boundary": "Only Pl=0 and constant N sampled; Pl=1/register N "
+                "are manual-defined but not encoded yet",
+            },
+            "MLC": {
+                "pages": ["7-19", "7-20"],
+                "Sl": [1, 64],
+                "Tl": [2, 255],
+                "D_bank": [0, 3999],
+                "X/Y": {"0": "Tx to Ty", "1": "Ty to Tx"},
+                "OVR": "source below/above conversion table range",
+                "encoding_boundary": "Only constant Sl and register Tl sampled; "
+                "dynamic Tl conservatively tracks 255 possible words in each table",
+            },
+            "BITRD_BITWR": {
+                "pages": ["7-28", "7-29"],
+                "N_16bit": [0, 15],
+                "N_D_form": [0, 31],
+                "BITRD_EN0": "M1919=0 retains previous OTB; M1919=1 clears OTB",
+                "BITWR": "Replaces only selected bit with INB, other bits unchanged",
+                "encoding_boundary": "16-bit direct R/D and constant N currently encoded",
+            },
+            "LBL_JMP": {
+                "pages": ["7-59", "7-60"],
+                "names": "1..6 alphanumeric, unique; reserved "
+                "interrupt names are not ordinary labels",
+                "JMP": "Forward/backward within same main/subprogram region; backward "
+                "loops can exceed watchdog time",
+                "encoding_boundary": "Only exact test18 label/jump 1 pair. Target metadata "
+                "not decoded, so only complete unchanged sample generation allowed",
+            },
+            "DIV48": {
+                "page": "7-3",
+                "unsigned_when": {"0": "signed", "1": "unsigned"},
+                "operand_words": {"Sa": 3, "Sb": 3, "D": 3},
+                "outputs": {"FO0": "quotient zero", "FO1": "divisor zero; no execution"},
+                "encoding_boundary": "Manual explains U/S semantics, not LDR opcodes. "
+                "test16 F46C has U/S; test17 F474 omits it. The supplied page "
+                "does not identify fixed signedness for F474 or FBn-specific behavior.",
+            },
+            "MEAN": {
+                "page": "7-5",
+                "runtime_N": [2, 256],
+                "forms_in_manual": "16-bit, D=32-bit, P=rising-edge execution; N constant/register",
+                "invalid_N": "ERR=1; instruction does not execute",
+                "encoding_boundary": "Current encoder supports register N and inferred constant "
+                "N, both 16-bit non-P forms; constant N lacks its own native export anchor; D/P "
+                "forms are not encoded",
+            },
+            "CRC16": {
+                "page": "7-11",
+                "N_bytes": [1, 256],
+                "MD0": "Uses low byte of each of N consecutive source registers; "
+                "D receives CRC upper byte, D+1 receives lower byte",
+                "MD1": "Reserved in the supplied manual; export test17 proves GUI accepts "
+                "and encodes MD=1, but does not define its runtime algorithm",
+                "encoding_boundary": "MD=1 constant-N export form supported; MD=0 and "
+                "register N are described in the manual but their encodings are not implemented",
+            },
+            "PID": {
+                "page": "7-10",
+                "inputs": ["A/M", "BUM", "D/R"],
+                "Ts": {"range": [1, 3000], "unit_ms": 10},
+                "words": {"SR": 8, "OR": 1, "PR": 7, "WR": 5},
+                "WR": "Exclusive workspace; other locations must not reuse it",
+            },
+            "WDT": {
+                "page": "7-83",
+                "settings": list(range(50, 121, 10)),
+                "unit_ms": 10,
+            },
+            "HSCT": {
+                "pages": ["7-85", "7-86"],
+                "CN": {"0..3": "HSC0..3 or corresponding HST", "4": "HSTA"},
+                "D": {"0": "CV", "1": "PV"},
+                "encoding_boundary": "Manual selector values do not determine serialized "
+                "byte positions. Current anchors: HSC0 read and 93D source=0,HSC0,PV write",
+            },
+        },
+        "limits": {
+            "trig_angle": {"range": [-18000, 18000], "unit": "0.01 degrees", "source_words": 1},
+            "FUN214_220_D_bank": [0, 3999],
+            "inverse_trig_result_unit": "radians",
+            "imdio": {
+                "count": [1, 36],
+                "main_unit_points": {
+                    "10": {"X": 6, "Y": 4},
+                    "14": {"X": 8, "Y": 6},
+                    "20": {"X": 12, "Y": 8},
+                    "24": {"X": 14, "Y": 10},
+                    "32": {"X": 20, "Y": 12},
+                    "40": {"X": 24, "Y": 16},
+                    "60": {"X": 36, "Y": 24},
+                },
+            },
+            "ordinary_M": [0, 1911],
+            "special_M": [1912, 2001],
+            "S": [0, 999],
+            "X_Y_T_C": [0, 255],
+            "word_groups": {"WX_WY": [0, 240], "WM": [0, 1896], "WS": [0, 984]},
+            "R_banks": {
+                "HR": [0, 3839],
+                "IR": [3840, 3903],
+                "OR": [3904, 3967],
+                "SR": [3968, 4167],
+                "ROR": [5000, 8071],
+            },
+            "D_manual_editions": {"basic": [0, 3071], "advanced": [0, 4095]},
+            "signed_16": [-32768, 32767],
+            "signed_32": [-2147483648, 2147483647],
+            "float": {
+                "format": "IEEE-754 binary32",
+                "manual_approx_max": 3.4e38,
+                "encoding_max_finite": 3.4028234663852886e38,
+            },
+            "timer_preset": [0, 32767],
+            "timer_factory_bases_seconds": {"T0..49": 0.01, "T50..199": 0.1, "T200..255": 1},
+        },
+        "compiler_boundary": {
+            "direct_words": "R0..3839, read-only R3840..3903, R3904..3967, "
+            "R5000..8071, D0..4095; full spans checked. OR encoding is anchored by "
+            "a private native export at R3904; high-bank encoding is inferred from "
+            "private anchors. "
+            "D capacity depends on CPU/manual edition; header alone does not validate hardware.",
+            "M": "M0..1911: ordinary relay range, address extension inferred. "
+            "Automatic helper allocation remains M0..255. M-to-M remains forbidden.",
+            "not_encoded": "Special M1912..2001, R3968..4167 (except peripheral R3999), "
+            "S and arbitrary "
+            "word groups are manual-defined but not yet implemented in the binary codec.",
+            "forms": "Per-instruction K/register permissions apply. FUN11 ADD supports register "
+            "Sb; integer Sb constants remain 0..32767. Register Sb for FUN12..14 and "
+            "negative/32-bit/P/indirect forms "
+            "require their own encoding. Do not label them illegal PLC operands.",
+            "timing": "Manual factory time bases do not override the user's current project "
+            "timing contract or GUI millisecond entry. No automatic scaling change.",
+        },
+        "rtc": {
+            "registers": {
+                r: {"field": f, "min": lo, "max": hi} for r, (f, lo, hi) in RTC_FIELDS.items()
+            },
+            "R4135": "hour in high byte; minute in low byte. hour*256+minute, not HHMM.",
+            "M1952": "0: RTC runs, CPU refreshes R4128..R4135 every scan. "
+            "1: stop counting/readback; 1->0 writes R4128..R4134 to RTC and resumes.",
+            "M1953": "0->1 rounds RTC to a minute: seconds 0..29 clear; "
+            "30..59 clear and increment minute.",
+            "M1954": "Read-only installation flag: 1 means RTC installed.",
+            "M1955": "Read-only invalid-setting flag: 1 means setting rejected.",
+            "set_sequence": [
+                "Verify RTC installed and intended CPU mapping.",
+                "Set M1952=1 before writing to prevent refresh overwrites.",
+                "Load valid R4128..R4134; do not write packed R4135 as a setting.",
+                "Make M1952 transition 1->0, then check M1955 and readback.",
+            ],
+            "schedule": "For daily control use hour/minute, with an explicit inclusive start "
+            "and exclusive end. Overnight windows use after-start OR before-end. "
+            "Do not assume weekday 0=Sunday or a century: these pages do not specify them.",
+            "policy": "Do not build M1954 -> M1952 or M self-holds. Special RTC relays are "
+            "not exempt from forbid_m_to_m. Read-only scheduling need not write the clock.",
+            "support": "Reference and supplied snapshot validation only. RTC LDR read/write "
+            "generation, hardware access and execution simulation are not implemented.",
+        },
+    }
+
+
+def analyze_rtc_snapshot(registers: dict[str, int]) -> dict[str, Any]:
+    """Inspect caller-supplied numeric register values, never read a PLC."""
+    required = set(RTC_FIELDS)
+    if not required <= registers.keys() or registers.keys() - (required | {"R4135"}):
+        raise ValueError("Supply R4128..R4134 exactly, optionally R4135")
+    result: dict[str, Any] = {}
+    for register, (field, low, high) in RTC_FIELDS.items():
+        value = registers[register]
+        if type(value) is not int or not low <= value <= high:
+            raise ValueError(f"{register} {field} must be {low}..{high}")
+        result[field] = value
+    # February 29 remains possible: the manual gives no century interpretation.
+    max_day = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][result["month"] - 1]
+    if result["day"] > max_day:
+        raise ValueError("Impossible month/day combination")
+    packed = (result["hour"] << 8) | result["minute"]
+    if "R4135" in registers:
+        value = registers["R4135"]
+        if type(value) is not int or not 0 <= value <= 65535:
+            raise ValueError("R4135 must be a 16-bit word")
+        result["packed_consistent"] = value == packed
+    result.update(
+        expected_R4135=packed,
+        minute_of_day=result["hour"] * 60 + result["minute"],
+        source="caller-supplied snapshot; no PLC connection",
+        calendar_validation="field ranges and month/day only; century and weekday "
+        "mapping unspecified; not a hardware setting approval",
+    )
+    return result

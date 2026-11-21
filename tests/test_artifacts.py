@@ -1,0 +1,117 @@
+"""Files must reach an MCP client even without a shared server filesystem."""
+
+import asyncio
+import base64
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+import pytest
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+from mcp.shared.exceptions import McpError
+from mcp.types import BlobResourceContents, EmbeddedResource, ResourceLink, TextContent
+from pydantic import AnyUrl
+
+
+def test_binary_artifact_delivery_and_scope(tmp_path: Path) -> None:
+    output = tmp_path / "delivery folder"
+    (tmp_path / "private.ldr").write_bytes(b"outside output directory")
+
+    async def run() -> None:
+        params = StdioServerParameters(
+            command=sys.executable,
+            args=[
+                "-m",
+                "winproladder_mcp.server",
+                "--root",
+                str(tmp_path),
+                "--output-dir",
+                str(output),
+            ],
+        )
+        async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
+            await session.initialize()
+            templates = (await session.list_resource_templates()).resourceTemplates
+            assert any(t.uriTemplate == "winproladder://artifacts/{name}" for t in templates)
+            for name in ["motor.ldr", "馬達 控制 #100%23.ldr"]:
+                arguments = {
+                    "output_name": name,
+                    "io_contract": {"inputs": ["X0", "X1"], "outputs": ["Y0"]},
+                    "spec": {
+                        "requirement": "X0 starts Y0 and X1 stops it",
+                        "kind": "start_stop",
+                        "signal": "X0",
+                        "stop": "X1",
+                        "output": 0,
+                    },
+                }
+                result = await session.call_tool("generate_control_ldr", arguments)
+                assert not result.isError, result.content
+                assert result.structuredContent is not None
+                metadata = result.structuredContent
+                assert isinstance(result.content[0], TextContent)
+                summary = json.loads(result.content[0].text)
+                assert summary["artifact"] == metadata["artifact"]
+                assert summary["response_mode"] == "compact"
+                assert "validation" not in summary
+                link = next(item for item in result.content if isinstance(item, ResourceLink))
+                assert link.name == name
+                assert link.mimeType == "application/octet-stream"
+                assert str(link.uri) == metadata["artifact"]["uri"]
+                downloaded = await session.read_resource(link.uri)
+                resource = downloaded.contents[0]
+                assert isinstance(resource, BlobResourceContents)
+                data = base64.b64decode(resource.blob, validate=True)
+                assert data == (output / name).read_bytes()
+                assert link.size == metadata["size"] == len(data)
+                assert hashlib.sha256(data).hexdigest() == metadata["sha256"]
+                via_tool = await session.call_tool("get_ldr_artifact", {"output_name": name})
+                assert not via_tool.isError, via_tool.content
+                embedded = next(c for c in via_tool.content if isinstance(c, EmbeddedResource))
+                assert isinstance(embedded.resource, BlobResourceContents)
+                assert base64.b64decode(embedded.resource.blob, validate=True) == data
+                assert via_tool.structuredContent["artifact"] == metadata["artifact"]
+                duplicate = await session.call_tool("generate_control_ldr", arguments)
+                assert duplicate.isError
+                assert (output / name).read_bytes() == data
+            (output / "notes.txt").write_text("not an LDR", encoding="utf-8")
+            for name in ["../private.ldr", "..\\private.ldr", "notes.txt", "missing.ldr"]:
+                denied = await session.call_tool("get_ldr_artifact", {"output_name": name})
+                assert denied.isError, name
+                assert denied.structuredContent["error"]["written"] is False
+            missing = await session.call_tool("get_ldr_artifact", {"output_name": "missing.ldr"})
+            assert missing.structuredContent["error"] == {
+                "code": "ARTIFACT_NOT_FOUND",
+                "message": "Artifact or workspace source not found: missing.ldr",
+                "written": False,
+            }
+            missing_pdw = await session.call_tool(
+                "get_pdw_artifact", {"output_name": "missing.pdw"}
+            )
+            assert missing_pdw.isError
+            assert missing_pdw.structuredContent["error"]["code"] == "ARTIFACT_NOT_FOUND"
+            missing_source = await session.call_tool(
+                "export_ldr",
+                {"path": "missing-source.ldr", "output_name": "unused-output.ldr"},
+            )
+            assert missing_source.isError
+            assert missing_source.structuredContent["error"] == {
+                "code": "ARTIFACT_NOT_FOUND",
+                "message": "Artifact or workspace source not found: missing-source.ldr",
+                "written": False,
+            }
+            assert not (output / "unused-output.ldr").exists()
+            with pytest.raises(McpError):
+                await session.read_resource(AnyUrl("winproladder://artifacts/..%2Fprivate.ldr"))
+
+        # Artifact links remain usable after a server restart; no in-memory registry is needed.
+        async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
+            await session.initialize()
+            downloaded = await session.read_resource(link.uri)
+            resource = downloaded.contents[0]
+            assert isinstance(resource, BlobResourceContents)
+            assert base64.b64decode(resource.blob, validate=True) == data
+
+    asyncio.run(asyncio.wait_for(run(), timeout=60))
