@@ -3,7 +3,7 @@
 </p>
 
 <div align="center">
-  <h1>WinProLadder MCP</h1>
+  <h1></h1>
   <p><strong>讓 AI 將控制需求轉成 WinProLadder <code>.ldr</code> 檔案</strong></p>
   <p>也能讀取、分析及安全地修改既有檔案</p>
   <p>
