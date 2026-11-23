@@ -49,9 +49,9 @@
 
 ### 最新版本
 
-最新發布版為 **v1.1.1**；目前 `main` 另含尚未發行的修正。v1.1.1 改善 MCP 工具探索、
-精簡回應、警告傳遞與驗證證據表達，並納入 FBs-32MC 的 PDW 範本版面。已發布內容、
-目前未發行變更與下載請見
+目前版本為 **v1.2.0**。此版本提供 24 個 MCP tools，並新增參數化
+`generate_common_fun_ldr`，涵蓋 131 個 Common FUN evidence keys。這些 evidence keys
+不代表所有 FUN、operand 或 mode 均已完整驗證；已發布內容與下載請見
 [Releases](https://github.com/Syrup2718/winproladder-mcp/releases/latest) 與
 [CHANGELOG](docs/project/CHANGELOG.md)。
 

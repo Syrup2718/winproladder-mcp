@@ -6,7 +6,7 @@ This file lists only user-facing changes. Git history and automated tests retain
 details. Entries involving `.ldr` encoding still state their evidence boundary so that a single GUI
 export is not mistaken for verification of every generated variant.
 
-## Unreleased
+## 1.2.0 — 2026-11-23
 
 ### Fixed
 
