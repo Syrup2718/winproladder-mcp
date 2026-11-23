@@ -8,6 +8,7 @@
 | --- | --- |
 | [validate.py](validate.py) | 統一執行格式、lint、型別、測試、coverage、MCP 與 workspace 驗證並保留 redacted logs |
 | [verify_release.py](verify_release.py) | 真實 MCP 生成、下載與驗收；使用新的獨立驗證 root，名稱不表示會打包 |
+| [check_public_release.ps1](check_public_release.ps1) | 僅供隔離公開 checkout 使用的敏感內容、歷史與完整測試發布閘門；不會自行 push |
 | [generate_control_examples.py](generate_control_examples.py) | 控制配方範例產檔 |
 | [generate_design_examples.py](generate_design_examples.py) | 自訂 IR 範例產檔 |
 | [smoke_mcp.py](smoke_mcp.py) | 本機 MCP 設定診斷 |

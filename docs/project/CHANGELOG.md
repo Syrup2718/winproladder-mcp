@@ -16,6 +16,9 @@
 - 修正 FUN8 MOV 有號 16 位元常數來源的編碼：使用者提供的 WinProLadder `MOV.ldr`
   匯出確認 4 組取樣 operand 使用 `F5AC`，而非先前推估的 `F6AC`。其他常數值沿用同一
   operand form 產生，尚未逐值取得 GUI 匯出或實體 PLC 執行證據。
+- GUI 探測證實先前推導的 ADCNV `Pl=1` opcode 實際顯示為 FUN161P，FUN93D 非 HSC0 的
+  selector bytes 則會改變 32-bit `S`。兩種錯誤形式均已從 schema 與 encoder 撤回，現在
+  會在寫檔前拒絕；既有 ADCNV `Pl=0` 與 FUN93D `S=0/CN=HSC0/D=PV` 保持不變。
 
 ### 新增
 
@@ -25,6 +28,12 @@
   編解碼，並讓 FUN8 MOV 與共用直接暫存器編碼可使用 OR 區 `R3904～R3967`。
   `R3904` 由 GUI 匯出錨定，其餘 OR 位址依同一位址公式延伸；新產生的變體仍需另行
   GUI 匯入與實體 PLC 驗證。
+- 新增參數化 `generate_common_fun_ldr`，目前包含 131 個 Common evidence keys，沿用同一套
+  Production codec、policy、I/O contract、CRC、解碼回讀與 writer 檢查；這個數字不代表
+  131 個完整 FUN 或所有 operand/mode 均已支援。
+- FUN11～14 支援有號 16 位元常數 `Sb`；負常數以及 FUN92 HSCTR 的 HSC1、HSC2、HSC3、
+  HSTA 已由使用者確認可在 WinProLadder GUI 正確顯示。它們尚未完成 GUI 另存再開啟或
+  PLC 實機驗證，非 HSC0 selector 仍要求明確 CPU profile。
 
 ## 1.1.1 — 2026-11-10
 

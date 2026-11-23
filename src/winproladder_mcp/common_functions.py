@@ -733,6 +733,10 @@ def common_fun_evidence(function: CommonFunction) -> dict[str, object]:
         and function.operation in {"sub", "mul", "div"}
         and isinstance(function.sb, str)
     ) or (isinstance(function, CommonMean) and isinstance(function.count, int))
+    if isinstance(function, Arithmetic) and isinstance(function.sb, int) and function.sb < 0:
+        inferred = True
+    if isinstance(function, HighSpeedCounter) and function.counter != "HSC0":
+        inferred = True
     if isinstance(function, Bitwise) and function.operation == "or":
         inferred = True
     if isinstance(function, LinearConversion) and (function.mode != 0 or function.length != 1):
@@ -753,7 +757,20 @@ def common_fun_evidence(function: CommonFunction) -> dict[str, object]:
         "key": key,
         **COMMON_FUN_EVIDENCE[key],
         "evidence_level": "inferred" if inferred else "sample-backed",
-        "gui_verification": "not verified for generated artifact",
+        "gui_verification": (
+            "display verified 2026-11-23; no GUI save/reopen or PLC verification"
+            if (
+                isinstance(function, Arithmetic)
+                and isinstance(function.sb, int)
+                and function.sb < 0
+            )
+            or (
+                isinstance(function, HighSpeedCounter)
+                and function.type == "hsctr"
+                and function.counter != "HSC0"
+            )
+            else "not verified for generated artifact"
+        ),
     }
 
 
@@ -784,7 +801,13 @@ PHYSICAL_COMMON_TYPES = frozenset(
 def common_fun_physical_types(spec: CommonFunSpec) -> list[str]:
     """List hardware-facing Common entries that require an explicit CPU profile."""
 
-    return sorted({function.type for function in spec.functions} & PHYSICAL_COMMON_TYPES)
+    physical = {function.type for function in spec.functions} & PHYSICAL_COMMON_TYPES
+    physical |= {
+        function.type
+        for function in spec.functions
+        if isinstance(function, HighSpeedCounter) and function.counter != "HSC0"
+    }
+    return sorted(physical)
 
 
 def common_fun_ladder(

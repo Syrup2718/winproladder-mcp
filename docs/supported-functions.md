@@ -9,12 +9,12 @@ This is a compact public list. `✅` means only the forms accepted by the curren
 `generate_common_fun_ldr` provides a focused parameterized path for MOV, ADD/SUB/MUL/DIV,
 INC/DEC, AND/OR/XOR/XNR, CMP/ZNCMP, DIV48/SUM, MEAN/SQRT/NEG/ABS/EXT, ADCNV/MLC,
 BITRD/BITWR, all currently supported float operations, FCMP/FZCP, BCD/BIN, LCNV, ordinary
-Timer/Counter/UDCTR, accumulative Timer, PID, watchdog/HSC0, ENCOD/7SG/ASC/HEX conversions,
+Timer/Counter/UDCTR, accumulative Timer, PID, watchdog/HSCTR selectors, ENCOD/7SG/ASC/HEX conversions,
 file/memory-pack operations, system status, comparison contacts, explicit-profile peripheral,
 pulse and TPCTL forms, and the sampled table/matrix/packing/shift families.
 Each entry becomes one network; EN fields support
-basic Boolean expressions including series wiring. Its design sidecar records the native sample,
-FUN number, and supported operand form for every entry. The tool uses the same Production codec
+basic Boolean expressions including series wiring. Its design sidecar records the evidence source,
+FUN number, supported operand form, and verification boundary for every entry. The tool uses the same Production codec
 and source/lowered/emitted-byte validation as `generate_ldr`.
 
 | FUNC | Instruction / 指令 | Decode / 解析 | Generate / 產生 | Offline model / 離線模型 | Main boundary / 主要邊界 |
@@ -25,7 +25,7 @@ and source/lowered/emitted-byte validation as `generate_ldr`.
 | 07P | UDCTR | ✅ | ✅ | — | 16-bit sampled form / 已取樣的 16 位元形式 |
 | 06 | Bit shift / 位元移位 | ✅ | ✅ | — | Direct sampled form / 直接定址取樣形式 |
 | 08–10 | MOV, MOV/, TOGG | ✅ | ✅ | ✅ | MOV direct/signed constant source; OR destination; TOGG Y/M / MOV 直接或有號常數來源、OR 目的地；TOGG 使用 Y/M |
-| 11–14 | ADD, SUB, MUL, DIV | ✅ | ✅ | ✅ | Register/constant Sb; SUB/MUL/DIV register forms are inferred / 支援暫存器或常數 Sb；SUB/MUL/DIV 暫存器形式為 inferred |
+| 11–14 | ADD, SUB, MUL, DIV | ✅ | ✅ | ✅ | Register or signed constant Sb; SUB/MUL/DIV register and negative-constant forms are inferred / 支援暫存器或有號常數 Sb；SUB/MUL/DIV 暫存器及負常數形式為 inferred |
 | 15–16 | INC, DEC | ✅ | ✅ | ✅ | Direct R/D destination / 直接 R/D 目的元件 |
 | 17 | CMP | ✅ | ✅ | ✅ | Direct register comparison / 直接暫存器比較 |
 | 18–19 | AND, OR | ✅ | ✅ | ✅ | Direct R/D operands / 直接 R/D 運算元 |
@@ -34,7 +34,7 @@ and source/lowered/emitted-byte validation as `generate_ldr`.
 | 25–29 | MEAN, SQRT, NEG, ABS, EXT | ✅ | ✅ | — | Direct R/D forms; MEAN register N is sampled and constant N=2..256 is inferred / 直接 R/D；MEAN 暫存器 N 有樣本，常數 N=2..256 為 inferred |
 | 30 | PID | ✅ | ✅ | — | Sampled register layout and 10 ms units / 已取樣暫存器配置與 10 ms 單位 |
 | 31 | CRC16 | ✅ | ⚠️ | — | Sampled MD=1 encoding; manual marks it reserved / 僅 MD=1 取樣編碼，手冊標為保留 |
-| 32–34 | ADCNV, LCNV, MLC | ✅ | ✅ | — | Sampled direct forms; dynamic spans are conservative / 已取樣直接形式，動態範圍採保守檢查 |
+| 32–34 | ADCNV, LCNV, MLC | ✅ | ✅ | — | ADCNV Pl=0 sampled; Pl=1 is rejected after a failed GUI probe / ADCNV Pl=0 有樣本；Pl=1 經 GUI 探測證實錯誤後已拒絕 |
 | 35–37 | XOR, XNR, ZNCMP | ✅ | ✅ | ✅ | Sampled 16-bit forms / 已取樣的 16 位元形式 |
 | 40–49 | BITRD, BITWR, bit/nibble/byte move and pack / 位元、半位元組與 byte 搬移組合 | ✅ | ✅ | — | Direct supported word banks / 支援的直接 word bank |
 | 50–59 | BDIST, shifts, rotates, Gray/BIN, DECOD, ENCOD, 7SG | ✅ | ✅ | — | Sampled non-P forms and bounded lengths / 已取樣非 P 形式與有限長度 |
@@ -47,7 +47,7 @@ and source/lowered/emitted-byte validation as `generate_ldr`.
 | 84 | TDSP | ✅ | — | — | Exact sample is decode-only / 僅解析精確樣本 |
 | 86 | TPCTL | ✅ | ✅ | — | Temperature source depends on PLC configuration / 溫度來源取決於 PLC 設定 |
 | 87–89 | Accumulative timers / 積算型計時器 | ✅ | ✅ | ✅ | 10, 100, or 1000 ms time base / 10、100 或 1000 ms 時基 |
-| 90–93 | WDT, RSWDT, HSCTR, HSCTW | ✅ | ✅ | — | Sampled watchdog and HSC0 forms / 已取樣 watchdog 與 HSC0 形式 |
+| 90–93 | WDT, RSWDT, HSCTR, HSCTW | ✅ | ✅ | — | FUN92 HSC1–3/HSTA is GUI-display verified with explicit CPU profile; FUN93D remains sampled HSC0 only / FUN92 HSC1–3/HSTA 已通過 GUI 顯示驗證且須指定 CPU；FUN93D 僅支援取樣的 HSC0 |
 | 94P | ASCWR | ✅ | ⚠️ | — | MD=1 encoding only; runtime semantics unresolved / 僅 MD=1 編碼，執行語意未解決 |
 | 95, 98 | RAMP, RAMP2 | ✅ | ✅ | — | Exclusive timer/work-register resources / 計時器與工作暫存器須獨占 |
 | 100–104 | Register/table transfers and swap / 暫存器與表格搬移交換 | ✅ | ✅ | — | Direct R/D and supported constant lengths / 直接 R/D 與支援的固定長度 |

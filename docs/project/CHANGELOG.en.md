@@ -19,6 +19,10 @@ export is not mistaken for verification of every generated variant.
   user-supplied WinProLadder `MOV.ldr` export establish `F5AC`, not the earlier `F6AC` inference.
   Other constant values use the same operand form but have not each been GUI-exported or executed
   on a physical PLC.
+- GUI probes proved that the previous ADCNV `Pl=1` inference displays as FUN161P and that placing a
+  non-HSC0 selector in FUN93D changes its 32-bit `S` value. Both invalid forms were removed from the
+  schema and encoder and now fail before writing; sampled ADCNV `Pl=0` and FUN93D
+  `S=0/CN=HSC0/D=PV` remain unchanged.
 
 ### Added
 
@@ -30,6 +34,12 @@ export is not mistaken for verification of every generated variant.
   bank `R3904..R3967`. The export anchors `R3904`; the remaining OR addresses extend the same
   address formula. Newly generated variants still require separate GUI-import and physical-PLC
   verification.
+- Added parameterized `generate_common_fun_ldr` generation for 131 Common evidence keys through the
+  same Production codec, policy, I/O contract, CRC, decode-readback, and writer checks. This count
+  does not mean 131 fully supported FUN instructions or every operand/mode combination.
+- Added signed 16-bit constant `Sb` for FUN11–14. Negative constants and FUN92 HSCTR selectors
+  HSC1, HSC2, HSC3, and HSTA have user-confirmed WinProLadder GUI display evidence, but not GUI
+  save/reopen or physical-PLC verification. Non-HSC0 selectors still require an explicit CPU profile.
 
 ## 1.1.1 — 2026-11-10
 

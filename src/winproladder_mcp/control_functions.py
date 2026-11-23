@@ -9,6 +9,10 @@ if TYPE_CHECKING:
     from .ir import PID, Divide48, HighSpeedCounter, Network, SumWords, Watchdog
 
 
+HSC_SELECTORS = {"HSC0": 0, "HSC1": 1, "HSC2": 2, "HSC3": 3, "HSTA": 4}
+HSC_BY_SELECTOR = {selector: counter for counter, selector in HSC_SELECTORS.items()}
+
+
 def compile_control(action: "Watchdog | HighSpeedCounter | Divide48 | SumWords | PID") -> bytes:
     from .ir import PID, Divide48, HighSpeedCounter, SumWords, Watchdog, compile_coils
 
@@ -19,7 +23,11 @@ def compile_control(action: "Watchdog | HighSpeedCounter | Divide48 | SumWords |
         if action.setting is not None:
             raw += action.setting.to_bytes(2, "big")
     elif isinstance(action, HighSpeedCounter):
-        raw += bytes.fromhex("f4e50000" if action.type == "hsctr" else "f7e7010000000000")
+        raw += (
+            bytes.fromhex("f4e5") + HSC_SELECTORS[action.counter].to_bytes(2, "big")
+            if action.type == "hsctr"
+            else bytes.fromhex("f7e7010000000000")
+        )
     elif isinstance(action, SumWords):
         raw += bytes.fromhex("f5c0") + action.count.to_bytes(2, "big")
         raw += encode_register(action.source) + encode_register(action.destination)
@@ -118,10 +126,17 @@ def decode_control(payload: bytes) -> "Network | None":
                     )
                 elif code == "f4f2" and not tail:
                     action = Watchdog(type="rswdt", enable=enable)
-                elif code == "f4e5" and tail == b"\x00\x00":
-                    action = HighSpeedCounter(type="hsctr", enable=enable)
+                elif code == "f4e5" and len(tail) == 2:
+                    counter = HSC_BY_SELECTOR.get(int.from_bytes(tail, "big"))
+                    if counter is None:
+                        continue
+                    action = HighSpeedCounter.model_validate(
+                        {"type": "hsctr", "enable": enable, "counter": counter}
+                    )
                 elif code == "f7e7" and tail == bytes.fromhex("010000000000"):
-                    action = HighSpeedCounter(type="hsctw", enable=enable, source=0, target="PV")
+                    action = HighSpeedCounter(
+                        type="hsctw", enable=enable, counter="HSC0", source=0, target="PV"
+                    )
                 elif code == "f5c0" and len(tail) == 6:
                     action = SumWords(
                         enable=enable,

@@ -350,7 +350,7 @@ def capabilities() -> dict[str, Any]:
                 "flow": "Only exact label 1 and JMP 1 record anchors. JMP target metadata "
                 "unresolved: generation permits only byte-exact complete test18 program; "
                 "no relocation, edits, different target, EN variants or profile changes",
-                "unsupported": "ADCNV Pl=1, register counts, MLC constant Tl, D/P/indirect "
+                "unsupported": "ADCNV Pl=1 and register counts, MLC constant Tl, D/P/indirect "
                 "forms, general labels/jumps and runtime simulation are not encoded. "
                 "These are codec limits, not blanket PLC restrictions",
             },
@@ -380,9 +380,10 @@ def capabilities() -> dict[str, Any]:
                 "PID interval=1..3000 in 10 ms units; existing Timer contract unchanged",
                 "pid_inputs": "enable means A/M; bumpless means BUM; direction means D/R; "
                 "each is an independent Boolean expression; ERR/HAL/LAL normal coils",
-                "counter_scope": "HSCTR only HSC0; HSCTW only sampled 93D S=0/CN=HSC0/D=PV. "
-                "Counter selector layout and other source forms are not inferred "
-                "from zero operands",
+                "counter_scope": "HSCTR HSC0 is sampled; HSC1..3/HSTA selector words 1..4 are "
+                "GUI-display verified and require an explicit CPU profile. HSCTW remains the "
+                "sampled S=0/CN=HSC0/D=PV form; non-HSC0 and other source/target forms are "
+                "rejected",
                 "unsupported": "P forms, SUM D form, indirect operands, PID register Ts, "
                 "runtime simulation. No generated-file GUI or PLC verification",
             },
@@ -525,7 +526,8 @@ def capabilities() -> dict[str, Any]:
                 "source": "private native export evidence",
                 "observed": "16-bit ADD with register Sb; ADD with constant Sb and OR "
                 "destination; constant-Sb SUB/MUL/DIV; EN=TRUE, U/S=FALSE",
-                "inferred": "Common direct R/D/OR encoding; constant Sb=0..32767; Boolean "
+                "inferred": "Common direct R/D/OR encoding; constant Sb=-32768..32767 with "
+                "negative values using inferred two's-complement packing; Boolean "
                 "EN/unsigned_when; MOV to OR uses the common direct-word bank",
                 "unsigned_when": "FALSE=signed (sampled); TRUE=unsigned (inferred wiring)",
                 "destination_words": {"add": 1, "sub": 1, "mul": 2, "div": 2},

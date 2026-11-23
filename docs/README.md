@@ -21,6 +21,7 @@
 | [專案架構](../ARCHITECTURE.md) | 系統邊界、模組責任、依賴方向與產檔驗證管線 |
 | [Agent 指南](agent-guide.md) | MCP 工具選擇與交付規則 |
 | [開發指南](development.md) | 環境、測試與新增指令流程 |
+| [公開發布安全](release-security.md) | 私人／公開資料隔離、同步閘門與 GitHub 殘留風險 |
 | [v1.1.1 發布紀錄](project/RELEASING.md) | 該版提交、檢查、合併 main、標籤與 GitHub Release 流程 |
 | [LDR 格式](ldr-format.md) | 容器、record、CRC 與未知資料保留 |
 | [PDW 格式與產生器](pdw-format.md) | v1.1.0 實驗性本機範本產生功能與驗證限制 |

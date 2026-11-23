@@ -25,6 +25,7 @@ SAMPLE_BACKED_MODE_OPCODE_FORMS: Final[Mapping[str, Mapping[str, bytes]]] = Mapp
             mul_constant=bytes.fromhex("f666"),
             div_constant=bytes.fromhex("f668"),
         ),
+        "adcnv": _forms(unipolar=bytes.fromhex("f55a")),
         "lcnv": _forms(mode0_length1=bytes.fromhex("f57c")),
         "accumulative_timer": _forms(
             unit_10_ms=bytes.fromhex("fc41"),

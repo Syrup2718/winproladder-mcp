@@ -156,7 +156,7 @@ class Arithmetic(Model):
     type: Literal["arithmetic"] = "arithmetic"
     operation: Literal["add", "sub", "mul", "div"]
     sa: str
-    sb: str | Annotated[int, Field(strict=True, ge=0, le=32767)]
+    sb: str | Annotated[int, Field(strict=True, ge=-32768, le=32767)]
     destination: str
     enable: str = "always_on"
     unsigned_when: str = "FALSE"
@@ -669,19 +669,19 @@ class Watchdog(Model):
 
 
 class HighSpeedCounter(Model):
-    """Exact HSC0 read / double-word constant-zero PV write anchors only."""
+    """HSC read / double-word constant-zero PV write selector forms."""
 
     type: Literal["hsctr", "hsctw"]
     enable: str = "TRUE"
-    counter: Literal["HSC0"] = "HSC0"
+    counter: Literal["HSC0", "HSC1", "HSC2", "HSC3", "HSTA"] = "HSC0"
     source: Literal[0] | None = None
     target: Literal["PV"] | None = None
 
     @model_validator(mode="after")
     def check(self) -> "HighSpeedCounter":
         if self.type == "hsctw":
-            if self.source != 0 or self.target != "PV":
-                raise ValueError("HSCTW currently requires sampled S=0, CN=HSC0, D=PV")
+            if self.counter != "HSC0" or self.source != 0 or self.target != "PV":
+                raise ValueError("HSCTW currently requires sampled S=0, CN=HSC0 and D=PV")
         elif self.source is not None or self.target is not None:
             raise ValueError("HSCTR has no source/target operands")
         parse_expression(self.enable)
@@ -1913,7 +1913,7 @@ def compile_network(network: Network) -> bytes:
                     + (
                         encode_register(action.sb)
                         if isinstance(action.sb, str)
-                        else action.sb.to_bytes(2, "big")
+                        else action.sb.to_bytes(2, "big", signed=True)
                     )
                     + encode_register(action.destination)
                 )
@@ -2429,7 +2429,7 @@ def decode_network(payload: bytes) -> Network | None:
                     "sb": (
                         decode_register(payload[-4:-2])
                         if register_sb
-                        else int.from_bytes(payload[-4:-2], "big")
+                        else int.from_bytes(payload[-4:-2], "big", signed=True)
                     ),
                     "destination": decode_register(payload[-2:]),
                     "enable": expression_text(en),

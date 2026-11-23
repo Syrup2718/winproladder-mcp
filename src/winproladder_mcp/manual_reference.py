@@ -289,8 +289,9 @@ def manual_reference() -> dict[str, Any]:
                 "N_words": [1, 64],
                 "evidence": "Source IR column blank in page 7-12 operand table, but "
                 "page 7-13 example and test18 both use R3840; supported on that evidence",
-                "encoding_boundary": "Only Pl=0 and constant N sampled; Pl=1/register N "
-                "are manual-defined but not encoded yet",
+                "encoding_boundary": "Pl=0 and constant N are sample-backed. A GUI probe proved "
+                "the adjacent opcode is FUN161P, not ADCNV Pl=1; Pl=1 and register N remain "
+                "unencoded",
             },
             "MLC": {
                 "pages": ["7-19", "7-20"],
@@ -363,8 +364,9 @@ def manual_reference() -> dict[str, Any]:
                 "pages": ["7-85", "7-86"],
                 "CN": {"0..3": "HSC0..3 or corresponding HST", "4": "HSTA"},
                 "D": {"0": "CV", "1": "PV"},
-                "encoding_boundary": "Manual selector values do not determine serialized "
-                "byte positions. Current anchors: HSC0 read and 93D source=0,HSC0,PV write",
+                "encoding_boundary": "HSC0 read and 93D source=0,HSC0,PV write are native "
+                "anchors. FUN92 HSC1..3/HSTA selector words 1..4 are GUI-display verified. "
+                "For FUN93D that slot belongs to the 32-bit source; non-HSC0 remains unsupported",
             },
         },
         "limits": {

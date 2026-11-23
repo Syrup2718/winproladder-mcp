@@ -33,7 +33,8 @@
 - `generate_common_fun_ldr` 可將參數化 MOV、四則運算、INC/DEC、AND/OR/XOR/XNR、
   CMP/ZNCMP、DIV48/SUM、MEAN/SQRT/NEG/ABS/EXT、ADCNV/MLC、BITRD/BITWR、
   19 種浮點運算、FCMP/FZCP、table/matrix、packing/shift、資料轉換、
-  WDT/RSWDT、HSC0、UDCTR、comparison contacts、明確 I/O/profile 的周邊／脈波／TPCTL、
+  WDT/RSWDT、FUN92 HSC0–3/HSTA 與取樣的 FUN93D HSC0、UDCTR、comparison contacts、
+  明確 I/O/profile 的周邊／脈波／TPCTL、
   file/memory-pack、STAT、Timer/Counter 與 PID 組成完整 `.ldr`，
   並沿用 Production codec、CRC 與輸出 bytes 回讀驗證。
 - 產檔前檢查 I/O、元件範圍、重複 writer、工作區政策及實際輸出 bytes。

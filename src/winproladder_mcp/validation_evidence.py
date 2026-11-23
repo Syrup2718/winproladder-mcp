@@ -524,8 +524,10 @@ WARNING_RULES: tuple[tuple[Predicate, str], ...] = (
     ),
     (
         lambda ladder: _action(ladder, (Watchdog, HighSpeedCounter, Divide48, SumWords, PID)),
-        "test16: WDT and PID times use 10 ms units. PID A/M is not EN. Only sampled HSC0 read "
-        "and 93D zero-to-PV write supported. No runtime simulation or hardware verification.",
+        "test16: WDT and PID times use 10 ms units. PID A/M is not EN. HSC0 read and 93D "
+        "zero-to-PV write are sample-backed. FUN92 HSC1..3/HSTA selector packing is GUI-display "
+        "verified; FUN93D non-HSC0 packing is rejected after a failed GUI probe. No runtime "
+        "simulation or hardware verification.",
     ),
     (
         lambda ladder: _action(ladder, PeripheralIO),
@@ -562,6 +564,7 @@ WARNING_RULES: tuple[tuple[Predicate, str], ...] = (
         lambda ladder: _action(ladder, Arithmetic),
         "Arithmetic: private exports observe register Sa, positive constant Sb, and FUN11 "
         "register Sb with an OR destination. Changed operands/EN/U/S are inferred. "
+        "Signed negative constant Sb uses inferred two's-complement packing. "
         "MUL/DIV write two consecutive words. Bounded direct R/D/OR arithmetic model; no "
         "connected status outputs or GUI/PLC verification.",
     ),

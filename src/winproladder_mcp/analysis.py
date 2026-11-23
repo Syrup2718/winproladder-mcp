@@ -381,7 +381,7 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
                     | {a16.destination, "D4005"}
                 )
             elif isinstance(a16, HighSpeedCounter) and a16.type == "hsctr":
-                reads.add("HSC0.CV")
+                reads.add(f"{a16.counter}.CV")
         if isinstance(network.action, IntegerFunction):
             reads = (
                 contacts(parse_expression(network.action.enable)) | network.action.source_devices()
@@ -436,7 +436,7 @@ def device_references(networks: list[tuple[int, Network | None]]) -> dict[str, A
             writes |= (
                 {"R4096", "R4097"}
                 if network.action.type == "hsctr"
-                else {"R4098", "R4099", "HSC0.PV"}
+                else {"R4098", "R4099", f"{network.action.counter}.PV"}
             )
         elif isinstance(network.action, Watchdog):
             writes.add("WDT.setting" if network.action.type == "wdt" else "WDT.elapsed")

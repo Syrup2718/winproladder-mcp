@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 from .logic import compile_expression, decode_expression, expression_text, parse_expression
+from .native_codec import sample_backed_opcode
 from .registers import decode_register, encode_register
 
 if TYPE_CHECKING:
@@ -22,7 +23,7 @@ def compile_analog(action: "AnalogConversion | BitAccess | SampleFlow") -> bytes
     if isinstance(action, AnalogConversion):
         raw += compile_expression(parse_expression(action.selector), nested=True)
         if action.type == "adcnv":
-            raw += bytes.fromhex("f55a") + action.count.to_bytes(2, "big")
+            raw += sample_backed_opcode("adcnv", "unipolar") + action.count.to_bytes(2, "big")
             raw += encode_register(action.source) + encode_register(action.destination)
         else:
             assert action.x_table and action.y_table and action.table_length

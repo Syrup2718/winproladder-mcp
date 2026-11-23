@@ -63,7 +63,7 @@ def test_public_generation_failure_categories_and_locations(tmp_path):
                                 "type": "arithmetic",
                                 "operation": "sub",
                                 "sa": "R0",
-                                "sb": -1,
+                                "sb": -32769,
                                 "destination": "R2",
                             }
                         }
@@ -102,7 +102,7 @@ def test_public_generation_failure_categories_and_locations(tmp_path):
             assert report["network_index"] == network
             assert report["instruction"] == instruction
             if code == "UNSUPPORTED_OPERAND":
-                assert report["operands"]["sb"] == -1
+                assert report["operands"]["sb"] == -32769
             if code == "MISSING_ENCODING_EVIDENCE":
                 assert "Original WinProLadder-exported .ldr" in report["missing_evidence"]
             assert report["verified_alternative"] is None

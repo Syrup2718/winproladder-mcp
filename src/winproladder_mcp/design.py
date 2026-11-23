@@ -71,6 +71,7 @@ def design_guide() -> dict[str, Any]:
             "Honor allow_function_m_to_m: meaningful function M results are permitted; "
             "plain relay copies and lowered helper chains remain prohibited.",
             "test18: adcnv selector=F/T (0=12-bit,1=14-bit), sampled polarity=0. "
+            "ADCNV polarity=1 is unsupported; a rejected adjacent-opcode probe decoded as FUN161P. "
             "mlc selector=X/Y, x_table/y_table, table_length register, count constant. "
             "Check 255 possible table words and MLC D3999 endpoint. bitrd/bitwr use "
             "word/bit=0..15; input_bit=INB for writes, output=OTB for reads. "
@@ -87,8 +88,9 @@ def design_guide() -> dict[str, Any]:
             "pid enable is A/M, with separate bumpless BUM and direction D/R. "
             "SR8/OR1/PR7/WR5; exclusive WR; status error/high/low coils. "
             "PID interval and WDT setting use 10 ms units. WDT accepts 50,60,...120. "
-            "HSCTR only HSC0; HSCTW only sampled 93D source=0,target=PV,HSC0. "
-            "No native runtime simulation; do not infer other HSC selector layouts.",
+            "HSCTR HSC0 is sampled and HSC1..3/HSTA selectors are GUI-display verified; the "
+            "non-HSC0 forms require an explicit CPU profile. HSCTW remains sampled HSC0, "
+            "source=0,target=PV; non-HSC0 probes altered S and are rejected. No PLC verification.",
             "test15: native tkey/hkey/dsw/7sgdl/muxi. Supply full physical I/O contract, "
             "not just starts. Reserve KL10/16 and WR1 (DSW WR2); WR cannot be reused. "
             "MUXI uses ceil(rows/2) destination words. Implicit KL outputs are M-policy checked. "
