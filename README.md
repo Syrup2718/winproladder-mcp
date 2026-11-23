@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.png" alt="WinProLadder MCP" width="100%">
+</p>
+
 <div align="center">
   <h1>WinProLadder MCP</h1>
   <p><strong>讓 AI 將控制需求轉成 WinProLadder <code>.ldr</code> 檔案</strong></p>
