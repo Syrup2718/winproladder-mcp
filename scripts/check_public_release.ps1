@@ -37,15 +37,39 @@ if ($AllowDirty) {
 }
 
 $restrictedPath = '(?i)(^|/)(docs/research|samples|research|ghidra|ida)(/|$)|\.(ldr|exe|dll|pdf|png|jpe?g|ghidra)$'
+$auditedBinaryAssets = @{
+    "assets/banner.png" = "d62ed515ca29285d044f155d490ab3a0a260ee13f2e3e8e3fd6de5ed6d667102"
+}
+$auditedHistoryObjects = @(
+    "07047aaf3db7b133e3b2aace03ab408ba5b25701 assets/banner.png"
+)
 $candidate = @(Invoke-Git ls-files --cached --others --exclude-standard)
 $candidateFiles = @($candidate | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
-$badCandidate = @($candidateFiles | Where-Object { $_ -match $restrictedPath })
+$badCandidate = @(
+    $candidateFiles | Where-Object {
+        $_ -match $restrictedPath -and -not $auditedBinaryAssets.ContainsKey($_)
+    }
+)
 if ($badCandidate.Count -gt 0) {
     throw "Restricted candidate paths found:`n$($badCandidate -join "`n")"
 }
 
+foreach ($asset in $auditedBinaryAssets.GetEnumerator()) {
+    if (-not (Test-Path -LiteralPath $asset.Key -PathType Leaf)) {
+        throw "Audited public asset is missing: $($asset.Key)"
+    }
+    $actualHash = (Get-FileHash -LiteralPath $asset.Key -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($actualHash -ne $asset.Value) {
+        throw "Audited public asset hash mismatch: $($asset.Key)"
+    }
+}
+
 $objects = @(Invoke-Git rev-list --objects --all)
-$badHistory = @($objects | Where-Object { $_ -match $restrictedPath })
+$badHistory = @(
+    $objects | Where-Object {
+        $_ -match $restrictedPath -and $_ -notin $auditedHistoryObjects
+    }
+)
 if ($badHistory.Count -gt 0) {
     throw "Restricted paths remain in reachable history:`n$($badHistory -join "`n")"
 }

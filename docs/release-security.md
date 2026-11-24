@@ -35,6 +35,10 @@
 
 `scripts/check_public_release.ps1` 會確認：
 
+- 受限制的二進位格式預設不得出現在候選檔案或歷史中；唯一例外是以路徑、
+  SHA-256 與 Git object ID 三重固定的公開 `assets/banner.png`。任何內容變更都會使
+  發布閘門失敗，必須重新人工審核。
+
 - checkout 已標記為隔離公開工作樹且預設為乾淨；
 - tracked files 與所有可達歷史不含受限制路徑或副檔名；
 - HEAD 內容沒有常見 token、private key 或個人絕對路徑；
