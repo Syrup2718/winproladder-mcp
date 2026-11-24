@@ -37,8 +37,9 @@
 
 See the [feature overview](FEATURES.en.md) and [supported FUNC table](../supported-functions.md) for the current scope.
 
-The current version is **v1.2.0** with 24 MCP tools and parameterized
-`generate_common_fun_ldr` support for 131 Common FUN evidence keys. Evidence keys do not mean
+The current version is **v1.2.1** with 24 MCP tools. It fixes constant-operand generation for
+FUN170–175 comparison contacts and retains parameterized `generate_common_fun_ldr` support for
+131 Common FUN evidence keys. Evidence keys do not mean
 that every FUN, operand, or mode has been fully verified. See the
 [releases](https://github.com/Syrup2718/winproladder-mcp/releases/latest) and
 [changelog](CHANGELOG.en.md) for released behavior and version history.

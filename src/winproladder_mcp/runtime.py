@@ -96,7 +96,12 @@ def simulate_runtime(
     for n in ladder.networks:
         a = n.action
         if n.comparison_chain:
-            raise ValueError("Runtime model cannot execute comparison chains")
+            for contact in n.comparison_chain:
+                operands = [contact.sa]
+                if isinstance(contact.sb, str):
+                    operands.append(contact.sb)
+                if any(not operand.startswith(("R", "D")) for operand in operands):
+                    raise ValueError("Comparison-contact model supports direct R/D operands only")
         if a is not None:
             if not isinstance(a, SUPPORTED_ACTIONS) and not (
                 isinstance(a, ProcessFunction) and a.type in SUPPORTED_PROCESS
@@ -166,7 +171,11 @@ def simulate_runtime(
     rung_expressions = {
         i: network_expression(n)
         for i, n in enumerate(ladder.networks)
-        if not n.empty and n.action is None and n.block is None and n.edge is None
+        if not n.empty
+        and not n.comparison_chain
+        and n.action is None
+        and n.block is None
+        and n.edge is None
     }
     for i, n in enumerate(ladder.networks):
         if n.edge is not None:
@@ -185,6 +194,24 @@ def simulate_runtime(
             if n.empty:
                 continue
             a, b = n.action, n.block
+            if n.comparison_chain:
+                power = True
+                for contact in n.comparison_chain:
+                    left = signed(word(contact.sa))
+                    right = signed(word(contact.sb)) if isinstance(contact.sb, str) else contact.sb
+                    power = (
+                        power
+                        and {
+                            "eq": left == right,
+                            "gt": left > right,
+                            "lt": left < right,
+                            "ne": left != right,
+                            "ge": left >= right,
+                            "le": left <= right,
+                        }[contact.operation]
+                    )
+                coils(n.coils, power)
+                continue
             if isinstance(b, Timer):
                 assert scan_ms is not None
                 enabled = test(b.enable)
@@ -328,6 +355,7 @@ def simulation_capabilities() -> dict[str, Any]:
             "exclusive_logic",
             "compare",
             "zone_compare",
+            "comparison_chain",
             "difu",
             "difd",
             "accumulative_timer",

@@ -751,7 +751,9 @@ def common_fun_evidence(function: CommonFunction) -> dict[str, object]:
         isinstance(function.upper, float) and isinstance(function.lower, str)
     ):
         inferred = True
-    if isinstance(function, CommonComparisonContact) and function.operation not in {"eq", "ne"}:
+    if isinstance(function, CommonComparisonContact) and (
+        isinstance(function.sb, int) or function.operation not in {"eq", "ne"}
+    ):
         inferred = True
     return {
         "key": key,

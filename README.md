@@ -53,7 +53,8 @@
 
 ### 最新版本
 
-目前版本為 **v1.2.0**。此版本提供 24 個 MCP tools，並新增參數化
+目前版本為 **v1.2.1**。此版本提供 24 個 MCP tools，並修正 FUN170～175 比較接點的
+常數 operand 生成；參數化
 `generate_common_fun_ldr`，涵蓋 131 個 Common FUN evidence keys。這些 evidence keys
 不代表所有 FUN、operand 或 mode 均已完整驗證；已發布內容與下載請見
 [Releases](https://github.com/Syrup2718/winproladder-mcp/releases/latest) 與

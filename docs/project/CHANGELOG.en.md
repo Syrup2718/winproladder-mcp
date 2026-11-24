@@ -6,6 +6,18 @@ This file lists only user-facing changes. Git history and automated tests retain
 details. Entries involving `.ldr` encoding still state their evidence boundary so that a single GUI
 export is not mistaken for verification of every generated variant.
 
+## 1.2.1 — 2026-11-24
+
+### Fixed
+
+- Fixed FUN170–175 comparison contacts rejecting ordinary legal constant operands. Constant `Sb`
+  values from 0 through 32767 are now accepted in first or series position, with bounded direct-R/D
+  comparison-chain simulation. The FUN175 series constant
+  form is sample-backed; other relation and position combinations reuse the same F6 constant marker
+  and opcode family as inferred forms. The exact
+  `R100 > 0 AND R100 < 100 AND D1 = 1 -> Y0` artifact has user-confirmed GUI display evidence, but
+  no GUI save/reopen or physical-PLC verification.
+
 ## 1.2.0 — 2026-11-23
 
 ### Fixed

@@ -119,11 +119,13 @@ def design_guide() -> dict[str, Any]:
             "F5/F6 constant markers sampled; F7 combinations inferred. No runtime simulation.",
             "comparison_chain supports all six relations in first/series positions; "
             "all 12 positions user GUI-confirmed in the position probe; "
-            "new combinations remain inferred. "
+            "constant Sb=0..32767 uses the sampled F6 marker; only the FUN175 series constant "
+            "is sample-backed and other relation/position combinations remain inferred. "
             "Float_operation actions use two consecutive registers for float values; "
             "I->F reads one integer word and writes two, F->I reads two and writes one. "
             "Reserve the full spans. WM0 comparisons read M0..15 and cannot drive M outputs "
-            "under forbid_m_to_m. No built-in execution simulation for either new family.",
+            "under forbid_m_to_m. Comparison-chain simulation is limited to direct R/D words; "
+            "float operations still have no built-in execution simulation.",
             "test10 adds exclusive_logic (xor/xnr), zone_compare and word_conversion. "
             "T operands are numeric values, not contacts. WX0/WY0 are 16-bit I/O groups; "
             "include every X0..15/Y0..15 in the contract only when that word was requested. "

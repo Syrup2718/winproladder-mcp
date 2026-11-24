@@ -373,8 +373,6 @@ class ComparisonContact(Model):
         encode_comparison_word(self.sa)
         if isinstance(self.sb, str):
             encode_comparison_word(self.sb)
-        elif self.operation != "le":
-            raise ValueError("Only chained FUN175 constant Sb is sampled")
         return self
 
 
@@ -1659,10 +1657,6 @@ def compile_network(network: Network) -> bytes:
             result = b""
             for index, c in enumerate(network.comparison_chain):
                 codes = COMPARISON_FIRST_CODES if index == 0 else COMPARISON_CHAIN_CODES
-                if index == 0 and isinstance(c.sb, int):
-                    raise UnsupportedInstruction(
-                        "First comparison with constant Sb is not yet supported"
-                    )
                 result += bytes.fromhex("f67f" if isinstance(c.sb, int) else "f47f")
                 result += codes[c.operation].to_bytes(2, "big") + encode_comparison_word(c.sa)
                 result += (
@@ -2039,7 +2033,7 @@ def decode_network(payload: bytes) -> Network | None:
     if control is not None:
         return control
     try:
-        if payload[:2] == bytes.fromhex("f47f"):
+        if payload[:2] in {bytes.fromhex("f47f"), bytes.fromhex("f67f")}:
             comparison_items = []
             offset11 = 0
             while payload[offset11 : offset11 + 2] in {b"\xf4\x7f", b"\xf6\x7f"}:

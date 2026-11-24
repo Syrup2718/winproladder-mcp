@@ -69,6 +69,11 @@ from .transfer_functions import CODES as TRANSFER_CODES
 
 Predicate = Callable[[Ladder], bool]
 
+GUI_DISPLAY_VERIFIED_COMPARISON_PAYLOADS = {
+    # User-confirmed WinProLadder display on 2026-11-23. No save/reopen or PLC verification.
+    "f67f00160ac80000f67f00230ac80064f67f002140020001c100",
+}
+
 
 def collect_instruction_evidence(
     index: int, network: Network, payload: bytes
@@ -297,19 +302,32 @@ def collect_instruction_evidence(
         )
     elif network.comparison_chain or isinstance(network.action, FloatOperation):
         observed11 = next((i for i, raw in TEST11_PAYLOADS.items() if payload.hex() == raw), None)
-        instruction_evidence.append(
-            {
-                "network_index": index,
-                "instruction": "comparison_chain"
-                if network.comparison_chain
-                else "float_operation",
-                "status": "observed_export" if observed11 is not None else "inferred_variant",
-                "source": f"private native export N{observed11:03}"
-                if observed11 is not None
-                else "private native export",
-                "gui_import_verified": False,
-            }
+        comparison_gui_display = (
+            bool(network.comparison_chain)
+            and payload.hex() in GUI_DISPLAY_VERIFIED_COMPARISON_PAYLOADS
         )
+        item: dict[str, object] = {
+            "network_index": index,
+            "instruction": "comparison_chain" if network.comparison_chain else "float_operation",
+            "status": "observed_export" if observed11 is not None else "inferred_variant",
+            "source": (
+                f"private native export N{observed11:03}"
+                if observed11 is not None
+                else "sampled FUN175 F6 marker + inferred opcode family"
+                if network.comparison_chain
+                else "private native export"
+            ),
+            "gui_import_verified": comparison_gui_display,
+        }
+        if network.comparison_chain:
+            item.update(
+                {
+                    "gui_display_verified": comparison_gui_display,
+                    "gui_save_reopen_verified": False,
+                    "plc_verified": False,
+                }
+            )
+        instruction_evidence.append(item)
     observed9 = next((i for i, raw in TEST9_PAYLOADS.items() if payload.hex() == raw), None)
     if observed9 is not None or isinstance(
         network.action, (MasterControl, MasterEnd, Differential, UpDownCounter)

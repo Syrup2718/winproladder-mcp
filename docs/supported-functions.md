@@ -54,7 +54,7 @@ and source/lowered/emitted-byte validation as `generate_ldr`.
 | 105–114 | Search, compare, fill, shift, rotate, queue, stack, SORT, Z-WR | ✅ | ✅ | — | Sampled 16-bit non-P forms / 已取樣的 16 位元非 P 形式 |
 | 120–130 | Matrix logic, compare, bit read/write/shift/rotate/count / 矩陣邏輯、比較與位元操作 | ✅ | ✅ | — | Direct R/D matrices and bounded lengths / 直接 R/D 矩陣與有限長度 |
 | 160, 161P, 162 | File register and memory pack read/write / 檔案暫存器與記憶體封包讀寫 | ✅ | ✅ | — | Sampled banks, offsets, and lengths / 已取樣 bank、offset 與長度 |
-| 170–175 | Comparison contacts / 比較接點 | ✅ | ✅ | — | Confirmed first and series positions; no OR form / 已確認首段與串聯位置，不支援 OR 形式 |
+| 170–175 | Comparison contacts / 比較接點 | ✅ | ✅ | ✅ | Register forms confirmed in first/series positions; constant Sb 0..32767 is inferred except sampled FUN175 series; exact R100 > 0 / < 100 / D1 = 1 chain is GUI-display verified; no OR form / 暫存器形式已確認首段／串聯位置；常數 Sb 0..32767 除 FUN175 串聯樣本外為 inferred；指定三段鏈已通過 GUI 顯示驗證；不支援 OR |
 | 190 | System status / 系統狀態 | ✅ | ✅ | — | Hardware-dependent extent / 範圍取決於硬體 |
 | 200–208 | I→F, F→I, FADD, FSUB, FMUL, FDIV, FCMP, FZCP, FSQR | ✅ | ✅ | — | Supported float banks and finite binary32 constants / 支援的浮點 bank 與有限 binary32 常數 |
 | 209–220 | FSIN, FCOS, FTAN, FNEG, FABS, FLN, FEXP, FLOG, FPOW, FASIN, FACOS, FATAN | ✅ | ✅ | — | Sampled direct forms; angle and error rules vary / 已取樣直接形式；角度與錯誤規則依指令而異 |

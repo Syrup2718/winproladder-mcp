@@ -462,15 +462,27 @@ def capabilities() -> dict[str, Any]:
                     "reexport_received": False,
                     "plc_verified": False,
                 },
+                "constant_chain_gui_confirmation": {
+                    "artifact": "r100_direct_gt_lt_d1_eq_y0.ldr",
+                    "sha256": "1be11f4cc2193aaeeb8c4fbf7dc10abc311304661a2166d5180b565693495204",
+                    "evidence": "User-confirmed WinProLadder display on 2026-11-23",
+                    "scope": "Exact R100 > 0 AND R100 < 100 AND D1 = 1 -> Y0 chain only",
+                    "reexport_received": False,
+                    "plc_verified": False,
+                },
                 "comparison_contacts": "FUN170..175 via network.comparison_chain. "
                 "All six relations at first and subsequent series positions; "
                 "all 12 positions user GUI-confirmed in the exact R600/R700 probe; "
-                "other operand combinations remain inferred; "
+                "constant Sb=0..32767 uses the sampled F6 marker and inferred relation/position "
+                "combinations; the exact R100 > 0 / R100 < 100 / D1 = 1 chain is GUI-display "
+                "verified; "
                 "coil outputs including SET/RESET. No OR, mixed Boolean contacts, "
-                "D form or runtime model",
+                "or D/P form",
                 "comparison_operands": "Direct existing word banks plus exact WS0, WM0, C2, R5111. "
-                "Only le permits constant Sb=0..32767. WM0 expands to M0..15 for policy. "
-                "Other WS/WM/C addresses and constant forms remain unsupported; "
+                "All six relations accept constant Sb=0..32767 in first or series position; "
+                "only the sampled FUN175 series constant is sample-backed and the other constant "
+                "forms remain inferred. WM0 expands to M0..15 for policy. "
+                "Other WS/WM/C addresses remain unsupported; "
                 "high-R bank is supported",
                 "float": "FUN200 I->F, 201 F->I, 202 FADD, 203 FSUB, 204 FMUL; "
                 "float_operation action with operation i_to_f/f_to_i/add/sub/mul, "
